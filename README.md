@@ -13,6 +13,17 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ Assets abstraídos por `IAssetSource`: pasta no desktop, APK no Android
 - ✅ Cenas em JSON (`scenes/*.json`) com registro extensível de componentes
 
+## Editor
+
+```bash
+dotnet run --project src/Aurora.Editor -- samples/Aurora.Sandbox.Core/Assets/scenes/forest.json
+```
+
+- **Hierarquia** (esquerda): seleciona entidades
+- **Cena** (centro): arrastar move a entidade; botão do meio/direito = pan; scroll = zoom
+- **Inspector** (direita): edita Transform, SpriteRenderer e mostra componentes de script
+- **Ctrl+S** salva de volta no JSON — componentes que o editor não conhece são preservados intactos
+
 ## Rodando a demo
 
 ```bash

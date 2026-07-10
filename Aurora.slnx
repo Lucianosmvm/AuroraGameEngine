@@ -5,6 +5,7 @@
     <Project Path="samples/Aurora.Sandbox/Aurora.Sandbox.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Aurora.Editor/Aurora.Editor.csproj" />
     <Project Path="src/Aurora.Runtime/Aurora.Runtime.csproj" />
   </Folder>
 </Solution>

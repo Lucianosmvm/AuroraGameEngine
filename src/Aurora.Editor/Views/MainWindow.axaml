@@ -1,0 +1,93 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Aurora.Editor.Views"
+        xmlns:vm="clr-namespace:Aurora.Editor.ViewModels"
+        x:Class="Aurora.Editor.Views.MainWindow"
+        Title="{Binding Title}"
+        Width="1400" Height="850"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.DataTemplates>
+    <!-- Editores do inspector, escolhidos pelo tipo do view model da propriedade -->
+    <DataTemplate DataType="{x:Type vm:NumberPropertyViewModel}">
+      <Grid ColumnDefinitions="90,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+        <TextBox Grid.Column="1" Text="{Binding Text}" FontSize="12" Padding="6,4"/>
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:TextPropertyViewModel}">
+      <Grid ColumnDefinitions="90,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+        <TextBox Grid.Column="1" Text="{Binding Value}" FontSize="12" Padding="6,4"/>
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:BoolPropertyViewModel}">
+      <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
+    </DataTemplate>
+  </Window.DataTemplates>
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="_Arquivo">
+        <MenuItem Header="_Abrir Cena…" Click="OnOpenScene" InputGesture="Ctrl+O"/>
+        <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>
+        <Separator/>
+        <MenuItem Header="Sai_r" Click="OnExit"/>
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Bottom" Background="#1E1C30" Padding="8,4">
+      <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"/>
+    </Border>
+
+    <Grid ColumnDefinitions="230,4,*,4,330">
+
+      <!-- Hierarquia -->
+      <DockPanel Grid.Column="0">
+        <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
+                   FontWeight="Bold" Opacity="0.5"/>
+        <ListBox ItemsSource="{Binding Entities}"
+                 SelectedItem="{Binding SelectedEntity}">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" FontSize="13"/>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+
+      <GridSplitter Grid.Column="1" Background="#2A2740"/>
+
+      <!-- Cena -->
+      <views:SceneCanvas Grid.Column="2" DataContext="{Binding}"/>
+
+      <GridSplitter Grid.Column="3" Background="#2A2740"/>
+
+      <!-- Inspector -->
+      <DockPanel Grid.Column="4">
+        <TextBlock DockPanel.Dock="Top" Text="INSPECTOR" Margin="10,8" FontSize="11"
+                   FontWeight="Bold" Opacity="0.5"/>
+        <ScrollViewer>
+          <StackPanel Margin="10,0,10,10" DataContext="{Binding SelectedEntity}"
+                      IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Grid ColumnDefinitions="90,*" Margin="0,0,0,8">
+              <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+              <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="13" Padding="6,4"/>
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Components}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Expander Header="{Binding Type}" IsExpanded="True" Margin="0,0,0,6"
+                            HorizontalAlignment="Stretch">
+                    <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
+                  </Expander>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>
