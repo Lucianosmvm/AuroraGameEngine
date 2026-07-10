@@ -6,18 +6,18 @@ namespace Aurora.Sandbox;
 /// <summary>Flutuação vertical senoidal (moedas, itens).</summary>
 public sealed class BobBehavior : Behavior
 {
-    private readonly float _amplitude;
-    private readonly float _frequency;
-    private readonly float _phase;
+    public float Amplitude { get; }
+    public float Frequency { get; }
+    public float Phase { get; }
 
     private float _baseY;
     private float _elapsed;
 
     public BobBehavior(float amplitude = 4f, float frequency = 2f, float phase = 0f)
     {
-        _amplitude = amplitude;
-        _frequency = frequency;
-        _phase = phase;
+        Amplitude = amplitude;
+        Frequency = frequency;
+        Phase = phase;
     }
 
     public override void Start()
@@ -29,6 +29,6 @@ public sealed class BobBehavior : Behavior
     {
         _elapsed += deltaTime;
         var transform = Get<Transform>()!;
-        transform.Position.Y = _baseY + MathF.Sin(_elapsed * _frequency + _phase) * _amplitude;
+        transform.Position.Y = _baseY + MathF.Sin(_elapsed * Frequency + Phase) * Amplitude;
     }
 }

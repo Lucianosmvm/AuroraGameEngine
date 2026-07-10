@@ -20,6 +20,7 @@ public class MainActivity : SilkActivity
 
         using var view = Silk.NET.Windowing.Window.GetView(options);
         using var game = new SandboxGame();
+        game.AssetSource = new AndroidAssetSource();
         game.Run(view);
     }
 }

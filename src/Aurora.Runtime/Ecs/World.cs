@@ -34,6 +34,35 @@ public sealed class World
 
     public string GetName(int id) => _names.TryGetValue(id, out var name) ? name : "<destruída>";
 
+    /// <summary>Todas as entidades vivas, em ordem de criação.</summary>
+    public IEnumerable<Entity> Entities => _alive.OrderBy(id => id).Select(id => new Entity(id, this));
+
+    /// <summary>Primeira entidade com o nome dado (nomes não são únicos).</summary>
+    public bool TryFind(string name, out Entity entity)
+    {
+        foreach (var (id, entityName) in _names)
+        {
+            if (entityName == name && _alive.Contains(id))
+            {
+                entity = new Entity(id, this);
+                return true;
+            }
+        }
+
+        entity = default;
+        return false;
+    }
+
+    /// <summary>Todos os componentes de uma entidade (serialização de cenas).</summary>
+    public IEnumerable<IComponent> GetComponents(int entityId)
+    {
+        foreach (var store in _stores.Values)
+        {
+            if (store.TryGetValue(entityId, out var component))
+                yield return component;
+        }
+    }
+
     public T Add<T>(int entityId, T component) where T : class, IComponent
     {
         if (!_alive.Contains(entityId))

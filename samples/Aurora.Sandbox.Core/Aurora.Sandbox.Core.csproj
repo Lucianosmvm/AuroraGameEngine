@@ -11,4 +11,10 @@
     <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Copiados para a saída de quem referencia este projeto (console desktop).
+         O projeto Android empacota os mesmos arquivos como AndroidAsset. -->
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

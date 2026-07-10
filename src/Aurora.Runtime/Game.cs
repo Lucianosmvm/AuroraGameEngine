@@ -2,6 +2,7 @@ using Aurora.Runtime.Assets;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Input;
+using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -28,8 +29,12 @@ public abstract class Game : IDisposable
 
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
+    public SceneSerializer Scenes { get; } = new();
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
+
+    /// <summary>Origem dos assets. Defina antes de Run (Android: AndroidAssetSource). Null = pasta "Assets".</summary>
+    public IAssetSource? AssetSource { get; set; }
 
     /// <summary>Desktop: cria uma janela e bloqueia até o jogo fechar.</summary>
     public void Run(string title = "Aurora Game", int width = 1280, int height = 720, bool vsync = true)
@@ -62,6 +67,10 @@ public abstract class Game : IDisposable
     /// <summary>Fecha a view e encerra o loop.</summary>
     public void Exit() => View.Close();
 
+    /// <summary>Carrega um JSON de cena dos assets e cria as entidades no <see cref="World"/>.</summary>
+    public void LoadScene(string scenePath)
+        => Scenes.Load(Assets.LoadText(scenePath), new SceneContext { World = World, Assets = Assets });
+
     private void HandleLoad()
     {
         Gl = GL.GetApi(View);
@@ -69,7 +78,7 @@ public abstract class Game : IDisposable
 
         bool isGles = View.API.API == ContextAPI.OpenGLES;
         SpriteBatch = new SpriteBatch(Gl, isGles);
-        Assets = new AssetManager(Gl);
+        Assets = new AssetManager(Gl, AssetSource ?? new FileAssetSource());
 
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);

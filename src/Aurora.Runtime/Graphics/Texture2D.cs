@@ -42,14 +42,23 @@ public sealed class Texture2D : IDisposable
     public static Texture2D FromPixels(GL gl, int width, int height, ReadOnlySpan<byte> rgba)
         => new(gl, width, height, rgba);
 
-    /// <summary>Carrega PNG/JPG/WEBP do disco via StbImageSharp.</summary>
+    /// <summary>Carrega PNG/JPG de um stream via StbImageSharp. Aceita streams não-seekáveis (assets Android).</summary>
+    public static Texture2D FromStream(GL gl, Stream stream)
+    {
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        var image = ImageResult.FromMemory(buffer.ToArray(), ColorComponents.RedGreenBlueAlpha);
+        return new Texture2D(gl, image.Width, image.Height, image.Data);
+    }
+
+    /// <summary>Carrega PNG/JPG do disco.</summary>
     public static Texture2D FromFile(GL gl, string path)
     {
         if (!File.Exists(path))
             throw new FileNotFoundException($"Textura não encontrada: {path}", path);
 
-        var image = ImageResult.FromMemory(File.ReadAllBytes(path), ColorComponents.RedGreenBlueAlpha);
-        return new Texture2D(gl, image.Width, image.Height, image.Data);
+        using var stream = File.OpenRead(path);
+        return FromStream(gl, stream);
     }
 
     public void Bind(int slot = 0)

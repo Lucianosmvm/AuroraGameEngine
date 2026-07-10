@@ -1,0 +1,58 @@
+{
+  "Scene": "Forest",
+  "Objects": [
+    {
+      "Name": "Player",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/player.png", "Layer": 10 },
+        { "Type": "PlayerController" }
+      ]
+    },
+    {
+      "Name": "TreeGate1",
+      "Components": [
+        { "Type": "Transform", "X": -140, "Y": -60 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/tree.png", "Layer": 5 }
+      ]
+    },
+    {
+      "Name": "TreeGate2",
+      "Components": [
+        { "Type": "Transform", "X": 140, "Y": -60 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/tree.png", "Layer": 5 }
+      ]
+    },
+    {
+      "Name": "BigTree",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": -220, "ScaleX": 2, "ScaleY": 2 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/tree.png", "Layer": 5 }
+      ]
+    },
+    {
+      "Name": "WelcomeCoin1",
+      "Components": [
+        { "Type": "Transform", "X": -60, "Y": 90 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "Bob", "Amplitude": 4, "Frequency": 3 }
+      ]
+    },
+    {
+      "Name": "WelcomeCoin2",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 110 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "Bob", "Amplitude": 4, "Frequency": 3, "Phase": 1.5 }
+      ]
+    },
+    {
+      "Name": "WelcomeCoin3",
+      "Components": [
+        { "Type": "Transform", "X": 60, "Y": 90 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "Bob", "Amplitude": 4, "Frequency": 3, "Phase": 3 }
+      ]
+    }
+  ]
+}

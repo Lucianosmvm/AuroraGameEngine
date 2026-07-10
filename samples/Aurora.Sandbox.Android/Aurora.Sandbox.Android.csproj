@@ -22,4 +22,11 @@
     <ProjectReference Include="..\Aurora.Sandbox.Core\Aurora.Sandbox.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Mesmos assets do Core, empacotados no APK. Link sob Assets\ faz o caminho
+         dentro do APK ficar igual ao relativo usado pelo AssetManager. -->
+    <AndroidAsset Include="..\Aurora.Sandbox.Core\Assets\**"
+                  Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
