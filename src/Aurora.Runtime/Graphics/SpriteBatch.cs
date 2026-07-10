@@ -89,6 +89,12 @@ public sealed class SpriteBatch : IDisposable
     /// <param name="rotation">Rotação em radianos ao redor do pivô.</param>
     public void Draw(Texture2D texture, Vector2 position, Vector2 size, Vector2 origin,
         float rotation, Color color, bool flipX = false, bool flipY = false)
+        => Draw(texture, position, size, origin, rotation, color,
+            new RectF(0f, 0f, texture.Width, texture.Height), flipX, flipY);
+
+    /// <summary>Desenha um recorte da textura (tile de tileset, frame de atlas).</summary>
+    public void Draw(Texture2D texture, Vector2 position, Vector2 size, Vector2 origin,
+        float rotation, Color color, in RectF source, bool flipX = false, bool flipY = false)
     {
         if (!_begun)
             throw new InvalidOperationException("Chame Begin() antes de Draw().");
@@ -100,10 +106,15 @@ public sealed class SpriteBatch : IDisposable
 
         _currentTexture = texture;
 
-        float u0 = flipX ? 1f : 0f;
-        float u1 = flipX ? 0f : 1f;
-        float v0 = flipY ? 1f : 0f;
-        float v1 = flipY ? 0f : 1f;
+        float u0 = source.X / texture.Width;
+        float v0 = source.Y / texture.Height;
+        float u1 = (source.X + source.Width) / texture.Width;
+        float v1 = (source.Y + source.Height) / texture.Height;
+
+        if (flipX)
+            (u0, u1) = (u1, u0);
+        if (flipY)
+            (v0, v1) = (v1, v0);
 
         var originPx = size * origin;
         float cos = MathF.Cos(rotation);

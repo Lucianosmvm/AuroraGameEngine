@@ -46,6 +46,22 @@ public class App : Application
                 viewModel.SaveSceneAs(desktop.Args[undoTestIndex + 1]);
             }
 
+            // Verificação automatizada de pintura de tiles: traço coalescido + undo + pintura.
+            int paintIndex = Array.IndexOf(desktop.Args ?? [], "--test-paint");
+            if (paintIndex >= 0 && desktop.Args!.Length > paintIndex + 1
+                && viewModel.Entities.FirstOrDefault(en => en.Tilemap is not null) is { } mapEntity)
+            {
+                viewModel.SelectedEntity = mapEntity;
+                mapEntity.SetTile(0, 0, 3);
+                mapEntity.SetTile(1, 0, 3);
+                viewModel.Undo();
+
+                // Undo reconstrói os view models — pegar a instância nova, como a UI faz.
+                var restored = viewModel.Entities.First(en => en.Tilemap is not null);
+                restored.SetTile(2, 2, 1);
+                viewModel.SaveSceneAs(desktop.Args[paintIndex + 1]);
+            }
+
             // Modo de verificação automatizada: captura a janela e sai.
             int screenshotIndex = Array.IndexOf(desktop.Args ?? [], "--screenshot");
             if (screenshotIndex >= 0 && desktop.Args!.Length > screenshotIndex + 1)

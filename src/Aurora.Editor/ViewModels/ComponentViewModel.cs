@@ -22,6 +22,11 @@ public sealed class ComponentViewModel : ViewModelBase
             ("Texture", ""), ("Layer", 0f), ("OriginX", 0.5f), ("OriginY", 0.5f),
             ("FlipX", false), ("FlipY", false), ("Visible", true), ("Color", "#FFFFFFFF"),
         ],
+        ["Tilemap"] =
+        [
+            ("Texture", ""), ("TileWidth", 16f), ("TileHeight", 16f),
+            ("Width", 0f), ("Height", 0f), ("Layer", 0f),
+        ],
     };
 
     public JsonObject Node { get; }
@@ -47,12 +52,17 @@ public sealed class ComponentViewModel : ViewModelBase
         }
 
         // Campos presentes no JSON além do esquema (componentes de jogo/plugins).
+        // Arrays e objetos (ex.: Tiles do Tilemap) não viram editor de texto.
         foreach (var (name, value) in Node)
         {
             if (added.Contains(name) || value is null)
                 continue;
 
-            object fallback = value.GetValueKind() switch
+            var kind = value.GetValueKind();
+            if (kind is JsonValueKind.Array or JsonValueKind.Object)
+                continue;
+
+            object fallback = kind switch
             {
                 JsonValueKind.Number => 0f,
                 JsonValueKind.True or JsonValueKind.False => false,

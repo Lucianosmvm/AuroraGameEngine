@@ -44,6 +44,33 @@ public sealed class EntityViewModel : ViewModelBase
 
     public ComponentViewModel? Transform => Component("Transform");
     public ComponentViewModel? Sprite => Component("SpriteRenderer");
+    public ComponentViewModel? Tilemap => Component("Tilemap");
+
+    /// <summary>Pinta uma célula do tilemap. Um traço contínuo = um passo de undo.</summary>
+    public void SetTile(int x, int y, int index)
+    {
+        var map = Tilemap;
+        if (map is null)
+            return;
+
+        int width = (int)map.GetFloat("Width", 0f);
+        int height = (int)map.GetFloat("Height", 0f);
+        if (x < 0 || y < 0 || x >= width || y >= height)
+            return;
+
+        if (map.Node["Tiles"] is not JsonArray tiles)
+            map.Node["Tiles"] = tiles = [];
+
+        while (tiles.Count < width * height)
+            tiles.Add(-1);
+
+        int cell = y * width + x;
+        if (tiles[cell]?.GetValue<int>() == index)
+            return;
+
+        tiles[cell] = index;
+        Edited?.Invoke($"paint:{Node.GetHashCode()}");
+    }
 
     /// <summary>Move a entidade (arrasto no canvas), sincronizando o inspector. Um gesto = um undo.</summary>
     public void SetPosition(float x, float y)

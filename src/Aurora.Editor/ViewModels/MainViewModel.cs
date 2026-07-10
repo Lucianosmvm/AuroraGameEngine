@@ -33,7 +33,11 @@ public sealed class MainViewModel : ViewModelBase
     public EntityViewModel? SelectedEntity
     {
         get => _selectedEntity;
-        set => Set(ref _selectedEntity, value);
+        set
+        {
+            if (Set(ref _selectedEntity, value))
+                RebuildTilePalette();
+        }
     }
 
     public bool IsDirty
@@ -115,18 +119,93 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Aplica a textura no SpriteRenderer da entidade selecionada (duplo-clique no browser).</summary>
+    /// <summary>Aplica a textura no SpriteRenderer (ou Tilemap) da entidade selecionada.</summary>
     public void ApplyTextureToSelection(AssetViewModel asset)
     {
-        var textureProperty = SelectedEntity?.Sprite?.Text("Texture");
+        var textureProperty = SelectedEntity?.Sprite?.Text("Texture")
+            ?? SelectedEntity?.Tilemap?.Text("Texture");
         if (textureProperty is null)
         {
-            Status = "Selecione uma entidade com SpriteRenderer para aplicar a textura.";
+            Status = "Selecione uma entidade com SpriteRenderer ou Tilemap para aplicar a textura.";
             return;
         }
 
         textureProperty.Value = asset.RelativePath;
         Status = $"{asset.RelativePath} → {SelectedEntity!.Name}";
+    }
+
+    // ---- Paleta de tiles ----
+
+    private int? _selectedTileIndex;
+    private TileBrushViewModel? _selectedTileBrush;
+    private string? _paletteSignature;
+
+    public ObservableCollection<TileBrushViewModel> PaletteTiles { get; } = [];
+
+    public bool HasTilePalette => PaletteTiles.Count > 0;
+
+    /// <summary>Tile ativo para pintura no canvas. Null = modo seleção/movimento normal.</summary>
+    public int? SelectedTileIndex
+    {
+        get => _selectedTileIndex;
+        private set => Set(ref _selectedTileIndex, value);
+    }
+
+    /// <summary>Item selecionado na paleta (binding do ListBox).</summary>
+    public TileBrushViewModel? SelectedTileBrush
+    {
+        get => _selectedTileBrush;
+        set
+        {
+            if (Set(ref _selectedTileBrush, value))
+                SelectedTileIndex = value?.Index;
+        }
+    }
+
+    /// <summary>Sai do modo pintura (Escape).</summary>
+    public void ClearTileBrush() => SelectedTileBrush = null;
+
+    /// <summary>Monta a paleta a partir do tileset da entidade selecionada.</summary>
+    private void RebuildTilePalette()
+    {
+        var map = SelectedEntity?.Tilemap;
+        string? texture = map?.GetString("Texture");
+        int tileWidth = (int)(map?.GetFloat("TileWidth", 16f) ?? 16);
+        int tileHeight = (int)(map?.GetFloat("TileHeight", 16f) ?? 16);
+
+        string? signature = map is null || texture is null
+            ? null
+            : $"{texture}|{tileWidth}|{tileHeight}";
+
+        if (signature == _paletteSignature)
+            return;
+
+        _paletteSignature = signature;
+        SelectedTileBrush = null;
+        PaletteTiles.Clear();
+
+        if (signature is not null && _document is not null && tileWidth > 0 && tileHeight > 0)
+        {
+            string fullPath = Path.Combine(_document.AssetsRoot, texture!);
+            if (File.Exists(fullPath))
+            {
+                var bitmap = new Avalonia.Media.Imaging.Bitmap(fullPath);
+                int columns = Math.Max(1, (int)bitmap.PixelSize.Width / tileWidth);
+                int rows = Math.Max(1, (int)bitmap.PixelSize.Height / tileHeight);
+
+                PaletteTiles.Add(new TileBrushViewModel(-1, null));
+
+                for (int index = 0; index < columns * rows; index++)
+                {
+                    var source = new Avalonia.PixelRect(
+                        index % columns * tileWidth, index / columns * tileHeight, tileWidth, tileHeight);
+                    PaletteTiles.Add(new TileBrushViewModel(index,
+                        new Avalonia.Media.Imaging.CroppedBitmap(bitmap, source)));
+                }
+            }
+        }
+
+        Raise(nameof(HasTilePalette));
     }
 
     public void SaveScene()
@@ -193,6 +272,48 @@ public sealed class MainViewModel : ViewModelBase
         Entities.Add(entity);
         SelectedEntity = entity;
         OnEdited($"create:{node.GetHashCode()}");
+    }
+
+    /// <summary>Cria um tilemap 20x15 (tiles 16px) centrado no ponto dado, sem tileset.</summary>
+    public void CreateTilemap(double x, double y)
+    {
+        if (_document is null)
+            return;
+
+        var names = Entities.Select(e => e.Name).ToHashSet();
+        string name = "Tilemap";
+        for (int number = 1; names.Contains(name); number++)
+            name = $"Tilemap{number}";
+
+        var node = new System.Text.Json.Nodes.JsonObject
+        {
+            ["Name"] = name,
+            ["Components"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["Type"] = "Transform",
+                    ["X"] = (float)Math.Round(x - 160),
+                    ["Y"] = (float)Math.Round(y - 120),
+                },
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["Type"] = "Tilemap",
+                    ["TileWidth"] = 16,
+                    ["TileHeight"] = 16,
+                    ["Width"] = 20,
+                    ["Height"] = 15,
+                    ["Tiles"] = new System.Text.Json.Nodes.JsonArray(),
+                }),
+        };
+
+        _document.Objects.Add(node);
+
+        var entity = new EntityViewModel(node);
+        entity.Edited += OnEdited;
+        Entities.Add(entity);
+        SelectedEntity = entity;
+        OnEdited($"create:{node.GetHashCode()}");
+        Status = $"{name} criado — defina o tileset (duplo-clique num asset) e pinte.";
     }
 
     public void DeleteSelectedEntity()
@@ -270,6 +391,7 @@ public sealed class MainViewModel : ViewModelBase
         _lastEditAt = DateTime.UtcNow;
 
         IsDirty = true;
+        RebuildTilePalette();
         SceneEdited?.Invoke();
     }
 

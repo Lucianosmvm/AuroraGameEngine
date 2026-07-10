@@ -17,10 +17,18 @@ public sealed class SceneCanvas : Control
     private const double HandleSize = 8;
     private const double RotationHandleOffset = 26;
 
-    private enum DragMode { None, Pan, Move, Scale, Rotate }
+    private enum DragMode { None, Pan, Move, Scale, Rotate, Paint }
 
     /// <summary>Sprite pronto para desenhar/testar: matriz local→tela e retângulo local.</summary>
     private readonly record struct SpriteView(EntityViewModel Entity, Matrix LocalToScreen, Rect LocalRect, float Layer);
+
+    /// <summary>Tilemap pronto para desenhar: célula em unidades do mundo, grade e tileset.</summary>
+    private readonly record struct TilemapView(EntityViewModel Entity, Matrix LocalToScreen,
+        int Columns, int Rows, double CellWidth, double CellHeight,
+        int TileWidth, int TileHeight, Bitmap? Tileset, float Layer)
+    {
+        public Rect LocalRect => new(0, 0, Columns * CellWidth, Rows * CellHeight);
+    }
 
     private readonly Dictionary<string, Bitmap?> _textures = new(StringComparer.OrdinalIgnoreCase);
 
@@ -104,6 +112,40 @@ public sealed class SceneCanvas : Control
         (screen.X - Bounds.Width / 2) / _zoom + _cameraPosition.X,
         (screen.Y - Bounds.Height / 2) / _zoom + _cameraPosition.Y);
 
+    /// <summary>Tilemaps com Transform, na ordem da hierarquia. Rotação de tilemap é ignorada.</summary>
+    private IEnumerable<TilemapView> VisibleTilemaps()
+    {
+        if (_viewModel is null)
+            yield break;
+
+        var view = ViewMatrix;
+
+        foreach (var entity in _viewModel.Entities)
+        {
+            var transform = entity.Transform;
+            var map = entity.Tilemap;
+            if (transform is null || map is null)
+                continue;
+
+            int columns = (int)map.GetFloat("Width", 0f);
+            int rows = (int)map.GetFloat("Height", 0f);
+            int tileWidth = (int)map.GetFloat("TileWidth", 16f);
+            int tileHeight = (int)map.GetFloat("TileHeight", 16f);
+            if (columns <= 0 || rows <= 0 || tileWidth <= 0 || tileHeight <= 0)
+                continue;
+
+            var localToScreen = Matrix.CreateTranslation(
+                transform.GetFloat("X", 0f), transform.GetFloat("Y", 0f)) * view;
+
+            yield return new TilemapView(entity, localToScreen, columns, rows,
+                tileWidth * Math.Abs(transform.GetFloat("ScaleX", 1f)),
+                tileHeight * Math.Abs(transform.GetFloat("ScaleY", 1f)),
+                tileWidth, tileHeight,
+                ResolveTexture(map.GetString("Texture")),
+                map.GetFloat("Layer", 0f));
+        }
+    }
+
     /// <summary>Sprites visíveis com matriz e retângulo local (ordem da hierarquia).</summary>
     private IEnumerable<SpriteView> VisibleSprites()
     {
@@ -119,7 +161,7 @@ public sealed class SceneCanvas : Control
             if (transform is null || sprite is null || !sprite.GetBool("Visible", true))
                 continue;
 
-            var bitmap = ResolveTexture(entity);
+            var bitmap = ResolveTexture(sprite.GetString("Texture"));
             double width = (bitmap?.Size.Width ?? 32) * Math.Abs(transform.GetFloat("ScaleX", 1f));
             double height = (bitmap?.Size.Height ?? 32) * Math.Abs(transform.GetFloat("ScaleY", 1f));
             if (width < 0.01 || height < 0.01)
@@ -148,25 +190,92 @@ public sealed class SceneCanvas : Control
         if (_viewModel is null)
             return;
 
-        SpriteView? selected = null;
+        // Sprites e tilemaps intercalados por camada, como no runtime.
+        var drawables = VisibleSprites().Select(s => (s.Layer, Sprite: (SpriteView?)s, Map: (TilemapView?)null))
+            .Concat(VisibleTilemaps().Select(t => (t.Layer, Sprite: (SpriteView?)null, Map: (TilemapView?)t)))
+            .OrderBy(d => d.Layer);
 
-        foreach (var view in VisibleSprites().OrderBy(s => s.Layer))
+        SpriteView? selectedSprite = null;
+        TilemapView? selectedMap = null;
+
+        foreach (var (_, spriteView, mapView) in drawables)
         {
-            using (context.PushTransform(view.LocalToScreen))
+            if (spriteView is { } sprite)
             {
-                var bitmap = ResolveTexture(view.Entity);
-                if (bitmap is not null)
-                    context.DrawImage(bitmap, new Rect(bitmap.Size), view.LocalRect);
-                else
-                    context.FillRectangle(Brushes.Magenta, view.LocalRect);
-            }
+                using (context.PushTransform(sprite.LocalToScreen))
+                {
+                    var bitmap = ResolveTexture(sprite.Entity.Sprite?.GetString("Texture"));
+                    if (bitmap is not null)
+                        context.DrawImage(bitmap, new Rect(bitmap.Size), sprite.LocalRect);
+                    else
+                        context.FillRectangle(Brushes.Magenta, sprite.LocalRect);
+                }
 
-            if (ReferenceEquals(view.Entity, _viewModel.SelectedEntity))
-                selected = view;
+                if (ReferenceEquals(sprite.Entity, _viewModel.SelectedEntity))
+                    selectedSprite = sprite;
+            }
+            else if (mapView is { } map)
+            {
+                DrawTilemap(context, map);
+                if (ReferenceEquals(map.Entity, _viewModel.SelectedEntity))
+                    selectedMap = map;
+            }
         }
 
-        if (selected is { } sel)
+        if (selectedSprite is { } sel)
             DrawGizmos(context, sel);
+        if (selectedMap is { } selMap)
+            DrawTilemapSelection(context, selMap);
+    }
+
+    private void DrawTilemap(DrawingContext context, TilemapView map)
+    {
+        using var _ = context.PushTransform(map.LocalToScreen);
+
+        if (map.Tileset is null)
+        {
+            // Sem tileset ainda: só a moldura da grade.
+            context.DrawRectangle(new Pen(Brushes.Magenta, 1 / _zoom), map.LocalRect);
+            return;
+        }
+
+        var tilesNode = map.Entity.Tilemap?.Node["Tiles"] as System.Text.Json.Nodes.JsonArray;
+        if (tilesNode is null)
+            return;
+
+        int perRow = Math.Max(1, (int)map.Tileset.Size.Width / map.TileWidth);
+        int total = Math.Min(tilesNode.Count, map.Columns * map.Rows);
+
+        for (int cell = 0; cell < total; cell++)
+        {
+            int index = tilesNode[cell]?.GetValue<int>() ?? -1;
+            if (index < 0)
+                continue;
+
+            var source = new Rect(index % perRow * map.TileWidth, index / perRow * map.TileHeight,
+                map.TileWidth, map.TileHeight);
+            var dest = new Rect(cell % map.Columns * map.CellWidth, cell / map.Columns * map.CellHeight,
+                map.CellWidth, map.CellHeight);
+            context.DrawImage(map.Tileset, source, dest);
+        }
+    }
+
+    /// <summary>Moldura ciana + grade de células quando o pincel está ativo.</summary>
+    private void DrawTilemapSelection(DrawingContext context, TilemapView map)
+    {
+        using var _ = context.PushTransform(map.LocalToScreen);
+
+        var rect = map.LocalRect;
+        context.DrawRectangle(new Pen(Brushes.Cyan, 1.5 / _zoom), rect);
+
+        if (_viewModel?.SelectedTileIndex is null)
+            return;
+
+        var gridPen = new Pen(new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)), 1 / _zoom);
+        for (int x = 1; x < map.Columns; x++)
+            context.DrawLine(gridPen, new Point(x * map.CellWidth, 0), new Point(x * map.CellWidth, rect.Height));
+        for (int y = 1; y < map.Rows; y++)
+            context.DrawLine(gridPen, new Point(0, y * map.CellHeight), new Point(rect.Width, y * map.CellHeight));
     }
 
     private void DrawAxes(DrawingContext context)
@@ -218,9 +327,8 @@ public sealed class SceneCanvas : Control
         return (anchor, handle);
     }
 
-    private Bitmap? ResolveTexture(EntityViewModel entity)
+    private Bitmap? ResolveTexture(string? path)
     {
-        string? path = entity.Sprite?.GetString("Texture");
         if (path is null || _viewModel?.Document is null)
             return null;
 
@@ -251,6 +359,18 @@ public sealed class SceneCanvas : Control
         if (!point.Properties.IsLeftButtonPressed || _viewModel is null)
             return;
 
+        // 0) Pincel ativo + clique dentro do tilemap selecionado = pintar.
+        if (_viewModel.SelectedTileIndex is not null
+            && VisibleTilemaps().FirstOrDefault(t => ReferenceEquals(t.Entity, _viewModel.SelectedEntity))
+                is { Entity: not null } paintTarget
+            && TryPaintAt(paintTarget, point.Position))
+        {
+            _drag = DragMode.Paint;
+            _target = paintTarget.Entity;
+            e.Handled = true;
+            return;
+        }
+
         // 1) Gizmos da seleção atual têm prioridade sobre tudo.
         if (_viewModel.SelectedEntity is not null
             && VisibleSprites().FirstOrDefault(s => ReferenceEquals(s.Entity, _viewModel.SelectedEntity)) is { Entity: not null } selectedView)
@@ -262,19 +382,24 @@ public sealed class SceneCanvas : Control
             }
         }
 
-        // 2) Clique no corpo de um sprite: seleciona e começa a mover (maior camada vence).
-        var hit = VisibleSprites()
+        // 2) Clique no corpo: sprites primeiro (maior camada vence), depois tilemaps.
+        var hitEntity = VisibleSprites()
             .OrderByDescending(s => s.Layer)
-            .FirstOrDefault(s => HitsBody(s, point.Position));
+            .FirstOrDefault(s => HitsBody(s, point.Position)).Entity;
 
-        _viewModel.SelectedEntity = hit.Entity;
+        hitEntity ??= VisibleTilemaps()
+            .OrderByDescending(t => t.Layer)
+            .FirstOrDefault(t => t.LocalToScreen.TryInvert(out var inverse)
+                && t.LocalRect.Contains(point.Position.Transform(inverse))).Entity;
 
-        if (hit.Entity is not null)
+        _viewModel.SelectedEntity = hitEntity;
+
+        if (hitEntity is not null)
         {
             _drag = DragMode.Move;
-            _target = hit.Entity;
+            _target = hitEntity;
             var world = ScreenToWorld(point.Position);
-            var transform = hit.Entity.Transform!;
+            var transform = hitEntity.Transform!;
             _dragOffset = new Point(
                 transform.GetFloat("X", 0f) - world.X,
                 transform.GetFloat("Y", 0f) - world.Y);
@@ -282,6 +407,23 @@ public sealed class SceneCanvas : Control
 
         InvalidateVisual();
         e.Handled = true;
+    }
+
+    /// <summary>Pinta a célula sob o cursor com o pincel ativo. False se fora da grade.</summary>
+    private bool TryPaintAt(TilemapView map, Point screenPoint)
+    {
+        if (_viewModel?.SelectedTileIndex is not { } brush
+            || !map.LocalToScreen.TryInvert(out var inverse))
+            return false;
+
+        var local = screenPoint.Transform(inverse);
+        int x = (int)Math.Floor(local.X / map.CellWidth);
+        int y = (int)Math.Floor(local.Y / map.CellHeight);
+        if (x < 0 || y < 0 || x >= map.Columns || y >= map.Rows)
+            return false;
+
+        map.Entity.SetTile(x, y, brush);
+        return true;
     }
 
     private static bool HitsBody(SpriteView view, Point screenPoint)
@@ -364,6 +506,14 @@ public sealed class SceneCanvas : Control
                 _target.SetScale(
                     (float)Math.Clamp(_startScaleX * Math.Max(factorX, 0.05), 0.01, 1000),
                     (float)Math.Clamp(_startScaleY * Math.Max(factorY, 0.05), 0.01, 1000));
+                break;
+            }
+
+            case DragMode.Paint when _target is not null:
+            {
+                var view = VisibleTilemaps().FirstOrDefault(t => ReferenceEquals(t.Entity, _target));
+                if (view.Entity is not null)
+                    TryPaintAt(view, position);
                 break;
             }
 

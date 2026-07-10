@@ -35,6 +35,13 @@ public sealed class Camera2D
         return view * projection;
     }
 
+    /// <summary>Retângulo do mundo visível (culling de tiles/sprites).</summary>
+    public (Vector2 Min, Vector2 Max) GetVisibleBounds()
+    {
+        var half = new Vector2(ViewportWidth, ViewportHeight) / (2f * MathF.Max(Zoom, 0.0001f));
+        return (Position - half, Position + half);
+    }
+
     /// <summary>Converte um ponto da tela (pixels) para coordenadas do mundo.</summary>
     public Vector2 ScreenToWorld(Vector2 screen)
     {

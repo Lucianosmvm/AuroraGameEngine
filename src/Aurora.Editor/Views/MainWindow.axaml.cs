@@ -66,6 +66,11 @@ public partial class MainWindow : Window
                 _ = PickAndOpenSceneAsync();
                 e.Handled = true;
             }
+            else if (e.Key == Key.Escape)
+            {
+                ViewModel.ClearTileBrush();
+                e.Handled = true;
+            }
             else if (e.Key == Key.Delete && e.Source is not TextBox)
             {
                 // Delete só fora de campos de texto — senão apagar caractere apaga entidade.
@@ -141,6 +146,12 @@ public partial class MainWindow : Window
     {
         var center = Scene.CameraCenter;
         ViewModel.CreateEntity(center.X, center.Y);
+    }
+
+    private void OnCreateTilemap(object? sender, RoutedEventArgs e)
+    {
+        var center = Scene.CameraCenter;
+        ViewModel.CreateTilemap(center.X, center.Y);
     }
 
     private void OnDeleteEntity(object? sender, RoutedEventArgs e) => ViewModel.DeleteSelectedEntity();

@@ -83,6 +83,8 @@
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
             <Button Content="+ Nova" Click="OnCreateEntity" FontSize="12"
                     IsEnabled="{Binding HasDocument}"/>
+            <Button Content="+ Tilemap" Click="OnCreateTilemap" FontSize="12"
+                    IsEnabled="{Binding HasDocument}"/>
             <Button Content="Excluir" Click="OnDeleteEntity" FontSize="12"
                     IsEnabled="{Binding SelectedEntity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
           </StackPanel>
@@ -99,8 +101,35 @@
 
       <GridSplitter Grid.Column="1" Background="#2A2740"/>
 
-      <!-- Cena -->
-      <views:SceneCanvas x:Name="Scene" Grid.Column="2" DataContext="{Binding}"/>
+      <!-- Cena + paleta de tiles -->
+      <Grid Grid.Column="2" RowDefinitions="*,Auto">
+        <views:SceneCanvas x:Name="Scene" Grid.Row="0" DataContext="{Binding}"/>
+        <Border Grid.Row="1" Background="#1E1C30" Padding="8,6"
+                IsVisible="{Binding HasTilePalette}">
+          <ListBox ItemsSource="{Binding PaletteTiles}"
+                   SelectedItem="{Binding SelectedTileBrush}"
+                   Background="Transparent" MaxHeight="96">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Width="36" Height="36" Background="#141220" CornerRadius="3"
+                        ToolTip.Tip="{Binding Index}">
+                  <Panel>
+                    <Image Source="{Binding Image}" Stretch="Uniform" Margin="2"
+                           RenderOptions.BitmapInterpolationMode="None"/>
+                    <TextBlock Text="{Binding Label}" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+      </Grid>
 
       <GridSplitter Grid.Column="3" Background="#2A2740"/>
 

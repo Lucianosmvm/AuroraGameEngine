@@ -180,6 +180,50 @@ public sealed class SceneSerializer
                 if (s.Color.ToHex() != "#FFFFFFFF")
                     json.WriteString("Color", s.Color.ToHex());
             });
+
+        Register<Tilemap>("Tilemap",
+            static (json, context) =>
+            {
+                var map = new Tilemap
+                {
+                    TileWidth = GetInt(json, "TileWidth", 16),
+                    TileHeight = GetInt(json, "TileHeight", 16),
+                    Width = GetInt(json, "Width", 0),
+                    Height = GetInt(json, "Height", 0),
+                    Layer = GetInt(json, "Layer", 0),
+                };
+
+                if (json.TryGetProperty("Texture", out var texture))
+                {
+                    string path = texture.GetString()!;
+                    map.Tileset = context.Assets?.LoadTexture(path)
+                        ?? throw new InvalidOperationException(
+                            $"Cena referencia tileset '{path}' mas o contexto não tem AssetManager.");
+                }
+
+                if (json.TryGetProperty("Tiles", out var tiles))
+                    map.Tiles = tiles.EnumerateArray().Select(t => t.GetInt32()).ToArray();
+
+                map.EnsureSize();
+                return map;
+            },
+            static (json, component, context) =>
+            {
+                var map = (Tilemap)component;
+                if (map.Tileset is not null && context.Assets?.GetTexturePath(map.Tileset) is { } path)
+                    json.WriteString("Texture", path);
+                json.WriteNumber("TileWidth", map.TileWidth);
+                json.WriteNumber("TileHeight", map.TileHeight);
+                json.WriteNumber("Width", map.Width);
+                json.WriteNumber("Height", map.Height);
+                if (map.Layer != 0)
+                    json.WriteNumber("Layer", map.Layer);
+
+                json.WriteStartArray("Tiles");
+                foreach (int tile in map.Tiles)
+                    json.WriteNumberValue(tile);
+                json.WriteEndArray();
+            });
     }
 
     public static float GetFloat(JsonElement json, string name, float fallback)

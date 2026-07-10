@@ -102,7 +102,7 @@ public abstract class Game : IDisposable
         Gl.Clear(ClearBufferMask.ColorBufferBit);
 
         SpriteBatch.Begin(Camera.GetViewProjection());
-        World.Render(SpriteBatch);
+        World.Render(SpriteBatch, Camera);
         OnRender((float)deltaTime);
         SpriteBatch.End();
     }

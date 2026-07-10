@@ -15,7 +15,7 @@ public sealed class World
     private readonly HashSet<int> _alive = new();
     private readonly List<Behavior> _behaviors = new();
     private readonly List<int> _destroyQueue = new();
-    private readonly List<(Transform Transform, SpriteRenderer Sprite)> _renderList = new();
+    private readonly List<(int Layer, Transform Transform, IComponent Renderable)> _renderList = new();
 
     private int _nextId = 1;
     private bool _updating;
@@ -165,25 +165,78 @@ public sealed class World
         }
     }
 
-    /// <summary>Desenha todos os sprites visíveis ordenados por camada.</summary>
-    public void Render(SpriteBatch batch)
+    /// <summary>
+    /// Desenha sprites e tilemaps intercalados por camada. Com câmera, tiles fora
+    /// da tela são pulados (culling).
+    /// </summary>
+    public void Render(SpriteBatch batch, Camera2D? camera = null)
     {
         _renderList.Clear();
 
         foreach (var (_, transform, sprite) in Query<Transform, SpriteRenderer>())
         {
             if (sprite.Visible && sprite.Texture is not null)
-                _renderList.Add((transform, sprite));
+                _renderList.Add((sprite.Layer, transform, sprite));
         }
 
-        _renderList.Sort(static (a, b) => a.Sprite.Layer.CompareTo(b.Sprite.Layer));
-
-        foreach (var (transform, sprite) in _renderList)
+        foreach (var (_, transform, tilemap) in Query<Transform, Tilemap>())
         {
-            var texture = sprite.Texture!;
-            var size = (sprite.Size ?? new Vector2(texture.Width, texture.Height)) * transform.Scale;
-            batch.Draw(texture, transform.Position, size, sprite.Origin, transform.Rotation,
-                sprite.Color, sprite.FlipX, sprite.FlipY);
+            if (tilemap.Tileset is not null && tilemap.Width > 0 && tilemap.Height > 0)
+                _renderList.Add((tilemap.Layer, transform, tilemap));
+        }
+
+        _renderList.Sort(static (a, b) => a.Layer.CompareTo(b.Layer));
+
+        foreach (var (_, transform, renderable) in _renderList)
+        {
+            if (renderable is SpriteRenderer sprite)
+            {
+                var texture = sprite.Texture!;
+                var size = (sprite.Size ?? new Vector2(texture.Width, texture.Height)) * transform.Scale;
+                batch.Draw(texture, transform.Position, size, sprite.Origin, transform.Rotation,
+                    sprite.Color, sprite.FlipX, sprite.FlipY);
+            }
+            else if (renderable is Tilemap tilemap)
+            {
+                DrawTilemap(batch, camera, transform, tilemap);
+            }
+        }
+    }
+
+    private static void DrawTilemap(SpriteBatch batch, Camera2D? camera, Transform transform, Tilemap map)
+    {
+        map.EnsureSize();
+
+        float cellWidth = map.TileWidth * transform.Scale.X;
+        float cellHeight = map.TileHeight * transform.Scale.Y;
+        if (cellWidth <= 0f || cellHeight <= 0f)
+            return;
+
+        int firstX = 0, firstY = 0, lastX = map.Width - 1, lastY = map.Height - 1;
+
+        if (camera is not null)
+        {
+            var (min, max) = camera.GetVisibleBounds();
+            firstX = Math.Max(0, (int)MathF.Floor((min.X - transform.Position.X) / cellWidth));
+            firstY = Math.Max(0, (int)MathF.Floor((min.Y - transform.Position.Y) / cellHeight));
+            lastX = Math.Min(map.Width - 1, (int)MathF.Ceiling((max.X - transform.Position.X) / cellWidth));
+            lastY = Math.Min(map.Height - 1, (int)MathF.Ceiling((max.Y - transform.Position.Y) / cellHeight));
+        }
+
+        var cellSize = new Vector2(cellWidth, cellHeight);
+
+        for (int y = firstY; y <= lastY; y++)
+        {
+            for (int x = firstX; x <= lastX; x++)
+            {
+                int index = map.Tiles[y * map.Width + x];
+                if (index < 0)
+                    continue;
+
+                var position = transform.Position + new Vector2(x * cellWidth, y * cellHeight);
+                batch.Draw(map.Tileset!, position, cellSize, Vector2.Zero, 0f,
+                    Color.White, map.SourceRect(index));
+            }
         }
     }
 }
