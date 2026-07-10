@@ -1,0 +1,12 @@
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.csproj.AssemblyReference.cache
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.GeneratedMSBuildEditorConfig.editorconfig
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.AssemblyInfoInputs.cache
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.AssemblyInfo.cs
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.csproj.CoreCompileInputs.cache
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\bin\Debug\net10.0\Aurora.Runtime.deps.json
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\bin\Debug\net10.0\Aurora.Runtime.dll
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\bin\Debug\net10.0\Aurora.Runtime.pdb
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.dll
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\refint\Aurora.Runtime.dll
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\Aurora.Runtime.pdb
+D:\Nova pasta\Nova pasta\src\Aurora.Runtime\obj\Debug\net10.0\ref\Aurora.Runtime.dll

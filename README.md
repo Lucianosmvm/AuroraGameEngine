@@ -1,0 +1,66 @@
+# Aurora Engine
+
+Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS próprio e exportação para Android (futuro).
+
+## Estado atual — Fase 1 (Runtime básico)
+
+- ✅ Janela e game loop (Silk.NET / GLFW)
+- ✅ Renderização de sprites com batching automático (OpenGL 3.3)
+- ✅ ECS mínimo: `World`, `Entity`, `Transform`, `SpriteRenderer`, `Behavior` (scripts)
+- ✅ Câmera 2D com zoom e follow suave
+- ✅ Input de teclado e mouse
+- ✅ Carregamento de texturas (PNG/JPG/WEBP via StbImageSharp) com cache
+
+## Rodando a demo
+
+```bash
+dotnet run --project samples/Aurora.Sandbox
+```
+
+Controles: **WASD/setas** movem o jogador, câmera segue, **ESC** sai.
+O título da janela mostra FPS, contagem de entidades e draw calls.
+
+`--smoke` fecha a janela sozinha após 1,5 s (usado para teste automatizado).
+
+## Estrutura
+
+```
+src/Aurora.Runtime      Núcleo da engine (sem dependência de editor/UI desktop)
+  Game.cs               Classe base: janela, loop, inicialização GL
+  Graphics/             SpriteBatch, Shader, Texture2D, Camera2D, Color
+  Ecs/                  World, Entity, Behavior, componentes
+  Input/                InputManager (teclado/mouse)
+  Assets/               AssetManager (cache de texturas)
+samples/Aurora.Sandbox  Demo jogável da Fase 1
+```
+
+## Exemplo de uso
+
+```csharp
+public class MyGame : Game
+{
+    protected override void OnLoad()
+    {
+        var player = World.CreateEntity("Player");
+        player.Add(new Transform(0, 0));
+        player.Add(new SpriteRenderer(Assets.LoadTexture("player.png")));
+        player.Add(new PlayerController(Input)); // Behavior customizado
+    }
+}
+
+new MyGame().Run("Meu Jogo", 1280, 720);
+```
+
+## Roadmap
+
+1. **Fase 1 — Runtime básico** ✅
+2. **Fase 1.5 — Prova de conceito Android** (sprite rodando em APK) — próximo
+3. **Fase 2 — Editor** (Avalonia): hierarquia, inspector, scene view, asset browser
+4. **Fase 3 — Ferramentas RPG**: tiles, eventos visuais, diálogos, inventário, quests, save
+5. **Fase 4 — Avançado**: state machine de animação, partículas, luzes 2D, behavior trees, A*
+6. **Fase 5 — Exportação**: Android (APK/AAB), Windows, Linux, Web, plugins
+
+## Requisitos
+
+- .NET 10 SDK
+- GPU com OpenGL 3.3+
