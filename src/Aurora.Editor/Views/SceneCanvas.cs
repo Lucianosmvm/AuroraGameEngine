@@ -26,6 +26,9 @@ public sealed class SceneCanvas : Control
 
     private MainViewModel? _viewModel;
 
+    /// <summary>Ponto do mundo no centro do viewport — onde entidades novas nascem.</summary>
+    public Point CameraCenter => _cameraPosition;
+
     public SceneCanvas()
     {
         ClipToBounds = true;

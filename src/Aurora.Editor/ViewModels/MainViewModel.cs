@@ -75,6 +75,68 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"Salvo: {_document.FilePath}";
     }
 
+    public void SaveSceneAs(string path)
+    {
+        if (_document is null)
+            return;
+
+        _document.Save(path);
+        IsDirty = false;
+        Raise(nameof(Title));
+        Status = $"Salvo: {path}";
+    }
+
+    /// <summary>Cria entidade com Transform + SpriteRenderer vazio (placeholder magenta no canvas).</summary>
+    public void CreateEntity(double x, double y)
+    {
+        if (_document is null)
+            return;
+
+        var names = Entities.Select(e => e.Name).ToHashSet();
+        int number = 1;
+        while (names.Contains($"Entidade{number}"))
+            number++;
+
+        var node = new System.Text.Json.Nodes.JsonObject
+        {
+            ["Name"] = $"Entidade{number}",
+            ["Components"] = new System.Text.Json.Nodes.JsonArray(
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["Type"] = "Transform",
+                    ["X"] = (float)Math.Round(x),
+                    ["Y"] = (float)Math.Round(y),
+                },
+                new System.Text.Json.Nodes.JsonObject
+                {
+                    ["Type"] = "SpriteRenderer",
+                }),
+        };
+
+        _document.Objects.Add(node);
+
+        var entity = new EntityViewModel(node);
+        entity.Edited += OnEdited;
+        Entities.Add(entity);
+        SelectedEntity = entity;
+        OnEdited();
+    }
+
+    public void DeleteSelectedEntity()
+    {
+        if (_document is null || SelectedEntity is null)
+            return;
+
+        int index = Entities.IndexOf(SelectedEntity);
+        _document.Objects.Remove(SelectedEntity.Node);
+        Entities.Remove(SelectedEntity);
+
+        SelectedEntity = Entities.Count > 0
+            ? Entities[Math.Min(index, Entities.Count - 1)]
+            : null;
+        OnEdited();
+    }
+
     private void OnEdited()
     {
         IsDirty = true;

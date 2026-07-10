@@ -31,6 +31,7 @@
       <MenuItem Header="_Arquivo">
         <MenuItem Header="_Abrir Cena…" Click="OnOpenScene" InputGesture="Ctrl+O"/>
         <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>
+        <MenuItem Header="Salvar _Como…" Click="OnSaveSceneAs" InputGesture="Ctrl+Shift+S" IsEnabled="{Binding HasDocument}"/>
         <Separator/>
         <MenuItem Header="Sai_r" Click="OnExit"/>
       </MenuItem>
@@ -46,6 +47,12 @@
       <DockPanel Grid.Column="0">
         <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                    FontWeight="Bold" Opacity="0.5"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
+          <Button Content="+ Nova" Click="OnCreateEntity" FontSize="12"
+                  IsEnabled="{Binding HasDocument}"/>
+          <Button Content="Excluir" Click="OnDeleteEntity" FontSize="12"
+                  IsEnabled="{Binding SelectedEntity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+        </StackPanel>
         <ListBox ItemsSource="{Binding Entities}"
                  SelectedItem="{Binding SelectedEntity}">
           <ListBox.ItemTemplate>
@@ -59,7 +66,7 @@
       <GridSplitter Grid.Column="1" Background="#2A2740"/>
 
       <!-- Cena -->
-      <views:SceneCanvas Grid.Column="2" DataContext="{Binding}"/>
+      <views:SceneCanvas x:Name="Scene" Grid.Column="2" DataContext="{Binding}"/>
 
       <GridSplitter Grid.Column="3" Background="#2A2740"/>
 

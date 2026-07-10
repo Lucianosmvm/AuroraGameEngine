@@ -22,6 +22,16 @@ public class App : Application
             if (scenePath is not null && File.Exists(scenePath))
                 viewModel.OpenScene(Path.GetFullPath(scenePath));
 
+            // Verificação automatizada de CRUD: cria 2, deleta 1, salva-como.
+            int crudIndex = Array.IndexOf(desktop.Args ?? [], "--test-crud");
+            if (crudIndex >= 0 && desktop.Args!.Length > crudIndex + 1)
+            {
+                viewModel.CreateEntity(60, -40);
+                viewModel.CreateEntity(200, 100);
+                viewModel.DeleteSelectedEntity();
+                viewModel.SaveSceneAs(desktop.Args[crudIndex + 1]);
+            }
+
             // Modo de verificação automatizada: captura a janela e sai.
             int screenshotIndex = Array.IndexOf(desktop.Args ?? [], "--screenshot");
             if (screenshotIndex >= 0 && desktop.Args!.Length > screenshotIndex + 1)
