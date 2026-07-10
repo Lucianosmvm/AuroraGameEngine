@@ -17,6 +17,15 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 dotnet run --project samples/Aurora.Sandbox
 ```
 
+### Android (APK)
+
+```bash
+dotnet publish samples/Aurora.Sandbox.Android -c Release -f net10.0-android
+```
+
+APK sai em `samples/Aurora.Sandbox.Android/bin/Release/net10.0-android/publish/com.auroraengine.sandbox-Signed.apk`.
+Copie para o celular e instale (permitir "fontes desconhecidas"). Controle por toque: segure o dedo e o jogador segue.
+
 Controles: **WASD/setas** movem o jogador, câmera segue, **ESC** sai.
 O título da janela mostra FPS, contagem de entidades e draw calls.
 

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <ApplicationId>com.auroraengine.sandbox</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Aurora.Sandbox.Droid</RootNamespace>
+    <!-- APK (sideload) em vez de AAB (Play Store) no publish. -->
+    <AndroidPackageFormats>apk</AndroidPackageFormats>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SilkActivity vive no asset net7.0-android do Windowing.Sdl; Input.Sdl é o backend
+         de input no Android (o meta-pacote Silk.NET.Input só traz GLFW). -->
+    <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Input.Sdl" Version="2.23.0" />
+    <ProjectReference Include="..\Aurora.Sandbox.Core\Aurora.Sandbox.Core.csproj" />
+  </ItemGroup>
+
+</Project>

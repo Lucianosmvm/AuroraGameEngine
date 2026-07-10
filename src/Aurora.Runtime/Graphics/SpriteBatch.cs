@@ -29,10 +29,12 @@ public sealed class SpriteBatch : IDisposable
     /// <summary>Draw calls emitidas no último frame (diagnóstico de batching).</summary>
     public int DrawCallsLastFrame { get; private set; }
 
-    public unsafe SpriteBatch(GL gl)
+    /// <param name="gles">True quando o contexto é OpenGL ES (Android) — troca o dialeto GLSL.</param>
+    public unsafe SpriteBatch(GL gl, bool gles = false)
     {
         _gl = gl;
-        _shader = new Shader(gl, VertexSource, FragmentSource);
+        _shader = new Shader(gl, BuildSource(VertexBody, gles, fragment: false),
+            BuildSource(FragmentBody, gles, fragment: true));
 
         _vao = gl.GenVertexArray();
         _vbo = gl.GenBuffer();
@@ -185,9 +187,18 @@ public sealed class SpriteBatch : IDisposable
         _shader.Dispose();
     }
 
+    // Mesmo corpo GLSL para desktop (330 core) e GLES (300 es); só o cabeçalho muda.
+    // GLES exige qualificador de precisão no fragment shader.
+    private static string BuildSource(string body, bool gles, bool fragment)
+    {
+        string header = gles
+            ? fragment ? "#version 300 es\nprecision mediump float;\n" : "#version 300 es\n"
+            : "#version 330 core\n";
+        return header + body;
+    }
+
     // System.Numerics é row-major; upload sem transpose exige "vetor * matriz" no GLSL.
-    private const string VertexSource = """
-        #version 330 core
+    private const string VertexBody = """
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec2 aUv;
         layout(location = 2) in vec4 aColor;
@@ -205,8 +216,7 @@ public sealed class SpriteBatch : IDisposable
         }
         """;
 
-    private const string FragmentSource = """
-        #version 330 core
+    private const string FragmentBody = """
         in vec2 vUv;
         in vec4 vColor;
 

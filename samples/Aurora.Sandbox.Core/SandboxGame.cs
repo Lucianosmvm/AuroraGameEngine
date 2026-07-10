@@ -1,4 +1,3 @@
-using System.Numerics;
 using Aurora.Runtime;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
@@ -9,7 +8,7 @@ namespace Aurora.Sandbox;
 
 /// <summary>
 /// Demo da Fase 1: ECS + SpriteBatch + câmera + input.
-/// WASD/setas movem o jogador; a câmera segue; ESC sai.
+/// Desktop: WASD/setas movem, ESC sai. Android: toque segura e o jogador segue.
 /// </summary>
 public sealed class SandboxGame : Game
 {
@@ -37,7 +36,7 @@ public sealed class SandboxGame : Game
         _player = World.CreateEntity("Player");
         _player.Add(new Transform(0f, 0f));
         _player.Add(new SpriteRenderer(playerTexture, layer: 10));
-        _player.Add(new PlayerController(Input));
+        _player.Add(new PlayerController(Input, Camera));
 
         var random = new Random(42);
 
@@ -69,13 +68,17 @@ public sealed class SandboxGame : Game
 
         Camera.Follow(_player.Get<Transform>()!.Position, speed: 6f, deltaTime);
 
-        _titleTimer += deltaTime;
-        if (_titleTimer >= 0.25f)
+        // Título só existe em janela desktop; view Android não tem título.
+        if (Window is { } window)
         {
-            _titleTimer = 0f;
-            int fps = deltaTime > 0f ? (int)MathF.Round(1f / deltaTime) : 0;
-            Window.Title = $"Aurora Sandbox — {fps} FPS | {World.EntityCount} entidades | " +
-                           $"{SpriteBatch.DrawCallsLastFrame} draw calls";
+            _titleTimer += deltaTime;
+            if (_titleTimer >= 0.25f)
+            {
+                _titleTimer = 0f;
+                int fps = deltaTime > 0f ? (int)MathF.Round(1f / deltaTime) : 0;
+                window.Title = $"Aurora Sandbox — {fps} FPS | {World.EntityCount} entidades | " +
+                               $"{SpriteBatch.DrawCallsLastFrame} draw calls";
+            }
         }
     }
 }

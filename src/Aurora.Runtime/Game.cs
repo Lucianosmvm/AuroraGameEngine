@@ -10,12 +10,17 @@ using Silk.NET.Windowing;
 namespace Aurora.Runtime;
 
 /// <summary>
-/// Classe base de um jogo Aurora: cria a janela, inicializa OpenGL e roda o loop
-/// update/render. Herde e implemente <see cref="OnLoad"/>.
+/// Classe base de um jogo Aurora: roda o loop update/render sobre um <see cref="IView"/> —
+/// janela no desktop, view SDL no Android. Herde e implemente <see cref="OnLoad"/>.
 /// </summary>
 public abstract class Game : IDisposable
 {
-    public IWindow Window { get; private set; } = null!;
+    /// <summary>Superfície onde o jogo roda. No desktop também é um <see cref="IWindow"/>.</summary>
+    public IView View { get; private set; } = null!;
+
+    /// <summary>Janela desktop, ou null quando rodando em view mobile.</summary>
+    public IWindow? Window => View as IWindow;
+
     public GL Gl { get; private set; } = null!;
     public InputManager Input { get; private set; } = null!;
     public SpriteBatch SpriteBatch { get; private set; } = null!;
@@ -26,7 +31,7 @@ public abstract class Game : IDisposable
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
 
-    /// <summary>Cria a janela e bloqueia até o jogo fechar.</summary>
+    /// <summary>Desktop: cria uma janela e bloqueia até o jogo fechar.</summary>
     public void Run(string title = "Aurora Game", int width = 1280, int height = 720, bool vsync = true)
     {
         var options = WindowOptions.Default with
@@ -36,31 +41,40 @@ public abstract class Game : IDisposable
             VSync = vsync,
         };
 
-        Window = Silk.NET.Windowing.Window.Create(options);
-        Window.Load += HandleLoad;
-        Window.Update += HandleUpdate;
-        Window.Render += HandleRender;
-        Window.FramebufferResize += HandleResize;
-        Window.Closing += HandleClosing;
-
-        Window.Run();
-        Window.Dispose();
+        var window = Silk.NET.Windowing.Window.Create(options);
+        Run(window);
+        window.Dispose();
     }
 
-    /// <summary>Fecha a janela e encerra o loop.</summary>
-    public void Exit() => Window.Close();
+    /// <summary>Roda sobre uma view já criada (Android: obtida via Window.GetView na Activity).</summary>
+    public void Run(IView view)
+    {
+        View = view;
+        View.Load += HandleLoad;
+        View.Update += HandleUpdate;
+        View.Render += HandleRender;
+        View.FramebufferResize += HandleResize;
+        View.Closing += HandleClosing;
+
+        View.Run();
+    }
+
+    /// <summary>Fecha a view e encerra o loop.</summary>
+    public void Exit() => View.Close();
 
     private void HandleLoad()
     {
-        Gl = GL.GetApi(Window);
-        Input = new InputManager(Window.CreateInput());
-        SpriteBatch = new SpriteBatch(Gl);
+        Gl = GL.GetApi(View);
+        Input = new InputManager(View.CreateInput());
+
+        bool isGles = View.API.API == ContextAPI.OpenGLES;
+        SpriteBatch = new SpriteBatch(Gl, isGles);
         Assets = new AssetManager(Gl);
 
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        Camera.SetViewport(Window.FramebufferSize.X, Window.FramebufferSize.Y);
+        Camera.SetViewport(View.FramebufferSize.X, View.FramebufferSize.Y);
 
         OnLoad();
     }
@@ -90,6 +104,15 @@ public abstract class Game : IDisposable
         Camera.SetViewport(size.X, size.Y);
     }
 
+    // Recursos GL precisam ser liberados com o contexto ainda vivo, por isso no Closing
+    // da view e não em Dispose (que roda depois de View.Run retornar).
+    private void HandleClosing()
+    {
+        OnUnload();
+        Assets?.Dispose();
+        SpriteBatch?.Dispose();
+    }
+
     /// <summary>Chamado uma vez com o contexto gráfico pronto. Crie entidades e carregue assets aqui.</summary>
     protected abstract void OnLoad();
 
@@ -103,16 +126,7 @@ public abstract class Game : IDisposable
     {
     }
 
-    // Recursos GL precisam ser liberados com o contexto ainda vivo, por isso no Closing
-    // da janela e não em Dispose (que roda depois de Window.Run retornar).
-    private void HandleClosing()
-    {
-        OnUnload();
-        Assets?.Dispose();
-        SpriteBatch?.Dispose();
-    }
-
-    /// <summary>Chamado ao fechar a janela, antes da engine liberar os recursos gráficos.</summary>
+    /// <summary>Chamado ao fechar, antes da engine liberar os recursos gráficos.</summary>
     protected virtual void OnUnload()
     {
     }

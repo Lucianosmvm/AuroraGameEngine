@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
+    <ProjectReference Include="..\Aurora.Sandbox.Core\Aurora.Sandbox.Core.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

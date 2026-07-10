@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/samples/">
+    <Project Path="samples/Aurora.Sandbox.Android/Aurora.Sandbox.Android.csproj" />
+    <Project Path="samples/Aurora.Sandbox.Core/Aurora.Sandbox.Core.csproj" />
     <Project Path="samples/Aurora.Sandbox/Aurora.Sandbox.csproj" />
   </Folder>
   <Folder Name="/src/">
