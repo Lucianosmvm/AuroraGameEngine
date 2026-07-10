@@ -8,7 +8,8 @@ public sealed class EntityViewModel : ViewModelBase
     public JsonObject Node { get; }
     public List<ComponentViewModel> Components { get; } = [];
 
-    public event Action? Edited;
+    /// <summary>Tag identifica o gesto de edição (coalescência de undo).</summary>
+    public event Action<string>? Edited;
 
     public EntityViewModel(JsonObject node)
     {
@@ -19,7 +20,7 @@ public sealed class EntityViewModel : ViewModelBase
             foreach (var componentNode in components.OfType<JsonObject>())
             {
                 var component = new ComponentViewModel(componentNode);
-                component.Edited += () => Edited?.Invoke();
+                component.Edited += tag => Edited?.Invoke($"{Node.GetHashCode()}/{tag}");
                 Components.Add(component);
             }
         }
@@ -34,7 +35,7 @@ public sealed class EntityViewModel : ViewModelBase
                 return;
             Node["Name"] = value;
             Raise();
-            Edited?.Invoke();
+            Edited?.Invoke($"rename:{Node.GetHashCode()}");
         }
     }
 
@@ -44,21 +45,28 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Transform => Component("Transform");
     public ComponentViewModel? Sprite => Component("SpriteRenderer");
 
-    /// <summary>Move a entidade (arrasto no canvas) e sincroniza o inspector.</summary>
+    /// <summary>Move a entidade (arrasto no canvas), sincronizando o inspector. Um gesto = um undo.</summary>
     public void SetPosition(float x, float y)
+        => SetTransformFields($"move:{Node.GetHashCode()}", ("X", x), ("Y", y));
+
+    public void SetScale(float scaleX, float scaleY)
+        => SetTransformFields($"scale:{Node.GetHashCode()}", ("ScaleX", scaleX), ("ScaleY", scaleY));
+
+    public void SetRotation(float radians)
+        => SetTransformFields($"rotate:{Node.GetHashCode()}", ("Rotation", radians));
+
+    private void SetTransformFields(string tag, params (string Name, float Value)[] fields)
     {
         var transform = Transform;
         if (transform is null)
             return;
 
-        var px = transform.Number("X");
-        var py = transform.Number("Y");
-        if (px is null || py is null)
-            return;
+        foreach (var (name, value) in fields)
+        {
+            transform.Node[name] = value;
+            transform.Number(name)?.RefreshFromNode();
+        }
 
-        px.Value = x;
-        py.Value = y;
-        px.RefreshFromNode();
-        py.RefreshFromNode();
+        Edited?.Invoke(tag);
     }
 }

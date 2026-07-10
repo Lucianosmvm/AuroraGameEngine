@@ -72,6 +72,18 @@ public partial class MainWindow : Window
                 ViewModel.DeleteSelectedEntity();
                 e.Handled = true;
             }
+            else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Z && e.Source is not TextBox)
+            {
+                ViewModel.Undo();
+                e.Handled = true;
+            }
+            else if (e.Source is not TextBox
+                && (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Y
+                    || e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.Z))
+            {
+                ViewModel.Redo();
+                e.Handled = true;
+            }
         };
     }
 
@@ -132,6 +144,10 @@ public partial class MainWindow : Window
     }
 
     private void OnDeleteEntity(object? sender, RoutedEventArgs e) => ViewModel.DeleteSelectedEntity();
+
+    private void OnUndo(object? sender, RoutedEventArgs e) => ViewModel.Undo();
+
+    private void OnRedo(object? sender, RoutedEventArgs e) => ViewModel.Redo();
 
     private void OnRefreshAssets(object? sender, RoutedEventArgs e)
     {

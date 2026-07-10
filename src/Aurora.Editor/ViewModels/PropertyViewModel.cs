@@ -13,8 +13,11 @@ public abstract class PropertyViewModel : ViewModelBase
 
     public string Name { get; }
 
-    /// <summary>Disparado após qualquer edição — MainViewModel usa para marcar sujo e redesenhar.</summary>
-    public event Action? Edited;
+    /// <summary>
+    /// Disparado após qualquer edição, com uma tag que identifica o gesto —
+    /// edições consecutivas com a mesma tag colapsam num só passo de undo.
+    /// </summary>
+    public event Action<string>? Edited;
 
     protected PropertyViewModel(JsonObject component, string name)
     {
@@ -22,7 +25,7 @@ public abstract class PropertyViewModel : ViewModelBase
         Name = name;
     }
 
-    protected void NotifyEdited() => Edited?.Invoke();
+    protected void NotifyEdited() => Edited?.Invoke(Name);
 }
 
 public sealed class NumberPropertyViewModel : PropertyViewModel

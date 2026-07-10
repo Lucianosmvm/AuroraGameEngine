@@ -28,7 +28,7 @@ public sealed class ComponentViewModel : ViewModelBase
     public string Type { get; }
     public List<PropertyViewModel> Properties { get; } = [];
 
-    public event Action? Edited;
+    public event Action<string>? Edited;
 
     public ComponentViewModel(JsonObject node)
     {
@@ -70,7 +70,7 @@ public sealed class ComponentViewModel : ViewModelBase
             bool flag => new BoolPropertyViewModel(Node, name, flag),
             _ => new TextPropertyViewModel(Node, name, (string)fallback),
         };
-        property.Edited += () => Edited?.Invoke();
+        property.Edited += tag => Edited?.Invoke($"{Type}.{tag}");
         Properties.Add(property);
     }
 

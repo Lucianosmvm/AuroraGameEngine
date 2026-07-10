@@ -5,10 +5,22 @@ namespace Aurora.Editor.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase
 {
+    /// <summary>Edições com a mesma tag dentro desta janela colapsam num só passo de undo.</summary>
+    private const double CoalesceWindowMs = 900;
+
     private SceneDocument? _document;
     private EntityViewModel? _selectedEntity;
     private bool _isDirty;
     private string _status = "Nenhuma cena aberta. Arquivo → Abrir Cena…";
+
+    // Undo por snapshot: cada passo guarda o JSON completo da cena (cenas são pequenas).
+    // _lastSnapshot é sempre o estado atual serializado — no undo ele vai para o redo.
+    private readonly Stack<string> _undoStack = new();
+    private readonly Stack<string> _redoStack = new();
+    private string _lastSnapshot = "";
+    private string? _lastEditTag;
+    private DateTime _lastEditAt;
+    private bool _restoring;
 
     public ObservableCollection<EntityViewModel> Entities { get; } = [];
     public ObservableCollection<AssetViewModel> Assets { get; } = [];
@@ -45,26 +57,42 @@ public sealed class MainViewModel : ViewModelBase
         : $"Aurora Editor — {Path.GetFileName(_document.FilePath)}{(IsDirty ? " *" : "")}";
 
     public bool HasDocument => _document is not null;
+    public bool CanUndo => _undoStack.Count > 0;
+    public bool CanRedo => _redoStack.Count > 0;
 
     public void OpenScene(string path)
     {
         _document = SceneDocument.Load(path);
 
+        RebuildEntities();
+        SelectedEntity = Entities.FirstOrDefault();
+
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _lastSnapshot = _document.Root.ToJsonString();
+        _lastEditTag = null;
+
+        IsDirty = false;
+        Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
+        Raise(nameof(Title));
+        Raise(nameof(HasDocument));
+        RaiseUndoState();
+        ReloadAssets();
+        SceneEdited?.Invoke();
+    }
+
+    private void RebuildEntities()
+    {
         Entities.Clear();
+        if (_document is null)
+            return;
+
         foreach (var objectNode in _document.Objects.OfType<System.Text.Json.Nodes.JsonObject>())
         {
             var entity = new EntityViewModel(objectNode);
             entity.Edited += OnEdited;
             Entities.Add(entity);
         }
-
-        SelectedEntity = Entities.FirstOrDefault();
-        IsDirty = false;
-        Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
-        Raise(nameof(Title));
-        Raise(nameof(HasDocument));
-        ReloadAssets();
-        SceneEdited?.Invoke();
     }
 
     private static readonly string[] TextureExtensions = [".png", ".jpg", ".jpeg"];
@@ -164,7 +192,7 @@ public sealed class MainViewModel : ViewModelBase
         entity.Edited += OnEdited;
         Entities.Add(entity);
         SelectedEntity = entity;
-        OnEdited();
+        OnEdited($"create:{node.GetHashCode()}");
     }
 
     public void DeleteSelectedEntity()
@@ -173,21 +201,81 @@ public sealed class MainViewModel : ViewModelBase
             return;
 
         int index = Entities.IndexOf(SelectedEntity);
-        _document.Objects.Remove(SelectedEntity.Node);
+        var node = SelectedEntity.Node;
+        _document.Objects.Remove(node);
         Entities.Remove(SelectedEntity);
 
         SelectedEntity = Entities.Count > 0
             ? Entities[Math.Min(index, Entities.Count - 1)]
             : null;
-        OnEdited();
+        OnEdited($"delete:{node.GetHashCode()}");
     }
 
-    private void OnEdited()
+    // ---- Undo / Redo ----
+
+    public void Undo()
     {
+        if (_undoStack.Count == 0 || _document is null)
+            return;
+
+        _redoStack.Push(_lastSnapshot);
+        Restore(_undoStack.Pop());
+        Status = "Desfeito.";
+    }
+
+    public void Redo()
+    {
+        if (_redoStack.Count == 0 || _document is null)
+            return;
+
+        _undoStack.Push(_lastSnapshot);
+        Restore(_redoStack.Pop());
+        Status = "Refeito.";
+    }
+
+    private void Restore(string json)
+    {
+        string? selectedName = SelectedEntity?.Name;
+
+        _restoring = true;
+        _document = SceneDocument.FromJson(json, _document!.FilePath, _document.AssetsRoot);
+        RebuildEntities();
+        SelectedEntity = Entities.FirstOrDefault(e => e.Name == selectedName) ?? Entities.FirstOrDefault();
+        _restoring = false;
+
+        _lastSnapshot = json;
+        _lastEditTag = null;
+        IsDirty = true;
+        RaiseUndoState();
+        SceneEdited?.Invoke();
+    }
+
+    private void OnEdited(string tag)
+    {
+        if (_restoring || _document is null)
+            return;
+
+        bool coalesce = tag == _lastEditTag
+            && (DateTime.UtcNow - _lastEditAt).TotalMilliseconds < CoalesceWindowMs;
+
+        if (!coalesce)
+        {
+            _undoStack.Push(_lastSnapshot);
+            _redoStack.Clear();
+            RaiseUndoState();
+        }
+
+        _lastSnapshot = _document.Root.ToJsonString();
+        _lastEditTag = tag;
+        _lastEditAt = DateTime.UtcNow;
+
         IsDirty = true;
         SceneEdited?.Invoke();
     }
 
-    /// <summary>Usado pelo canvas ao arrastar entidades.</summary>
-    public void NotifyEdited() => OnEdited();
+    private void RaiseUndoState()
+    {
+        Raise(nameof(CanUndo));
+        Raise(nameof(CanRedo));
+    }
 }

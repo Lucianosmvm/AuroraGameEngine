@@ -35,6 +35,10 @@
         <Separator/>
         <MenuItem Header="Sai_r" Click="OnExit"/>
       </MenuItem>
+      <MenuItem Header="_Editar">
+        <MenuItem Header="_Desfazer" Click="OnUndo" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}"/>
+        <MenuItem Header="_Refazer" Click="OnRedo" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}"/>
+      </MenuItem>
     </Menu>
 
     <Border DockPanel.Dock="Bottom" Background="#1E1C30" Padding="8,4">

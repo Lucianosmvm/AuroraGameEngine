@@ -35,6 +35,15 @@ public sealed class SceneDocument
         return new SceneDocument(root, path, ResolveAssetsRoot(path, root));
     }
 
+    /// <summary>Reconstrói o documento a partir de um snapshot (undo/redo).</summary>
+    public static SceneDocument FromJson(string json, string filePath, string assetsRoot)
+    {
+        var root = JsonNode.Parse(json) as JsonObject
+            ?? throw new InvalidDataException("Snapshot de cena inválido.");
+
+        return new SceneDocument(root, filePath, assetsRoot);
+    }
+
     public void Save(string? asPath = null)
     {
         FilePath = asPath ?? FilePath;

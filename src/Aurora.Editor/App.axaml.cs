@@ -32,6 +32,20 @@ public class App : Application
                 viewModel.SaveSceneAs(desktop.Args[crudIndex + 1]);
             }
 
+            // Verificação automatizada de undo: 3 edições, 3 undos (volta ao original), 1 redo.
+            int undoTestIndex = Array.IndexOf(desktop.Args ?? [], "--test-undo");
+            if (undoTestIndex >= 0 && desktop.Args!.Length > undoTestIndex + 1)
+            {
+                viewModel.CreateEntity(10, 10);
+                viewModel.CreateEntity(20, 20);
+                viewModel.DeleteSelectedEntity();
+                viewModel.Undo();
+                viewModel.Undo();
+                viewModel.Undo();
+                viewModel.Redo();
+                viewModel.SaveSceneAs(desktop.Args[undoTestIndex + 1]);
+            }
+
             // Modo de verificação automatizada: captura a janela e sai.
             int screenshotIndex = Array.IndexOf(desktop.Args ?? [], "--screenshot");
             if (screenshotIndex >= 0 && desktop.Args!.Length > screenshotIndex + 1)
