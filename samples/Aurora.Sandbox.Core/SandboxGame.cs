@@ -24,6 +24,7 @@ public sealed class SandboxGame : Game
     private Entity _player;
     private bool _smokeTeleported;
     private bool _smokeChecked;
+    private Font _font = null!;
 
     public SandboxGame(bool smokeTest = false)
     {
@@ -59,6 +60,8 @@ public sealed class SandboxGame : Game
             _messageTimer = 4f;
             Console.WriteLine($"[msg] {message}");
         };
+
+        _font = Assets.LoadFont("fonts/DejaVuSans.ttf", 22f);
 
         LoadScene("scenes/forest.json");
 
@@ -151,6 +154,31 @@ public sealed class SandboxGame : Game
         }
     }
 
+    protected override void OnRenderUI(float deltaTime)
+    {
+        // HUD: ouro no canto superior esquerdo.
+        string gold = $"Gold: {(int)State.GetVariable("Gold")}";
+        SpriteBatch.DrawRect(new Vector2(10f, 10f), _font.MeasureText(gold) + new Vector2(20f, 10f),
+            new Color(0f, 0f, 0f, 0.55f));
+        _font.Draw(SpriteBatch, gold, new Vector2(20f, 15f), Color.FromBytes(251, 242, 54));
+
+        // Caixa de mensagem na base da tela enquanto o timer corre.
+        if (_messageTimer > 0f && _lastMessage.Length > 0)
+        {
+            float screenWidth = View.FramebufferSize.X;
+            float screenHeight = View.FramebufferSize.Y;
+
+            var textSize = _font.MeasureText(_lastMessage);
+            var boxSize = new Vector2(MathF.Max(textSize.X + 40f, screenWidth * 0.5f), textSize.Y + 30f);
+            var boxPosition = new Vector2((screenWidth - boxSize.X) / 2f, screenHeight - boxSize.Y - 24f);
+
+            SpriteBatch.DrawRect(boxPosition, boxSize, new Color(0.06f, 0.05f, 0.12f, 0.85f));
+            SpriteBatch.DrawRect(boxPosition, new Vector2(boxSize.X, 2f), Color.FromBytes(120, 110, 200));
+            _font.Draw(SpriteBatch, _lastMessage,
+                boxPosition + new Vector2((boxSize.X - textSize.X) / 2f, 15f), Color.White);
+        }
+    }
+
     /// <summary>
     /// Roteiro do smoke test: anda até uma moeda e confere Gold + destruição.
     /// SceneStart dá 5 de Gold; tocar WelcomeCoin2 soma 1 → 6.
@@ -173,8 +201,10 @@ public sealed class SandboxGame : Game
                 throw new InvalidOperationException("[smoke] WelcomeCoin2 devia ter sido destruída.");
             if (!_lastMessage.StartsWith("Bem-vindo"))
                 throw new InvalidOperationException("[smoke] mensagem de boas-vindas não disparou.");
+            if (_font.MeasureText("Aurora çãõé").X <= 0f)
+                throw new InvalidOperationException("[smoke] fonte não mediu texto com acentos.");
 
-            Console.WriteLine("[smoke] eventos ok: Gold=6, moeda coletada, mensagem exibida.");
+            Console.WriteLine("[smoke] eventos ok: Gold=6, moeda coletada, mensagem exibida, fonte ok.");
         }
     }
 }

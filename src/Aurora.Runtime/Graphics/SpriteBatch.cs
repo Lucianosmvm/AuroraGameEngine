@@ -155,6 +155,15 @@ public sealed class SpriteBatch : IDisposable
     public void Draw(Texture2D texture, Vector2 position)
         => Draw(texture, position, new Vector2(texture.Width, texture.Height), Vector2.Zero, 0f, Color.White);
 
+    private Texture2D? _whitePixel;
+
+    /// <summary>Textura 1x1 branca — retângulos, barras e fundos de UI.</summary>
+    public Texture2D WhitePixel => _whitePixel ??= Texture2D.FromPixels(_gl, 1, 1, [255, 255, 255, 255]);
+
+    /// <summary>Retângulo sólido (painéis de UI, caixas de diálogo).</summary>
+    public void DrawRect(Vector2 position, Vector2 size, Color color)
+        => Draw(WhitePixel, position, size, Vector2.Zero, 0f, color);
+
     public void End()
     {
         if (!_begun)
@@ -192,6 +201,7 @@ public sealed class SpriteBatch : IDisposable
 
     public void Dispose()
     {
+        _whitePixel?.Dispose();
         _gl.DeleteVertexArray(_vao);
         _gl.DeleteBuffer(_vbo);
         _gl.DeleteBuffer(_ebo);

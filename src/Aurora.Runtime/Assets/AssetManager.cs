@@ -9,6 +9,7 @@ public sealed class AssetManager : IDisposable
     private readonly GL _gl;
     private readonly IAssetSource _source;
     private readonly Dictionary<string, Texture2D> _textures = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Font> _fonts = new(StringComparer.OrdinalIgnoreCase);
 
     public AssetManager(GL gl, IAssetSource source)
     {
@@ -44,6 +45,19 @@ public sealed class AssetManager : IDisposable
         return null;
     }
 
+    /// <summary>Carrega uma fonte TTF rasterizada no tamanho dado (cache por caminho+tamanho).</summary>
+    public Font LoadFont(string path, float pixelSize)
+    {
+        string key = $"{path}#{pixelSize}";
+        if (_fonts.TryGetValue(key, out var cached))
+            return cached;
+
+        using var stream = _source.Open(path);
+        var font = Font.FromStream(_gl, stream, pixelSize);
+        _fonts[key] = font;
+        return font;
+    }
+
     /// <summary>Lê um asset de texto inteiro (JSON de cena, configs).</summary>
     public string LoadText(string path)
     {
@@ -58,5 +72,9 @@ public sealed class AssetManager : IDisposable
         foreach (var texture in _textures.Values)
             texture.Dispose();
         _textures.Clear();
+
+        foreach (var font in _fonts.Values)
+            font.Dispose();
+        _fonts.Clear();
     }
 }

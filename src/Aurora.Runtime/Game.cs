@@ -114,7 +114,17 @@ public abstract class Game : IDisposable
         World.Render(SpriteBatch, Camera);
         OnRender((float)deltaTime);
         SpriteBatch.End();
+
+        // Passe de UI em coordenadas de tela (HUD, diálogos) — não segue a câmera.
+        SpriteBatch.Begin(GetScreenProjection());
+        OnRenderUI((float)deltaTime);
+        SpriteBatch.End();
     }
+
+    /// <summary>Projeção em pixels de tela: (0,0) no canto superior esquerdo.</summary>
+    public System.Numerics.Matrix4x4 GetScreenProjection()
+        => System.Numerics.Matrix4x4.CreateOrthographicOffCenter(
+            0f, View.FramebufferSize.X, View.FramebufferSize.Y, 0f, -1f, 1f);
 
     private void HandleResize(Vector2D<int> size)
     {
@@ -141,6 +151,11 @@ public abstract class Game : IDisposable
 
     /// <summary>Chamado a cada frame com o SpriteBatch já aberto, após os sprites do mundo.</summary>
     protected virtual void OnRender(float deltaTime)
+    {
+    }
+
+    /// <summary>Chamado a cada frame no passe de UI (coordenadas de tela). HUD e diálogos aqui.</summary>
+    protected virtual void OnRenderUI(float deltaTime)
     {
     }
 
