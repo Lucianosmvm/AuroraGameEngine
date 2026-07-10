@@ -241,7 +241,7 @@ public sealed class SceneSerializer
                 {
                     foreach (var element in actions.EnumerateArray())
                     {
-                        trigger.Actions.Add(new EventAction
+                        var action = new EventAction
                         {
                             Type = GetString(element, "Action", ""),
                             Name = element.TryGetProperty("Name", out var name) ? name.GetString() : null,
@@ -252,7 +252,21 @@ public sealed class SceneSerializer
                             Y = GetFloat(element, "Y", 0f),
                             Seconds = GetFloat(element, "Seconds", 0f),
                             Text = element.TryGetProperty("Text", out var text) ? text.GetString() : null,
-                        });
+                        };
+
+                        if (element.TryGetProperty("Options", out var options))
+                        {
+                            foreach (var optionElement in options.EnumerateArray())
+                            {
+                                action.Options.Add(new EventOption
+                                {
+                                    Text = GetString(optionElement, "Text", ""),
+                                    Switch = optionElement.TryGetProperty("Switch", out var sw2) ? sw2.GetString() : null,
+                                });
+                            }
+                        }
+
+                        trigger.Actions.Add(action);
                     }
                 }
 
@@ -282,6 +296,21 @@ public sealed class SceneSerializer
                     if (action.Y != 0f) json.WriteNumber("Y", action.Y);
                     if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
                     if (action.Text is not null) json.WriteString("Text", action.Text);
+
+                    if (action.Options.Count > 0)
+                    {
+                        json.WriteStartArray("Options");
+                        foreach (var option in action.Options)
+                        {
+                            json.WriteStartObject();
+                            json.WriteString("Text", option.Text);
+                            if (option.Switch is not null)
+                                json.WriteString("Switch", option.Switch);
+                            json.WriteEndObject();
+                        }
+                        json.WriteEndArray();
+                    }
+
                     json.WriteEndObject();
                 }
                 json.WriteEndArray();

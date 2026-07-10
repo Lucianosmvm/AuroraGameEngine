@@ -20,6 +20,16 @@ public sealed class EventAction
     public float Y;
     public float Seconds;
     public string? Text;
+
+    /// <summary>Opções de ShowChoice.</summary>
+    public List<EventOption> Options = [];
+}
+
+/// <summary>Uma opção de ShowChoice: escolhida, liga o switch (encadeia outros eventos).</summary>
+public sealed class EventOption
+{
+    public string Text = "";
+    public string? Switch;
 }
 
 /// <summary>
@@ -47,4 +57,5 @@ public sealed class EventTrigger : IComponent
     internal bool Running;
     internal int ActionIndex;
     internal float WaitTimer;
+    internal bool WaitingDialogue;
 }

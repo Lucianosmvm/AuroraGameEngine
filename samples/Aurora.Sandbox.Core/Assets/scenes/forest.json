@@ -48,6 +48,39 @@
       ]
     },
     {
+      "Name": "Guia",
+      "Components": [
+        { "Type": "Transform", "X": 150, "Y": 40 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/player.png", "Layer": 9, "Color": "#88AAFFFF" },
+        { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 28, "Actions": [
+          { "Action": "ShowMessage", "Name": "Guia", "Text": "Olá, viajante! Que bom te ver por aqui." },
+          { "Action": "ShowChoice", "Text": "Aceita uma bênção de ouro?", "Options": [
+            { "Text": "Sim", "Switch": "bencao_sim" },
+            { "Text": "Não", "Switch": "bencao_nao" }
+          ] }
+        ] }
+      ]
+    },
+    {
+      "Name": "BencaoSim",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "EventTrigger", "Trigger": "SwitchOn", "Switch": "bencao_sim", "Actions": [
+          { "Action": "SetVariable", "Name": "Gold", "Op": "Add", "Value": 50 },
+          { "Action": "ShowMessage", "Name": "Guia", "Text": "Receba 50 moedas de ouro. Use-as bem!" }
+        ] }
+      ]
+    },
+    {
+      "Name": "BencaoNao",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "EventTrigger", "Trigger": "SwitchOn", "Switch": "bencao_nao", "Actions": [
+          { "Action": "ShowMessage", "Name": "Guia", "Text": "Como preferir. Boa jornada!" }
+        ] }
+      ]
+    },
+    {
       "Name": "WelcomeCoin1",
       "Components": [
         { "Type": "Transform", "X": -60, "Y": 90 },

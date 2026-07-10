@@ -22,8 +22,12 @@ public sealed class SandboxGame : Game
     private float _messageTimer;
 
     private Entity _player;
+    private PlayerController _playerController = null!;
     private bool _smokeTeleported;
     private bool _smokeChecked;
+    private bool _smokeNpcVisited;
+    private bool _smokeFinalChecked;
+    private float _smokeAdvanceTimer;
     private Font _font = null!;
 
     public SandboxGame(bool smokeTest = false)
@@ -67,6 +71,7 @@ public sealed class SandboxGame : Game
 
         if (!World.TryFind("Player", out _player))
             throw new InvalidOperationException("Cena forest.json não tem entidade 'Player'.");
+        _playerController = _player.Get<PlayerController>()!;
 
         ScatterExtras();
 
@@ -131,10 +136,23 @@ public sealed class SandboxGame : Game
         if (_smokeTest)
             RunSmokeScript();
 
-        if (Input.IsKeyDown(Key.Escape) || (_smokeTest && _elapsed > 1.5f))
+        if (Input.IsKeyDown(Key.Escape) || (_smokeTest && _elapsed > 2.6f))
         {
             Exit();
             return;
+        }
+
+        // Diálogo aberto: jogador congela; Espaço/Enter/Z/clique avança, W/S ou setas navegam.
+        _playerController.Enabled = !Dialogue.IsActive;
+        if (Dialogue.IsActive)
+        {
+            if (Input.WasKeyPressed(Key.Space) || Input.WasKeyPressed(Key.Enter)
+                || Input.WasKeyPressed(Key.Z) || Input.WasMouseClicked())
+                Dialogue.Advance();
+            if (Input.WasKeyPressed(Key.Up) || Input.WasKeyPressed(Key.W))
+                Dialogue.SelectPrevious();
+            if (Input.WasKeyPressed(Key.Down) || Input.WasKeyPressed(Key.S))
+                Dialogue.SelectNext();
         }
 
         Camera.Follow(_player.Get<Transform>()!.Position, speed: 6f, deltaTime);
@@ -162,21 +180,8 @@ public sealed class SandboxGame : Game
             new Color(0f, 0f, 0f, 0.55f));
         _font.Draw(SpriteBatch, gold, new Vector2(20f, 15f), Color.FromBytes(251, 242, 54));
 
-        // Caixa de mensagem na base da tela enquanto o timer corre.
-        if (_messageTimer > 0f && _lastMessage.Length > 0)
-        {
-            float screenWidth = View.FramebufferSize.X;
-            float screenHeight = View.FramebufferSize.Y;
-
-            var textSize = _font.MeasureText(_lastMessage);
-            var boxSize = new Vector2(MathF.Max(textSize.X + 40f, screenWidth * 0.5f), textSize.Y + 30f);
-            var boxPosition = new Vector2((screenWidth - boxSize.X) / 2f, screenHeight - boxSize.Y - 24f);
-
-            SpriteBatch.DrawRect(boxPosition, boxSize, new Color(0.06f, 0.05f, 0.12f, 0.85f));
-            SpriteBatch.DrawRect(boxPosition, new Vector2(boxSize.X, 2f), Color.FromBytes(120, 110, 200));
-            _font.Draw(SpriteBatch, _lastMessage,
-                boxPosition + new Vector2((boxSize.X - textSize.X) / 2f, 15f), Color.White);
-        }
+        // Caixa de diálogo da engine (mensagens e escolhas dos eventos).
+        Dialogue.Draw(SpriteBatch, _font, View.FramebufferSize.X, View.FramebufferSize.Y);
     }
 
     /// <summary>
@@ -185,13 +190,21 @@ public sealed class SandboxGame : Game
     /// </summary>
     private void RunSmokeScript()
     {
-        if (!_smokeTeleported && _elapsed > 0.5f)
+        // Diálogos são avançados automaticamente (escolha fica na opção 0 = "Sim").
+        _smokeAdvanceTimer += 0.016f;
+        if (Dialogue.IsActive && _smokeAdvanceTimer > 0.15f)
+        {
+            _smokeAdvanceTimer = 0f;
+            Dialogue.Advance();
+        }
+
+        if (!_smokeTeleported && _elapsed > 0.4f)
         {
             _smokeTeleported = true;
             _player.Get<Transform>()!.Position = new Vector2(0f, 110f);
         }
 
-        if (_elapsed > 1.2f && !_smokeChecked)
+        if (_elapsed > 1.0f && !_smokeChecked)
         {
             _smokeChecked = true;
             int gold = (int)State.GetVariable("Gold");
@@ -205,6 +218,24 @@ public sealed class SandboxGame : Game
                 throw new InvalidOperationException("[smoke] fonte não mediu texto com acentos.");
 
             Console.WriteLine("[smoke] eventos ok: Gold=6, moeda coletada, mensagem exibida, fonte ok.");
+        }
+
+        if (_elapsed > 1.2f && !_smokeNpcVisited)
+        {
+            _smokeNpcVisited = true;
+            _player.Get<Transform>()!.Position = new Vector2(150f, 40f); // em cima do Guia
+        }
+
+        if (_elapsed > 2.4f && !_smokeFinalChecked)
+        {
+            _smokeFinalChecked = true;
+            int gold = (int)State.GetVariable("Gold");
+            if (gold != 56)
+                throw new InvalidOperationException($"[smoke] Gold esperado 56 após bênção, obtido {gold}.");
+            if (!State.GetSwitch("bencao_sim"))
+                throw new InvalidOperationException("[smoke] switch bencao_sim devia estar ligado.");
+
+            Console.WriteLine("[smoke] diálogo ok: conversa, escolha Sim, switch encadeado, +50 Gold.");
         }
     }
 }

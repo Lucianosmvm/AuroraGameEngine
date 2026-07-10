@@ -4,6 +4,7 @@ using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Events;
 using Aurora.Runtime.Input;
 using Aurora.Runtime.Scenes;
+using Aurora.Runtime.UI;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -32,11 +33,12 @@ public abstract class Game : IDisposable
     public World World { get; } = new();
     public SceneSerializer Scenes { get; } = new();
     public GameState State { get; } = new();
+    public DialogueSystem Dialogue { get; } = new();
     public EventSystem Events { get; }
 
     protected Game()
     {
-        Events = new EventSystem(World, State);
+        Events = new EventSystem(World, State) { Dialogue = Dialogue };
     }
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
@@ -99,6 +101,7 @@ public abstract class Game : IDisposable
     private void HandleUpdate(double deltaTime)
     {
         float dt = (float)deltaTime;
+        Dialogue.Update();
         OnUpdate(dt);
         World.Update(dt);
         Events.Update(dt);

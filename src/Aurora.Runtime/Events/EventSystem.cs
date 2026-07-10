@@ -1,6 +1,7 @@
 using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.UI;
 
 namespace Aurora.Runtime.Events;
 
@@ -16,6 +17,12 @@ public sealed class EventSystem
 
     /// <summary>Entidade considerada "o jogador" para gatilhos PlayerTouch.</summary>
     public string PlayerEntityName { get; set; } = "Player";
+
+    /// <summary>
+    /// Quando presente, ShowMessage/ShowChoice abrem a caixa de diálogo e a sequência
+    /// de ações pausa até o jogador dispensar (modelo RPG Maker).
+    /// </summary>
+    public DialogueSystem? Dialogue { get; set; }
 
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
@@ -82,6 +89,13 @@ public sealed class EventSystem
                 return;
         }
 
+        if (trigger.WaitingDialogue)
+        {
+            if (Dialogue?.IsActive == true)
+                return;
+            trigger.WaitingDialogue = false;
+        }
+
         while (trigger.ActionIndex < trigger.Actions.Count)
         {
             var action = trigger.Actions[trigger.ActionIndex];
@@ -96,6 +110,13 @@ public sealed class EventSystem
             }
 
             Execute(self, action);
+
+            // Diálogo aberto: pausa a sequência até o jogador dispensar.
+            if (action.Type is "ShowMessage" or "ShowChoice" && Dialogue?.IsActive == true)
+            {
+                trigger.WaitingDialogue = true;
+                return;
+            }
         }
 
         trigger.Running = false;
@@ -130,7 +151,23 @@ public sealed class EventSystem
                 break;
 
             case "ShowMessage" when action.Text is not null:
+                // Name = nome do falante (opcional).
+                Dialogue?.ShowMessage(action.Text, action.Name);
                 MessageShown?.Invoke(action.Text);
+                break;
+
+            case "ShowChoice" when Dialogue is not null && action.Options.Count > 0:
+                Dialogue.ShowChoice(action.Text ?? "",
+                    action.Options.Select(o => o.Text).ToList(),
+                    index =>
+                    {
+                        var option = action.Options[index];
+                        if (option.Switch is not null)
+                            _state.SetSwitch(option.Switch, true);
+                        // Name = variável que recebe o índice escolhido (opcional).
+                        if (action.Name is not null)
+                            _state.SetVariable(action.Name, index);
+                    });
                 break;
         }
     }
