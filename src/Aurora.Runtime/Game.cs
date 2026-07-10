@@ -1,6 +1,7 @@
 using Aurora.Runtime.Assets;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Graphics;
+using Aurora.Runtime.Events;
 using Aurora.Runtime.Input;
 using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
@@ -30,6 +31,13 @@ public abstract class Game : IDisposable
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
     public SceneSerializer Scenes { get; } = new();
+    public GameState State { get; } = new();
+    public EventSystem Events { get; }
+
+    protected Game()
+    {
+        Events = new EventSystem(World, State);
+    }
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
 
@@ -93,6 +101,7 @@ public abstract class Game : IDisposable
         float dt = (float)deltaTime;
         OnUpdate(dt);
         World.Update(dt);
+        Events.Update(dt);
         Input.EndFrame();
     }
 

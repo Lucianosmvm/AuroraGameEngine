@@ -3,6 +3,7 @@ using System.Text.Json;
 using Aurora.Runtime.Assets;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.Events;
 using Aurora.Runtime.Graphics;
 
 namespace Aurora.Runtime.Scenes;
@@ -224,6 +225,67 @@ public sealed class SceneSerializer
                     json.WriteNumberValue(tile);
                 json.WriteEndArray();
             });
+
+        Register<EventTrigger>("EventTrigger",
+            static (json, _) =>
+            {
+                var trigger = new EventTrigger
+                {
+                    Trigger = GetString(json, "Trigger", "PlayerTouch"),
+                    Switch = json.TryGetProperty("Switch", out var sw) ? sw.GetString() : null,
+                    Radius = GetFloat(json, "Radius", 20f),
+                    Once = GetBool(json, "Once", true),
+                };
+
+                if (json.TryGetProperty("Actions", out var actions))
+                {
+                    foreach (var element in actions.EnumerateArray())
+                    {
+                        trigger.Actions.Add(new EventAction
+                        {
+                            Type = GetString(element, "Action", ""),
+                            Name = element.TryGetProperty("Name", out var name) ? name.GetString() : null,
+                            Op = element.TryGetProperty("Op", out var op) ? op.GetString() : null,
+                            Value = GetFloat(element, "Value", 0f),
+                            On = GetBool(element, "On", true),
+                            X = GetFloat(element, "X", 0f),
+                            Y = GetFloat(element, "Y", 0f),
+                            Seconds = GetFloat(element, "Seconds", 0f),
+                            Text = element.TryGetProperty("Text", out var text) ? text.GetString() : null,
+                        });
+                    }
+                }
+
+                return trigger;
+            },
+            static (json, component, _) =>
+            {
+                var trigger = (EventTrigger)component;
+                json.WriteString("Trigger", trigger.Trigger);
+                if (trigger.Switch is not null)
+                    json.WriteString("Switch", trigger.Switch);
+                if (trigger.Radius != 20f)
+                    json.WriteNumber("Radius", trigger.Radius);
+                if (!trigger.Once)
+                    json.WriteBoolean("Once", false);
+
+                json.WriteStartArray("Actions");
+                foreach (var action in trigger.Actions)
+                {
+                    json.WriteStartObject();
+                    json.WriteString("Action", action.Type);
+                    if (action.Name is not null) json.WriteString("Name", action.Name);
+                    if (action.Op is not null) json.WriteString("Op", action.Op);
+                    if (action.Value != 0f) json.WriteNumber("Value", action.Value);
+                    if (!action.On) json.WriteBoolean("On", false);
+                    if (action.X != 0f) json.WriteNumber("X", action.X);
+                    if (action.Y != 0f) json.WriteNumber("Y", action.Y);
+                    if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
+                    if (action.Text is not null) json.WriteString("Text", action.Text);
+                    json.WriteEndObject();
+                }
+                json.WriteEndArray();
+            });
     }
 
     public static float GetFloat(JsonElement json, string name, float fallback)
@@ -234,4 +296,7 @@ public sealed class SceneSerializer
 
     public static bool GetBool(JsonElement json, string name, bool fallback)
         => json.TryGetProperty(name, out var prop) ? prop.GetBoolean() : fallback;
+
+    public static string GetString(JsonElement json, string name, string fallback)
+        => json.TryGetProperty(name, out var prop) ? prop.GetString() ?? fallback : fallback;
 }

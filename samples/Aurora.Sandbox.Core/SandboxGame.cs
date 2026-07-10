@@ -1,6 +1,8 @@
+using System.Numerics;
 using Aurora.Runtime;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.Events;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
@@ -8,16 +10,20 @@ using Silk.NET.Input;
 namespace Aurora.Sandbox;
 
 /// <summary>
-/// Demo das Fases 1/1.5/2-fundações: cena carregada de JSON, assets PNG reais,
-/// ECS + SpriteBatch + câmera + input. Desktop: WASD/setas, ESC sai. Android: toque.
+/// Demo: cena JSON com tilemap e eventos (moedas coletáveis somam Gold).
+/// Desktop: WASD/setas, ESC sai. Android: toque segura e o jogador segue.
 /// </summary>
 public sealed class SandboxGame : Game
 {
     private readonly bool _smokeTest;
     private float _elapsed;
     private float _titleTimer;
+    private string _lastMessage = "";
+    private float _messageTimer;
 
     private Entity _player;
+    private bool _smokeTeleported;
+    private bool _smokeChecked;
 
     public SandboxGame(bool smokeTest = false)
     {
@@ -46,6 +52,13 @@ public sealed class SandboxGame : Game
                 json.WriteNumber("Frequency", bob.Frequency);
                 json.WriteNumber("Phase", bob.Phase);
             });
+
+        Events.MessageShown += message =>
+        {
+            _lastMessage = message;
+            _messageTimer = 4f;
+            Console.WriteLine($"[msg] {message}");
+        };
 
         LoadScene("scenes/forest.json");
 
@@ -78,6 +91,16 @@ public sealed class SandboxGame : Game
             coin.Add(new Transform(random.Next(-1600, 1600), random.Next(-1200, 1200)));
             coin.Add(new SpriteRenderer(coinTexture, layer: 6));
             coin.Add(new BobBehavior(amplitude: 4f, frequency: 3f, phase: i * 0.4f));
+            coin.Add(new EventTrigger
+            {
+                Trigger = "PlayerTouch",
+                Radius = 16f,
+                Actions =
+                [
+                    new EventAction { Type = "SetVariable", Name = "Gold", Op = "Add", Value = 1 },
+                    new EventAction { Type = "Destroy" },
+                ],
+            });
         }
     }
 
@@ -100,6 +123,10 @@ public sealed class SandboxGame : Game
     protected override void OnUpdate(float deltaTime)
     {
         _elapsed += deltaTime;
+        _messageTimer -= deltaTime;
+
+        if (_smokeTest)
+            RunSmokeScript();
 
         if (Input.IsKeyDown(Key.Escape) || (_smokeTest && _elapsed > 1.5f))
         {
@@ -117,9 +144,37 @@ public sealed class SandboxGame : Game
             {
                 _titleTimer = 0f;
                 int fps = deltaTime > 0f ? (int)MathF.Round(1f / deltaTime) : 0;
-                window.Title = $"Aurora Sandbox — {fps} FPS | {World.EntityCount} entidades | " +
-                               $"{SpriteBatch.DrawCallsLastFrame} draw calls";
+                string message = _messageTimer > 0f ? $" | {_lastMessage}" : "";
+                window.Title = $"Aurora Sandbox — {fps} FPS | Gold: {(int)State.GetVariable("Gold")} | " +
+                               $"{World.EntityCount} entidades | {SpriteBatch.DrawCallsLastFrame} draw calls{message}";
             }
+        }
+    }
+
+    /// <summary>
+    /// Roteiro do smoke test: anda até uma moeda e confere Gold + destruição.
+    /// SceneStart dá 5 de Gold; tocar WelcomeCoin2 soma 1 → 6.
+    /// </summary>
+    private void RunSmokeScript()
+    {
+        if (!_smokeTeleported && _elapsed > 0.5f)
+        {
+            _smokeTeleported = true;
+            _player.Get<Transform>()!.Position = new Vector2(0f, 110f);
+        }
+
+        if (_elapsed > 1.2f && !_smokeChecked)
+        {
+            _smokeChecked = true;
+            int gold = (int)State.GetVariable("Gold");
+            if (gold != 6)
+                throw new InvalidOperationException($"[smoke] Gold esperado 6, obtido {gold}.");
+            if (World.TryFind("WelcomeCoin2", out _))
+                throw new InvalidOperationException("[smoke] WelcomeCoin2 devia ter sido destruída.");
+            if (!_lastMessage.StartsWith("Bem-vindo"))
+                throw new InvalidOperationException("[smoke] mensagem de boas-vindas não disparou.");
+
+            Console.WriteLine("[smoke] eventos ok: Gold=6, moeda coletada, mensagem exibida.");
         }
     }
 }

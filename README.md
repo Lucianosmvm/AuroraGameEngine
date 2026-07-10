@@ -12,6 +12,10 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ Carregamento de texturas (PNG/JPG via StbImageSharp) com cache
 - ✅ Assets abstraídos por `IAssetSource`: pasta no desktop, APK no Android
 - ✅ Cenas em JSON (`scenes/*.json`) com registro extensível de componentes
+- ✅ Tilemaps com culling e 1 draw call por mapa; pintura no editor
+- ✅ Variáveis e switches globais (`GameState`) com save/load em JSON
+- ✅ Eventos visuais (`EventTrigger`): gatilhos SceneStart/PlayerTouch/SwitchOn e
+  ações SetVariable, SetSwitch, Teleport, Destroy, Wait, ShowMessage
 
 ## Editor
 

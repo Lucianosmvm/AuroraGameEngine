@@ -17,6 +17,16 @@
       ]
     },
     {
+      "Name": "WelcomeEvent",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "EventTrigger", "Trigger": "SceneStart", "Actions": [
+          { "Action": "SetVariable", "Name": "Gold", "Value": 5 },
+          { "Action": "ShowMessage", "Text": "Bem-vindo à floresta! Colete as moedas." }
+        ] }
+      ]
+    },
+    {
       "Name": "TreeGate1",
       "Components": [
         { "Type": "Transform", "X": -140, "Y": -60 },
@@ -42,6 +52,10 @@
       "Components": [
         { "Type": "Transform", "X": -60, "Y": 90 },
         { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 16, "Actions": [
+          { "Action": "SetVariable", "Name": "Gold", "Op": "Add", "Value": 1 },
+          { "Action": "Destroy" }
+        ] },
         { "Type": "Bob", "Amplitude": 4, "Frequency": 3 }
       ]
     },
@@ -50,6 +64,10 @@
       "Components": [
         { "Type": "Transform", "X": 0, "Y": 110 },
         { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 16, "Actions": [
+          { "Action": "SetVariable", "Name": "Gold", "Op": "Add", "Value": 1 },
+          { "Action": "Destroy" }
+        ] },
         { "Type": "Bob", "Amplitude": 4, "Frequency": 3, "Phase": 1.5 }
       ]
     },
@@ -58,6 +76,10 @@
       "Components": [
         { "Type": "Transform", "X": 60, "Y": 90 },
         { "Type": "SpriteRenderer", "Texture": "sprites/coin.png", "Layer": 6 },
+        { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 16, "Actions": [
+          { "Action": "SetVariable", "Name": "Gold", "Op": "Add", "Value": 1 },
+          { "Action": "Destroy" }
+        ] },
         { "Type": "Bob", "Amplitude": 4, "Frequency": 3, "Phase": 3 }
       ]
     }
