@@ -33,6 +33,32 @@ public sealed class SceneCanvas : Control
     {
         ClipToBounds = true;
         Focusable = true;
+
+        // API de DnD clássica: obsoleta no 11.3 mas funcional em todo o 11.x.
+        // Migrar para DataTransfer/DoDragDropAsync junto com o upgrade para Avalonia 12.
+#pragma warning disable CS0618
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(DataFormats.Text) ? DragDropEffects.Copy : DragDropEffects.None;
+        });
+        AddHandler(DragDrop.DropEvent, (_, e) =>
+        {
+            if (_viewModel is null || e.Data.GetText() is not { } texturePath)
+                return;
+
+            var world = ScreenToWorld(e.GetPosition(this));
+            _viewModel.CreateEntity(world.X, world.Y, texturePath);
+            e.Handled = true;
+        });
+#pragma warning restore CS0618
+    }
+
+    /// <summary>Esquece bitmaps carregados — usado ao reescanear a pasta de assets.</summary>
+    public void ClearTextureCache()
+    {
+        _textures.Clear();
+        InvalidateVisual();
     }
 
     protected override void OnDataContextChanged(EventArgs e)

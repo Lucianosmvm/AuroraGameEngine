@@ -77,6 +77,9 @@ public sealed class ComponentViewModel : ViewModelBase
     public NumberPropertyViewModel? Number(string name)
         => Properties.OfType<NumberPropertyViewModel>().FirstOrDefault(p => p.Name == name);
 
+    public TextPropertyViewModel? Text(string name)
+        => Properties.OfType<TextPropertyViewModel>().FirstOrDefault(p => p.Name == name);
+
     // Leitura direta do nó para renderização do canvas (sem passar pelos VMs de propriedade).
     public float GetFloat(string name, float fallback) => Node[name]?.GetValue<float>() ?? fallback;
     public string? GetString(string name) => Node[name]?.GetValue<string>();

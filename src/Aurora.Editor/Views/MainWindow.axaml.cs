@@ -10,9 +10,44 @@ public partial class MainWindow : Window
 {
     private MainViewModel ViewModel => (MainViewModel)DataContext!;
 
+    private ViewModels.AssetViewModel? _dragCandidate;
+    private Avalonia.Point _dragStart;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // Arrastar asset para o canvas: só vira drag depois de 8px de movimento,
+        // senão o clique de seleção na lista seria engolido.
+        AssetList.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.GetCurrentPoint(AssetList).Properties.IsLeftButtonPressed)
+            {
+                _dragCandidate = (e.Source as Control)?.DataContext as ViewModels.AssetViewModel;
+                _dragStart = e.GetPosition(AssetList);
+            }
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+
+        AssetList.AddHandler(PointerMovedEvent, async (_, e) =>
+        {
+            if (_dragCandidate is null || !e.GetCurrentPoint(AssetList).Properties.IsLeftButtonPressed)
+                return;
+
+            var delta = e.GetPosition(AssetList) - _dragStart;
+            if (Math.Abs(delta.X) < 8 && Math.Abs(delta.Y) < 8)
+                return;
+
+            // Obsoleto no 11.3, funcional no 11.x — migrar junto com Avalonia 12 (ver SceneCanvas).
+#pragma warning disable CS0618
+            var data = new DataObject();
+            data.Set(DataFormats.Text, _dragCandidate.RelativePath);
+            _dragCandidate = null;
+            await DragDrop.DoDragDrop(e, data, DragDropEffects.Copy);
+#pragma warning restore CS0618
+        });
+
+        AssetList.AddHandler(PointerReleasedEvent, (_, _) => _dragCandidate = null,
+            Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         KeyDown += (_, e) =>
         {
@@ -97,6 +132,18 @@ public partial class MainWindow : Window
     }
 
     private void OnDeleteEntity(object? sender, RoutedEventArgs e) => ViewModel.DeleteSelectedEntity();
+
+    private void OnRefreshAssets(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.ReloadAssets();
+        Scene.ClearTextureCache();
+    }
+
+    private void OnAssetDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is ViewModels.AssetViewModel asset)
+            ViewModel.ApplyTextureToSelection(asset);
+    }
 
     private void OnExit(object? sender, RoutedEventArgs e) => Close();
 }

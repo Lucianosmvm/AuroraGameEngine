@@ -11,6 +11,7 @@ public sealed class MainViewModel : ViewModelBase
     private string _status = "Nenhuma cena aberta. Arquivo → Abrir Cena…";
 
     public ObservableCollection<EntityViewModel> Entities { get; } = [];
+    public ObservableCollection<AssetViewModel> Assets { get; } = [];
 
     public SceneDocument? Document => _document;
 
@@ -62,7 +63,42 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
+        ReloadAssets();
         SceneEdited?.Invoke();
+    }
+
+    private static readonly string[] TextureExtensions = [".png", ".jpg", ".jpeg"];
+
+    /// <summary>Varre a raiz de assets por texturas (para o asset browser).</summary>
+    public void ReloadAssets()
+    {
+        Assets.Clear();
+        if (_document is null || !Directory.Exists(_document.AssetsRoot))
+            return;
+
+        var files = Directory.EnumerateFiles(_document.AssetsRoot, "*", SearchOption.AllDirectories)
+            .Where(f => TextureExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
+            Assets.Add(new AssetViewModel(_document.AssetsRoot, relative));
+        }
+    }
+
+    /// <summary>Aplica a textura no SpriteRenderer da entidade selecionada (duplo-clique no browser).</summary>
+    public void ApplyTextureToSelection(AssetViewModel asset)
+    {
+        var textureProperty = SelectedEntity?.Sprite?.Text("Texture");
+        if (textureProperty is null)
+        {
+            Status = "Selecione uma entidade com SpriteRenderer para aplicar a textura.";
+            return;
+        }
+
+        textureProperty.Value = asset.RelativePath;
+        Status = $"{asset.RelativePath} → {SelectedEntity!.Name}";
     }
 
     public void SaveScene()
@@ -86,20 +122,32 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"Salvo: {path}";
     }
 
-    /// <summary>Cria entidade com Transform + SpriteRenderer vazio (placeholder magenta no canvas).</summary>
-    public void CreateEntity(double x, double y)
+    /// <summary>
+    /// Cria entidade com Transform + SpriteRenderer. Sem textura vira placeholder
+    /// magenta no canvas; com textura (drop do asset browser) nasce nomeada pelo arquivo.
+    /// </summary>
+    public void CreateEntity(double x, double y, string? texturePath = null)
     {
         if (_document is null)
             return;
 
+        string baseName = texturePath is null
+            ? "Entidade"
+            : char.ToUpperInvariant(Path.GetFileNameWithoutExtension(texturePath)[0])
+              + Path.GetFileNameWithoutExtension(texturePath)[1..];
+
         var names = Entities.Select(e => e.Name).ToHashSet();
-        int number = 1;
-        while (names.Contains($"Entidade{number}"))
-            number++;
+        string name = baseName;
+        for (int number = 1; names.Contains(name); number++)
+            name = $"{baseName}{number}";
+
+        var sprite = new System.Text.Json.Nodes.JsonObject { ["Type"] = "SpriteRenderer" };
+        if (texturePath is not null)
+            sprite["Texture"] = texturePath;
 
         var node = new System.Text.Json.Nodes.JsonObject
         {
-            ["Name"] = $"Entidade{number}",
+            ["Name"] = name,
             ["Components"] = new System.Text.Json.Nodes.JsonArray(
                 new System.Text.Json.Nodes.JsonObject
                 {
@@ -107,10 +155,7 @@ public sealed class MainViewModel : ViewModelBase
                     ["X"] = (float)Math.Round(x),
                     ["Y"] = (float)Math.Round(y),
                 },
-                new System.Text.Json.Nodes.JsonObject
-                {
-                    ["Type"] = "SpriteRenderer",
-                }),
+                sprite),
         };
 
         _document.Objects.Add(node);

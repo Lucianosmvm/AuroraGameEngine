@@ -43,25 +43,55 @@
 
     <Grid ColumnDefinitions="230,4,*,4,330">
 
-      <!-- Hierarquia -->
-      <DockPanel Grid.Column="0">
-        <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
-                   FontWeight="Bold" Opacity="0.5"/>
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
-          <Button Content="+ Nova" Click="OnCreateEntity" FontSize="12"
-                  IsEnabled="{Binding HasDocument}"/>
-          <Button Content="Excluir" Click="OnDeleteEntity" FontSize="12"
-                  IsEnabled="{Binding SelectedEntity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-        </StackPanel>
-        <ListBox ItemsSource="{Binding Entities}"
-                 SelectedItem="{Binding SelectedEntity}">
-          <ListBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding Name}" FontSize="13"/>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </DockPanel>
+      <!-- Assets + Hierarquia -->
+      <Grid Grid.Column="0" RowDefinitions="*,4,*">
+
+        <DockPanel Grid.Row="0">
+          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
+            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
+                    Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Reescanear pasta de assets"/>
+            <TextBlock Text="ASSETS" FontSize="11" FontWeight="Bold" Opacity="0.5"
+                       VerticalAlignment="Center"/>
+          </DockPanel>
+          <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}"
+                   DoubleTapped="OnAssetDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
+                  <Border Width="32" Height="32" Background="#141220" CornerRadius="3">
+                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="2"
+                           RenderOptions.BitmapInterpolationMode="None"/>
+                  </Border>
+                  <TextBlock Text="{Binding RelativePath}" VerticalAlignment="Center"
+                             FontSize="12" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="1" Background="#2A2740"/>
+
+        <DockPanel Grid.Row="2">
+          <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
+                     FontWeight="Bold" Opacity="0.5"/>
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
+            <Button Content="+ Nova" Click="OnCreateEntity" FontSize="12"
+                    IsEnabled="{Binding HasDocument}"/>
+            <Button Content="Excluir" Click="OnDeleteEntity" FontSize="12"
+                    IsEnabled="{Binding SelectedEntity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+          </StackPanel>
+          <ListBox ItemsSource="{Binding Entities}"
+                   SelectedItem="{Binding SelectedEntity}">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" FontSize="13"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Grid>
 
       <GridSplitter Grid.Column="1" Background="#2A2740"/>
 
