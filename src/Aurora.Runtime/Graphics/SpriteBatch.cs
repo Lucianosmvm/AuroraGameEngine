@@ -197,7 +197,10 @@ public sealed class SpriteBatch : IDisposable
         return header + body;
     }
 
-    // System.Numerics é row-major; upload sem transpose exige "vetor * matriz" no GLSL.
+    // System.Numerics é row-major (v' = v * M). Upload sem transpose faz o GLSL enxergar
+    // a matriz transposta, então o produto correto no shader é "matriz * vetor".
+    // "vetor * matriz" aqui vaza a translação para o componente w → distorção de
+    // perspectiva que cresce conforme a câmera se afasta da origem.
     private const string VertexBody = """
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec2 aUv;
@@ -210,7 +213,7 @@ public sealed class SpriteBatch : IDisposable
 
         void main()
         {
-            gl_Position = vec4(aPos, 0.0, 1.0) * uViewProj;
+            gl_Position = uViewProj * vec4(aPos, 0.0, 1.0);
             vUv = aUv;
             vColor = aColor;
         }
