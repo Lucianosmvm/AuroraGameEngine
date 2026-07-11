@@ -362,6 +362,20 @@
       <DockPanel Grid.Column="4">
         <TextBlock DockPanel.Dock="Top" Text="INSPECTOR" Margin="10,8" FontSize="11"
                    FontWeight="Bold" Opacity="0.5"/>
+
+        <!-- Assets Root — visível quando há uma cena aberta -->
+        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,4"
+                IsVisible="{Binding HasDocument}">
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+            <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"
+                       Grid.ColumnSpan="2" Margin="0,0,0,3"/>
+            <TextBlock Grid.Row="1" Text="{Binding AssetsRootDisplay}" FontSize="11"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                       ToolTip.Tip="{Binding AssetsRootDisplay}"/>
+            <Button Grid.Row="1" Grid.Column="1" Content="Alterar…" FontSize="11"
+                    Padding="6,2" Margin="4,0,0,0" Click="OnChangeAssetsRoot"/>
+          </Grid>
+        </Border>
         <ScrollViewer>
           <StackPanel Margin="10,0,10,10" DataContext="{Binding SelectedEntity}"
                       IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">

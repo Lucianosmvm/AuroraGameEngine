@@ -13,12 +13,28 @@ public sealed class SceneDocument
     public string FilePath { get; private set; }
 
     /// <summary>Pasta raiz dos assets — caminhos de textura da cena são relativos a ela.</summary>
-    public string AssetsRoot { get; }
+    public string AssetsRoot { get; private set; }
 
     public string SceneName => Root["Scene"]?.GetValue<string>() ?? "Sem nome";
 
     public JsonArray Objects => Root["Objects"] as JsonArray
         ?? throw new InvalidDataException("Cena sem array 'Objects'.");
+
+    /// <summary>
+    /// Redefine o assets root e persiste o caminho relativo no JSON da cena.
+    /// Passa <paramref name="absolutePath"/> = pasta do arquivo para limpar o campo.
+    /// </summary>
+    public void SetAssetsRoot(string absolutePath)
+    {
+        string sceneDir = Path.GetDirectoryName(Path.GetFullPath(FilePath))!;
+        string rel = Path.GetRelativePath(sceneDir, absolutePath);
+        AssetsRoot = absolutePath;
+
+        if (rel == ".")
+            Root.Remove("AssetsRoot");
+        else
+            Root["AssetsRoot"] = rel;
+    }
 
     private SceneDocument(JsonObject root, string filePath, string assetsRoot)
     {
@@ -74,6 +90,15 @@ public sealed class SceneDocument
     {
         string sceneDir = Path.GetDirectoryName(Path.GetFullPath(scenePath))!;
 
+        // Campo explícito tem prioridade absoluta.
+        if (root["AssetsRoot"]?.GetValue<string>() is { Length: > 0 } rel)
+        {
+            string resolved = Path.GetFullPath(Path.Combine(sceneDir, rel));
+            if (Directory.Exists(resolved))
+                return resolved;
+        }
+
+        // Fallback heurístico: sobe a partir da pasta do arquivo até achar uma textura.
         string? firstTexture = (root["Objects"] as JsonArray)?
             .OfType<JsonObject>()
             .SelectMany(o => o["Components"] as JsonArray ?? [])

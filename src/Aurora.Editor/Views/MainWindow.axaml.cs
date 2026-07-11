@@ -193,6 +193,23 @@ public partial class MainWindow : Window
 
     private void OnRedo(object? sender, RoutedEventArgs e) => ViewModel.Redo();
 
+    private async Task PickAssetsRootAsync()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Selecione a pasta raiz de assets",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        {
+            ViewModel.ChangeAssetsRoot(path);
+            Scene.ClearTextureCache();
+        }
+    }
+
+    private void OnChangeAssetsRoot(object? sender, RoutedEventArgs e) => _ = PickAssetsRootAsync();
+
     private void OnRefreshAssets(object? sender, RoutedEventArgs e)
     {
         ViewModel.ReloadAssets();

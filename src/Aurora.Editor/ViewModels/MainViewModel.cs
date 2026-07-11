@@ -64,6 +64,20 @@ public sealed class MainViewModel : ViewModelBase
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
 
+    public string AssetsRootDisplay => _document?.AssetsRoot ?? "";
+
+    public void ChangeAssetsRoot(string absolutePath)
+    {
+        if (_document is null)
+            return;
+
+        _document.SetAssetsRoot(absolutePath);
+        Raise(nameof(AssetsRootDisplay));
+        ReloadAssets();
+        OnEdited("assetsroot");
+        Status = $"Assets root: {_document.AssetsRoot}";
+    }
+
     public void NewScene(string filePath)
     {
         _document = SceneDocument.New(filePath);
@@ -80,6 +94,7 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"Nova cena: {_document.SceneName} | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
+        Raise(nameof(AssetsRootDisplay));
         RaiseUndoState();
         ReloadAssets();
         SceneEdited?.Invoke();
@@ -101,6 +116,7 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
+        Raise(nameof(AssetsRootDisplay));
         RaiseUndoState();
         ReloadAssets();
         SceneEdited?.Invoke();
