@@ -2,6 +2,7 @@ using System.Numerics;
 using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.Saves;
 using Aurora.Runtime.UI;
 
 namespace Aurora.Runtime.Events;
@@ -27,6 +28,9 @@ public sealed class EventSystem
 
     /// <summary>Quando presente, PlaySound/PlayMusic/StopMusic reproduzem áudio.</summary>
     public AudioManager? Audio { get; set; }
+
+    /// <summary>Quando presente, a ação Save grava o estado em disco.</summary>
+    public SaveManager? Save { get; set; }
 
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
@@ -164,6 +168,10 @@ public sealed class EventSystem
                 // Name = nome do falante (opcional).
                 Dialogue?.ShowMessage(action.Text, action.Name);
                 MessageShown?.Invoke(action.Text);
+                break;
+
+            case "Save":
+                Save?.Save((int)action.Value);
                 break;
 
             case "ChangeScene" when action.Name is not null:

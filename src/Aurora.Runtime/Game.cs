@@ -4,6 +4,7 @@ using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Events;
 using Aurora.Runtime.Input;
+using Aurora.Runtime.Saves;
 using Aurora.Runtime.Scenes;
 using Aurora.Runtime.UI;
 using Silk.NET.Input;
@@ -31,6 +32,13 @@ public abstract class Game : IDisposable
     public AssetManager Assets { get; private set; } = null!;
     public AudioManager Audio { get; private set; } = null!;
     public SceneManager SceneManager { get; private set; } = null!;
+    public SaveManager Save { get; private set; } = null!;
+
+    /// <summary>
+    /// Nome do jogo — define a pasta de save em %LocalAppData%/[GameName]/saves/.
+    /// Defina antes de <see cref="Run"/> se quiser um nome personalizado.
+    /// </summary>
+    public string GameName { get; set; } = "AuroraGame";
 
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
@@ -105,6 +113,9 @@ public abstract class Game : IDisposable
 
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
         Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
+
+        Save = new SaveManager(State, SceneManager, GameName);
+        Events.Save = Save;
 
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);

@@ -63,5 +63,16 @@ public sealed class GameState
         Changed?.Invoke();
     }
 
+    internal void LoadFromDictionaries(
+        IReadOnlyDictionary<string, float> variables,
+        IReadOnlyDictionary<string, bool> switches)
+    {
+        _variables.Clear();
+        _switches.Clear();
+        foreach (var (k, v) in variables) _variables[k] = v;
+        foreach (var (k, v) in switches) _switches[k] = v;
+        Changed?.Invoke();
+    }
+
     private sealed record StateDto(Dictionary<string, float> Variables, Dictionary<string, bool> Switches);
 }
