@@ -14,7 +14,7 @@ public sealed class EntityViewModel : ViewModelBase
     public event Action<string>? Edited;
 
     public string[] AvailableComponentTypes { get; } =
-        ["SpriteRenderer", "Animator", "Collider", "EventTrigger"];
+        ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger"];
 
     private string _newComponentType = "Collider";
     public string NewComponentType
@@ -56,6 +56,7 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Transform => Component("Transform");
     public ComponentViewModel? Sprite => Component("SpriteRenderer");
     public ComponentViewModel? Tilemap => Component("Tilemap");
+    public ComponentViewModel? Camera => Component("CameraController");
 
     // ---- Add / Remove ----
 
@@ -79,6 +80,13 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Type"] = "Collider",
                 ["Width"] = 16f,
                 ["Height"] = 16f,
+            },
+            "CameraController" => new JsonObject
+            {
+                ["Type"] = "CameraController",
+                ["Zoom"] = 1f,
+                ["ViewWidth"] = 1280,
+                ["ViewHeight"] = 720,
             },
             "EventTrigger" => new JsonObject
             {

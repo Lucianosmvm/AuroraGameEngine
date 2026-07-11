@@ -1,6 +1,7 @@
 using Aurora.Runtime.Assets;
 using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs;
+using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Events;
 using Aurora.Runtime.Input;
@@ -134,7 +135,40 @@ public abstract class Game : IDisposable
         OnUpdate(dt);
         World.Update(dt);
         Events.Update(dt);
+        UpdateCamera(dt);
         Input.EndFrame();
+    }
+
+    private void UpdateCamera(float dt)
+    {
+        foreach (var (_, transform, ctrl) in World.Query<Transform, CameraController>())
+        {
+            var target = ctrl.Follow is not null
+                && World.TryFind(ctrl.Follow, out var followEntity)
+                && followEntity.Get<Transform>() is { } ft
+                    ? ft.Position
+                    : transform.Position;
+
+            target += ctrl.Offset;
+
+            if (ctrl.FollowSpeed > 0f)
+                Camera.Follow(target, ctrl.FollowSpeed, dt);
+            else
+                Camera.Position = target;
+
+            Camera.Zoom = ctrl.Zoom;
+
+            if (ctrl.ClampBounds)
+            {
+                float hw = Camera.ViewportWidth  / (2f * MathF.Max(Camera.Zoom, 0.001f));
+                float hh = Camera.ViewportHeight / (2f * MathF.Max(Camera.Zoom, 0.001f));
+                Camera.Position = new System.Numerics.Vector2(
+                    Math.Clamp(Camera.Position.X, ctrl.BoundsX + hw, ctrl.BoundsX + ctrl.BoundsWidth  - hw),
+                    Math.Clamp(Camera.Position.Y, ctrl.BoundsY + hh, ctrl.BoundsY + ctrl.BoundsHeight - hh));
+            }
+
+            break; // apenas a primeira câmera ativa conta
+        }
     }
 
     private void HandleRender(double deltaTime)

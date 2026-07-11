@@ -226,6 +226,11 @@ public sealed class SceneCanvas : Control
             DrawGizmos(context, sel);
         if (selectedMap is { } selMap)
             DrawTilemapSelection(context, selMap);
+
+        // Preview do viewport da câmera quando a entidade selecionada tem CameraController.
+        var selEntity = _viewModel.SelectedEntity;
+        if (selEntity?.Camera is { } camComp && selEntity.Transform is { } camTransform)
+            DrawCameraPreview(context, camTransform, camComp);
     }
 
     private void DrawTilemap(DrawingContext context, TilemapView map)
@@ -325,6 +330,63 @@ public sealed class SceneCanvas : Control
         var handle = upLocal.Transform(view.LocalToScreen);
 
         return (anchor, handle);
+    }
+
+    /// <summary>
+    /// Retângulo amarelo = viewport da câmera no mundo.
+    /// Retângulo laranja tracejado = bounds de clamping (quando ativo).
+    /// </summary>
+    private void DrawCameraPreview(DrawingContext context,
+        ViewModels.ComponentViewModel transform, ViewModels.ComponentViewModel cam)
+    {
+        // Centro: segue a entidade Follow se configurada, senão a própria entidade.
+        float cx, cy;
+        var followName = cam.GetString("Follow");
+        if (!string.IsNullOrEmpty(followName)
+            && _viewModel?.Entities.FirstOrDefault(e => e.Name == followName) is { } followEntity
+            && followEntity.Transform is { } ft)
+        {
+            cx = ft.GetFloat("X", 0f);
+            cy = ft.GetFloat("Y", 0f);
+        }
+        else
+        {
+            cx = transform.GetFloat("X", 0f);
+            cy = transform.GetFloat("Y", 0f);
+        }
+
+        cx += cam.GetFloat("OffsetX", 0f);
+        cy += cam.GetFloat("OffsetY", 0f);
+
+        float zoom  = Math.Max(cam.GetFloat("Zoom", 1f), 0.001f);
+        float halfW = cam.GetFloat("ViewWidth",  1280f) / (2f * zoom);
+        float halfH = cam.GetFloat("ViewHeight", 720f)  / (2f * zoom);
+
+        var tl = new Point(cx - halfW, cy - halfH).Transform(ViewMatrix);
+        var br = new Point(cx + halfW, cy + halfH).Transform(ViewMatrix);
+        context.DrawRectangle(null, new Pen(Brushes.Yellow, 2), new Rect(tl, br));
+
+        // Label "CÂMERA" no canto superior esquerdo do retângulo.
+        context.DrawText(
+            new Avalonia.Media.FormattedText("CÂMERA", System.Globalization.CultureInfo.CurrentCulture,
+                Avalonia.Media.FlowDirection.LeftToRight,
+                new Avalonia.Media.Typeface("Sans-Serif"), 11, Brushes.Yellow),
+            new Point(tl.X + 4, tl.Y + 4));
+
+        // Bounds de clamping (tracejado laranja).
+        if (cam.GetBool("ClampBounds", false))
+        {
+            float bx = cam.GetFloat("BoundsX", 0f);
+            float by = cam.GetFloat("BoundsY", 0f);
+            float bw = cam.GetFloat("BoundsWidth",  1280f);
+            float bh = cam.GetFloat("BoundsHeight", 720f);
+
+            var btl = new Point(bx,      by     ).Transform(ViewMatrix);
+            var bbr = new Point(bx + bw, by + bh).Transform(ViewMatrix);
+            context.DrawRectangle(null,
+                new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 165, 0)), 1.5, DashStyle.Dash),
+                new Rect(btl, bbr));
+        }
     }
 
     private Bitmap? ResolveTexture(string? path)

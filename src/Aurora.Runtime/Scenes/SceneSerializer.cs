@@ -119,6 +119,7 @@ public sealed class SceneSerializer
     {
         RegisterAnimator();
         RegisterCollider();
+        RegisterCameraController();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -442,6 +443,44 @@ public sealed class SceneSerializer
                     json.WriteEndObject();
                 }
                 json.WriteEndArray();
+            });
+    }
+
+    private void RegisterCameraController()
+    {
+        Register<CameraController>("CameraController",
+            static (json, _) => new CameraController
+            {
+                Follow      = json.TryGetProperty("Follow", out var f) ? f.GetString() : null,
+                FollowSpeed = GetFloat(json, "FollowSpeed", 5f),
+                Zoom        = GetFloat(json, "Zoom", 1f),
+                Offset      = new(GetFloat(json, "OffsetX", 0f), GetFloat(json, "OffsetY", 0f)),
+                ViewWidth   = GetInt(json, "ViewWidth", 1280),
+                ViewHeight  = GetInt(json, "ViewHeight", 720),
+                ClampBounds = GetBool(json, "ClampBounds", false),
+                BoundsX     = GetFloat(json, "BoundsX", 0f),
+                BoundsY     = GetFloat(json, "BoundsY", 0f),
+                BoundsWidth = GetFloat(json, "BoundsWidth", 1280f),
+                BoundsHeight= GetFloat(json, "BoundsHeight", 720f),
+            },
+            static (json, component, _) =>
+            {
+                var c = (CameraController)component;
+                if (c.Follow is not null)    json.WriteString("Follow", c.Follow);
+                if (c.FollowSpeed != 5f)     json.WriteNumber("FollowSpeed", c.FollowSpeed);
+                if (c.Zoom != 1f)            json.WriteNumber("Zoom", c.Zoom);
+                if (c.Offset.X != 0f)        json.WriteNumber("OffsetX", c.Offset.X);
+                if (c.Offset.Y != 0f)        json.WriteNumber("OffsetY", c.Offset.Y);
+                if (c.ViewWidth != 1280)     json.WriteNumber("ViewWidth", c.ViewWidth);
+                if (c.ViewHeight != 720)     json.WriteNumber("ViewHeight", c.ViewHeight);
+                if (c.ClampBounds)
+                {
+                    json.WriteBoolean("ClampBounds", true);
+                    json.WriteNumber("BoundsX", c.BoundsX);
+                    json.WriteNumber("BoundsY", c.BoundsY);
+                    json.WriteNumber("BoundsWidth", c.BoundsWidth);
+                    json.WriteNumber("BoundsHeight", c.BoundsHeight);
+                }
             });
     }
 

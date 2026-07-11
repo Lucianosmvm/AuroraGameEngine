@@ -40,6 +40,16 @@ public class ComponentViewModel : ViewModelBase
             ("IsSolid", true), ("IsKinematic", false),
             ("Layer", 1f), ("Mask", -1f),
         ],
+        ["CameraController"] =
+        [
+            ("Follow", ""),
+            ("FollowSpeed", 5f), ("Zoom", 1f),
+            ("OffsetX", 0f), ("OffsetY", 0f),
+            ("ViewWidth", 1280f), ("ViewHeight", 720f),
+            ("ClampBounds", false),
+            ("BoundsX", 0f), ("BoundsY", 0f),
+            ("BoundsWidth", 1280f), ("BoundsHeight", 720f),
+        ],
     };
 
     public JsonObject Node { get; }
