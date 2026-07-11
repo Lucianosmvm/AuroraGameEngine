@@ -266,6 +266,20 @@
       </MenuItem>
     </Menu>
 
+    <!-- Toolbar de execução -->
+    <Border DockPanel.Dock="Top" Background="#16142A" Padding="8,5"
+            BorderBrush="#2A2740" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="▶  Play" Click="OnPlay"
+                IsEnabled="{Binding CanPlay}"
+                FontSize="13" FontWeight="SemiBold" Padding="14,5"
+                Background="#1B5E20" Foreground="White"/>
+        <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
+                   VerticalAlignment="Center" FontSize="11" Opacity="0.5"
+                   IsVisible="{Binding !CanPlay}"/>
+      </StackPanel>
+    </Border>
+
     <Border DockPanel.Dock="Bottom" Background="#1E1C30" Padding="8,4">
       <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"/>
     </Border>
@@ -364,7 +378,7 @@
                    FontWeight="Bold" Opacity="0.5"/>
 
         <!-- Assets Root — visível quando há uma cena aberta -->
-        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,4"
+        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,2"
                 IsVisible="{Binding HasDocument}">
           <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
             <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"
@@ -375,6 +389,23 @@
             <Button Grid.Row="1" Grid.Column="1" Content="Alterar…" FontSize="11"
                     Padding="6,2" Margin="4,0,0,0" Click="OnChangeAssetsRoot"/>
           </Grid>
+        </Border>
+
+        <!-- Projeto: caminho do executável/csproj para o botão Play -->
+        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,4"
+                IsVisible="{Binding HasDocument}">
+          <StackPanel Spacing="4">
+            <TextBlock Text="PROJETO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding GameProjectPath}" FontSize="11" Padding="4,3"
+                       Watermark=".csproj, pasta ou .exe do jogo…" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="…" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                      Click="OnBrowseGameProject"/>
+            </Grid>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              No Main() do jogo: game.ParseArgs(args); e em OnLoad(): LoadScene(BootScene ?? "default.json");
+            </TextBlock>
+          </StackPanel>
         </Border>
         <ScrollViewer>
           <StackPanel Margin="10,0,10,10" DataContext="{Binding SelectedEntity}"

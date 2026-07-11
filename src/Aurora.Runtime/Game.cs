@@ -55,6 +55,28 @@ public abstract class Game : IDisposable
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
 
+    /// <summary>
+    /// Cena passada pelo editor via --scene. Use em <see cref="OnLoad"/>:
+    /// <c>LoadScene(BootScene ?? "scenes/inicio.json");</c>
+    /// </summary>
+    protected string? BootScene { get; private set; }
+
+    /// <summary>
+    /// Processa argumentos de linha de comando. Chame antes de <see cref="Run"/>.
+    /// <para>Argumento reconhecido: <c>--scene &lt;caminho&gt;</c></para>
+    /// </summary>
+    public void ParseArgs(string[] args)
+    {
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == "--scene")
+            {
+                BootScene = args[i + 1];
+                break;
+            }
+        }
+    }
+
     /// <summary>Origem dos assets. Defina antes de Run (Android: AndroidAssetSource). Null = pasta "Assets".</summary>
     public IAssetSource? AssetSource { get; set; }
 

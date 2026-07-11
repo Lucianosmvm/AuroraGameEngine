@@ -210,6 +210,26 @@ public partial class MainWindow : Window
 
     private void OnChangeAssetsRoot(object? sender, RoutedEventArgs e) => _ = PickAssetsRootAsync();
 
+    private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
+
+    private async Task PickGameProjectAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Selecione o .csproj ou executável do jogo",
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Projeto C# ou executável") { Patterns = ["*.csproj", "*.exe", "*.dll"] },
+                new FilePickerFileType("Todos os arquivos") { Patterns = ["*"] },
+            ],
+        });
+
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
+            ViewModel.GameProjectPath = path;
+    }
+
+    private void OnBrowseGameProject(object? sender, RoutedEventArgs e) => _ = PickGameProjectAsync();
+
     private void OnRefreshAssets(object? sender, RoutedEventArgs e)
     {
         ViewModel.ReloadAssets();

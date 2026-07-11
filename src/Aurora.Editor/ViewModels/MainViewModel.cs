@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
@@ -9,6 +10,7 @@ public sealed class MainViewModel : ViewModelBase
     private const double CoalesceWindowMs = 900;
 
     private SceneDocument? _document;
+    private ProjectSettings? _settings;
     private EntityViewModel? _selectedEntity;
     private bool _isDirty;
     private string _status = "Nenhuma cena aberta. Arquivo → Abrir Cena…";
@@ -63,8 +65,56 @@ public sealed class MainViewModel : ViewModelBase
     public bool HasDocument => _document is not null;
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
+    public bool CanPlay => _document is not null && !string.IsNullOrWhiteSpace(_settings?.GameProject);
 
     public string AssetsRootDisplay => _document?.AssetsRoot ?? "";
+
+    /// <summary>Caminho do .csproj, diretório ou .exe do jogo. Salvo em aurora.project.json.</summary>
+    public string GameProjectPath
+    {
+        get => _settings?.GameProject ?? "";
+        set
+        {
+            if (_settings is null || _document is null)
+                return;
+            _settings.GameProject = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
+            Raise();
+            Raise(nameof(CanPlay));
+        }
+    }
+
+    /// <summary>Salva a cena e lança o executável ou dotnet run com --scene.</summary>
+    public void Play()
+    {
+        if (_document is null || string.IsNullOrWhiteSpace(_settings?.GameProject))
+        {
+            Status = "Configure o caminho do projeto (Inspector → PROJETO) antes de usar Play.";
+            return;
+        }
+
+        SaveScene();
+
+        string project   = _settings!.GameProject!.Trim();
+        string scenePath = _document.FilePath;
+
+        try
+        {
+            ProcessStartInfo psi = project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                ? new ProcessStartInfo(project, $"--scene \"{scenePath}\"")
+                  { UseShellExecute = true }
+                : new ProcessStartInfo("dotnet",
+                      $"run --project \"{project}\" -- --scene \"{scenePath}\"")
+                  { UseShellExecute = true };
+
+            Process.Start(psi);
+            Status = $"Jogo iniciado — cena: {Path.GetFileName(scenePath)}";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Erro ao iniciar jogo: {ex.Message}";
+        }
+    }
 
     public void ChangeAssetsRoot(string absolutePath)
     {
@@ -81,6 +131,7 @@ public sealed class MainViewModel : ViewModelBase
     public void NewScene(string filePath)
     {
         _document = SceneDocument.New(filePath);
+        _settings = ProjectSettings.Find(filePath);
 
         RebuildEntities();
         SelectedEntity = null;
@@ -95,6 +146,8 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
         Raise(nameof(AssetsRootDisplay));
+        Raise(nameof(CanPlay));
+        Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
         SceneEdited?.Invoke();
@@ -103,6 +156,7 @@ public sealed class MainViewModel : ViewModelBase
     public void OpenScene(string path)
     {
         _document = SceneDocument.Load(path);
+        _settings = ProjectSettings.Find(path);
 
         RebuildEntities();
         SelectedEntity = Entities.FirstOrDefault();
@@ -117,6 +171,8 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
         Raise(nameof(AssetsRootDisplay));
+        Raise(nameof(CanPlay));
+        Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
         SceneEdited?.Invoke();
