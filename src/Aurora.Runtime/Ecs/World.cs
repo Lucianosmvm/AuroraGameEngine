@@ -22,6 +22,18 @@ public sealed class World
 
     public int EntityCount => _alive.Count;
 
+    /// <summary>Remove todas as entidades e reseta o estado. Chamado ao carregar uma nova cena.</summary>
+    public void Clear()
+    {
+        _alive.Clear();
+        _names.Clear();
+        _stores.Clear();
+        _behaviors.Clear();
+        _destroyQueue.Clear();
+        _renderList.Clear();
+        _nextId = 1;
+    }
+
     public Entity CreateEntity(string name = "Entity")
     {
         int id = _nextId++;

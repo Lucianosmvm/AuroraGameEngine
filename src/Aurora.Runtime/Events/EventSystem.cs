@@ -31,7 +31,13 @@ public sealed class EventSystem
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
 
+    /// <summary>Disparado pela ação ChangeScene. O SceneManager assina e executa a transição.</summary>
+    public event Action<string>? SceneChangeRequested;
+
     private bool _sceneStartFired;
+
+    /// <summary>Reseta o estado de disparo — chamado ao carregar uma nova cena.</summary>
+    public void Reset() => _sceneStartFired = false;
 
     public EventSystem(World world, GameState state)
     {
@@ -158,6 +164,10 @@ public sealed class EventSystem
                 // Name = nome do falante (opcional).
                 Dialogue?.ShowMessage(action.Text, action.Name);
                 MessageShown?.Invoke(action.Text);
+                break;
+
+            case "ChangeScene" when action.Name is not null:
+                SceneChangeRequested?.Invoke(action.Name);
                 break;
 
             case "PlaySound" when action.Name is not null:

@@ -30,6 +30,7 @@ public abstract class Game : IDisposable
     public SpriteBatch SpriteBatch { get; private set; } = null!;
     public AssetManager Assets { get; private set; } = null!;
     public AudioManager Audio { get; private set; } = null!;
+    public SceneManager SceneManager { get; private set; } = null!;
 
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
@@ -79,9 +80,15 @@ public abstract class Game : IDisposable
     /// <summary>Fecha a view e encerra o loop.</summary>
     public void Exit() => View.Close();
 
-    /// <summary>Carrega um JSON de cena dos assets e cria as entidades no <see cref="World"/>.</summary>
-    public void LoadScene(string scenePath)
-        => Scenes.Load(Assets.LoadText(scenePath), new SceneContext { World = World, Assets = Assets });
+    /// <summary>
+    /// Carrega uma cena, limpando o mundo atual. Para transição com fade use
+    /// <see cref="SceneManager.LoadWithFade"/>.
+    /// </summary>
+    public void LoadScene(string scenePath) => SceneManager.Load(scenePath);
+
+    /// <summary>Fade para preto, troca de cena e fade de volta.</summary>
+    public void LoadSceneWithFade(string scenePath, float duration = 0.3f)
+        => SceneManager.LoadWithFade(scenePath, duration);
 
     private void HandleLoad()
     {
@@ -96,6 +103,9 @@ public abstract class Game : IDisposable
         Audio = new AudioManager(source);
         Events.Audio = Audio;
 
+        SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
+        Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
+
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
@@ -107,6 +117,7 @@ public abstract class Game : IDisposable
     private void HandleUpdate(double deltaTime)
     {
         float dt = (float)deltaTime;
+        SceneManager.Update(dt);
         Dialogue.Update();
         OnUpdate(dt);
         World.Update(dt);
@@ -127,6 +138,7 @@ public abstract class Game : IDisposable
         // Passe de UI em coordenadas de tela (HUD, diálogos) — não segue a câmera.
         SpriteBatch.Begin(GetScreenProjection());
         OnRenderUI((float)deltaTime);
+        SceneManager.DrawOverlay(SpriteBatch, View.FramebufferSize.X, View.FramebufferSize.Y);
         SpriteBatch.End();
     }
 

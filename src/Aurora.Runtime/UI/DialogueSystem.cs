@@ -25,6 +25,14 @@ public sealed class DialogueSystem
 
     public bool IsActive => Current is not null || _queue.Count > 0;
 
+    /// <summary>Descarta todos os diálogos pendentes. Chamado ao trocar de cena.</summary>
+    public void Clear()
+    {
+        _queue.Clear();
+        Current = null;
+        SelectedIndex = 0;
+    }
+
     public void ShowMessage(string text, string? speaker = null)
         => _queue.Enqueue(new DialogueMessage(text, speaker));
 
