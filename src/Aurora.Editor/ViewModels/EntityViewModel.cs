@@ -19,7 +19,11 @@ public sealed class EntityViewModel : ViewModelBase
         {
             foreach (var componentNode in components.OfType<JsonObject>())
             {
-                var component = new ComponentViewModel(componentNode);
+                ComponentViewModel component =
+                    componentNode["Type"]?.GetValue<string>() == "EventTrigger"
+                        ? new EventTriggerViewModel(componentNode)
+                        : new ComponentViewModel(componentNode);
+
                 component.Edited += tag => Edited?.Invoke($"{Node.GetHashCode()}/{tag}");
                 Components.Add(component);
             }

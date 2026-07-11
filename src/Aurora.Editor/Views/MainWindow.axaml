@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen">
 
   <Window.DataTemplates>
-    <!-- Editores do inspector, escolhidos pelo tipo do view model da propriedade -->
+    <!-- Editores de propriedades escalares -->
     <DataTemplate DataType="{x:Type vm:NumberPropertyViewModel}">
       <Grid ColumnDefinitions="90,*" Margin="0,2">
         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
@@ -23,6 +23,143 @@
     </DataTemplate>
     <DataTemplate DataType="{x:Type vm:BoolPropertyViewModel}">
       <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
+    </DataTemplate>
+
+    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Animator, Collider…) -->
+    <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
+      <Expander Header="{Binding Type}" IsExpanded="True" Margin="0,0,0,6"
+                HorizontalAlignment="Stretch">
+        <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
+      </Expander>
+    </DataTemplate>
+
+    <!-- EventTrigger: editor completo de gatilho + lista de ações -->
+    <DataTemplate DataType="{x:Type vm:EventTriggerViewModel}">
+      <Expander Header="EventTrigger" IsExpanded="True" Margin="0,0,0,6"
+                HorizontalAlignment="Stretch">
+        <StackPanel Margin="6,4" Spacing="4">
+
+          <!-- Tipo de gatilho -->
+          <Grid ColumnDefinitions="90,*">
+            <TextBlock Text="Trigger" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding TriggerTypes}"
+                      SelectedItem="{Binding TriggerType}" FontSize="12"/>
+          </Grid>
+
+          <!-- Once -->
+          <CheckBox Content="Once (dispara uma vez)" IsChecked="{Binding Once}" FontSize="12"/>
+
+          <!-- Radius — só PlayerTouch -->
+          <Grid ColumnDefinitions="90,*" IsVisible="{Binding ShowRadius}">
+            <TextBlock Text="Radius" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+            <TextBox Grid.Column="1" Text="{Binding RadiusText}" FontSize="12" Padding="6,4"/>
+          </Grid>
+
+          <!-- Switch — só SwitchOn -->
+          <Grid ColumnDefinitions="90,*" IsVisible="{Binding ShowSwitch}">
+            <TextBlock Text="Switch" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+            <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="12" Padding="6,4"/>
+          </Grid>
+
+          <!-- Separador de ações -->
+          <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+                  Margin="0,4,0,2" Padding="0,4,0,0">
+            <TextBlock Text="AÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+          </Border>
+
+          <ItemsControl ItemsSource="{Binding Actions}"/>
+
+          <Button Content="+ Adicionar Ação" Command="{Binding AddActionCommand}"
+                  FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
+        </StackPanel>
+      </Expander>
+    </DataTemplate>
+
+    <!-- Uma ação dentro de EventTrigger -->
+    <DataTemplate DataType="{x:Type vm:EventActionViewModel}">
+      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+        <StackPanel Spacing="3">
+
+          <!-- Tipo + botão remover -->
+          <Grid ColumnDefinitions="*,Auto">
+            <ComboBox ItemsSource="{Binding ActionTypes}"
+                      SelectedItem="{Binding ActionType}" FontSize="12"/>
+            <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Background="Transparent" BorderThickness="0"/>
+          </Grid>
+
+          <!-- Nome (variável, entidade, arquivo, falante) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowName}">
+            <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Op: Set / Add (SetVariable) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowOp}">
+            <TextBlock Text="Op" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding OpTypes}"
+                      SelectedItem="{Binding Op}" FontSize="11"/>
+          </Grid>
+
+          <!-- Valor numérico -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowValue}">
+            <TextBlock Text="{Binding ValueLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding ValueText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- On / Loop (SetSwitch, PlayMusic) -->
+          <CheckBox Content="{Binding OnLabel}" IsChecked="{Binding On}"
+                    FontSize="11" IsVisible="{Binding ShowOn}" Margin="0,1"/>
+
+          <!-- X / Y (Teleport) -->
+          <Grid ColumnDefinitions="28,*,8,28,*" IsVisible="{Binding ShowXY}">
+            <TextBlock Text="X" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding XText}" FontSize="11" Padding="4,3"/>
+            <TextBlock Grid.Column="3" Text="Y" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="4" Text="{Binding YText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Segundos (Wait) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowSeconds}">
+            <TextBlock Text="Segundos" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding SecondsText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Texto (ShowMessage, ShowChoice) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowText}">
+            <TextBlock Text="Texto" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding Text}" FontSize="11" Padding="4,3"
+                     TextWrapping="Wrap"/>
+          </Grid>
+
+          <!-- Opções de ShowChoice -->
+          <StackPanel IsVisible="{Binding ShowOptions}" Margin="0,4,0,0">
+            <TextBlock Text="Opções:" FontSize="10" Opacity="0.6" Margin="0,0,0,2"/>
+            <ItemsControl ItemsSource="{Binding Options}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,76,Auto" Margin="0,1" ColumnSpacing="4">
+                    <TextBox Text="{Binding Text}" FontSize="11" Padding="4,2"
+                             Watermark="Texto da opção…"/>
+                    <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="11"
+                             Padding="4,2" Watermark="Switch"/>
+                    <Button Grid.Column="2" Content="✕" FontSize="10" Padding="4,2"
+                            Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                            Background="Transparent" BorderThickness="0"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="+ Opção" Command="{Binding AddOptionCommand}"
+                    FontSize="11" Margin="0,2"/>
+          </StackPanel>
+
+        </StackPanel>
+      </Border>
     </DataTemplate>
   </Window.DataTemplates>
 
@@ -145,16 +282,7 @@
               <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="13" Padding="6,4"/>
             </Grid>
 
-            <ItemsControl ItemsSource="{Binding Components}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Expander Header="{Binding Type}" IsExpanded="True" Margin="0,0,0,6"
-                            HorizontalAlignment="Stretch">
-                    <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
-                  </Expander>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding Components}"/>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>

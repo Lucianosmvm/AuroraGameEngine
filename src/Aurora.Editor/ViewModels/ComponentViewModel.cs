@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 namespace Aurora.Editor.ViewModels;
 
 /// <summary>Componente de uma entidade no inspector.</summary>
-public sealed class ComponentViewModel : ViewModelBase
+public class ComponentViewModel : ViewModelBase
 {
     /// <summary>
     /// Campos canônicos dos componentes nativos: aparecem no inspector mesmo quando
@@ -45,6 +45,8 @@ public sealed class ComponentViewModel : ViewModelBase
     public List<PropertyViewModel> Properties { get; } = [];
 
     public event Action<string>? Edited;
+
+    protected void RaiseEdited(string tag) => Edited?.Invoke($"{Type}.{tag}");
 
     public ComponentViewModel(JsonObject node)
     {
