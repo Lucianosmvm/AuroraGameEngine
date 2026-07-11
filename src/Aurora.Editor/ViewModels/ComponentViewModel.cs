@@ -31,6 +31,13 @@ public sealed class ComponentViewModel : ViewModelBase
         [
             ("FrameWidth", 0f), ("FrameHeight", 0f), ("SheetColumns", 1f),
         ],
+        ["Collider"] =
+        [
+            ("Shape", "Box"), ("Width", 16f), ("Height", 16f), ("Radius", 8f),
+            ("OffsetX", 0f), ("OffsetY", 0f),
+            ("IsSolid", true), ("IsKinematic", false),
+            ("Layer", 1f), ("Mask", -1f),
+        ],
     };
 
     public JsonObject Node { get; }

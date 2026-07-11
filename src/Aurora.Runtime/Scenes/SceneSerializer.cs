@@ -118,6 +118,7 @@ public sealed class SceneSerializer
     private void RegisterBuiltIns()
     {
         RegisterAnimator();
+        RegisterCollider();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -315,6 +316,40 @@ public sealed class SceneSerializer
                     json.WriteEndObject();
                 }
                 json.WriteEndArray();
+            });
+    }
+
+    private void RegisterCollider()
+    {
+        Register<Collider>("Collider",
+            static (json, _) => new Collider
+            {
+                Shape = GetString(json, "Shape", "Box") == "Circle" ? ColliderShape.Circle : ColliderShape.Box,
+                Width = GetFloat(json, "Width", 16f),
+                Height = GetFloat(json, "Height", 16f),
+                Radius = GetFloat(json, "Radius", 8f),
+                Offset = new(GetFloat(json, "OffsetX", 0f), GetFloat(json, "OffsetY", 0f)),
+                IsSolid = GetBool(json, "IsSolid", true),
+                IsKinematic = GetBool(json, "IsKinematic", false),
+                Layer = GetInt(json, "Layer", 1),
+                Mask = GetInt(json, "Mask", ~0),
+            },
+            static (json, component, _) =>
+            {
+                var c = (Collider)component;
+                if (c.Shape == ColliderShape.Circle) json.WriteString("Shape", "Circle");
+                json.WriteNumber("Width", c.Width);
+                json.WriteNumber("Height", c.Height);
+                if (c.Shape == ColliderShape.Circle) json.WriteNumber("Radius", c.Radius);
+                if (c.Offset.X != 0f || c.Offset.Y != 0f)
+                {
+                    json.WriteNumber("OffsetX", c.Offset.X);
+                    json.WriteNumber("OffsetY", c.Offset.Y);
+                }
+                if (!c.IsSolid) json.WriteBoolean("IsSolid", false);
+                if (c.IsKinematic) json.WriteBoolean("IsKinematic", true);
+                if (c.Layer != 1) json.WriteNumber("Layer", c.Layer);
+                if (c.Mask != ~0) json.WriteNumber("Mask", c.Mask);
             });
     }
 

@@ -17,6 +17,10 @@ public sealed class World
     private readonly List<int> _destroyQueue = new();
     private readonly List<(int Layer, Transform Transform, IComponent Renderable)> _renderList = new();
 
+    private readonly List<(Entity Entity, Transform Transform, Collider Collider)> _collisionBuffer = [];
+    private HashSet<long> _activeTriggers = [];
+    private HashSet<long> _prevTriggers = [];
+
     private int _nextId = 1;
     private bool _updating;
 
@@ -31,6 +35,9 @@ public sealed class World
         _behaviors.Clear();
         _destroyQueue.Clear();
         _renderList.Clear();
+        _collisionBuffer.Clear();
+        _activeTriggers.Clear();
+        _prevTriggers.Clear();
         _nextId = 1;
     }
 
@@ -147,7 +154,7 @@ public sealed class World
         }
     }
 
-    /// <summary>Executa todos os behaviors ativos e processa destruições pendentes.</summary>
+    /// <summary>Executa todos os behaviors ativos, detecta colisões e processa destruições pendentes.</summary>
     public void Update(float deltaTime)
     {
         _updating = true;
@@ -167,6 +174,8 @@ public sealed class World
             behavior.Update(deltaTime);
         }
 
+        ProcessCollisions();
+
         _updating = false;
 
         if (_destroyQueue.Count > 0)
@@ -176,6 +185,219 @@ public sealed class World
             _destroyQueue.Clear();
         }
     }
+
+    private void ProcessCollisions()
+    {
+        _collisionBuffer.Clear();
+        foreach (var entry in Query<Transform, Collider>())
+            _collisionBuffer.Add(entry);
+
+        // Swap sets: _activeTriggers becomes prev, _prevTriggers becomes new current
+        (_prevTriggers, _activeTriggers) = (_activeTriggers, _prevTriggers);
+        _activeTriggers.Clear();
+
+        for (int i = 0; i < _collisionBuffer.Count; i++)
+        {
+            var (ea, ta, ca) = _collisionBuffer[i];
+
+            for (int j = i + 1; j < _collisionBuffer.Count; j++)
+            {
+                var (eb, tb, cb) = _collisionBuffer[j];
+
+                if ((ca.Mask & cb.Layer) == 0 && (cb.Mask & ca.Layer) == 0)
+                    continue;
+
+                if (!Overlap(ta.Position + ca.Offset, ca, tb.Position + cb.Offset, cb,
+                        out var normal, out var depth))
+                    continue;
+
+                if (ca.IsSolid && cb.IsSolid)
+                {
+                    Resolve(ta, ca, tb, cb, normal, depth);
+                    NotifyCollision(ea.Id, eb, new CollisionInfo(-normal, depth));
+                    NotifyCollision(eb.Id, ea, new CollisionInfo(normal, depth));
+                }
+                else
+                {
+                    long key = PairKey(ea.Id, eb.Id);
+                    _activeTriggers.Add(key);
+
+                    if (!_prevTriggers.Contains(key))
+                    {
+                        NotifyTriggerEnter(ea.Id, eb);
+                        NotifyTriggerEnter(eb.Id, ea);
+                    }
+                }
+            }
+        }
+
+        foreach (long key in _prevTriggers)
+        {
+            if (_activeTriggers.Contains(key)) continue;
+
+            int idA = (int)(key >> 32);
+            int idB = (int)(key & 0xFFFF_FFFF);
+            if (_alive.Contains(idA)) NotifyTriggerExit(idA, new Entity(idB, this));
+            if (_alive.Contains(idB)) NotifyTriggerExit(idB, new Entity(idA, this));
+        }
+    }
+
+    private static void Resolve(Transform ta, Collider ca, Transform tb, Collider cb,
+        Vector2 normal, float depth)
+    {
+        if (ca.IsKinematic && !cb.IsKinematic)
+            tb.Position += normal * depth;
+        else if (!ca.IsKinematic && cb.IsKinematic)
+            ta.Position -= normal * depth;
+        else if (!ca.IsKinematic)
+        {
+            ta.Position -= normal * (depth * 0.5f);
+            tb.Position += normal * (depth * 0.5f);
+        }
+    }
+
+    private static bool Overlap(Vector2 posA, Collider ca, Vector2 posB, Collider cb,
+        out Vector2 normal, out float depth)
+    {
+        normal = Vector2.Zero;
+        depth = 0f;
+
+        if (ca.Shape == ColliderShape.Box && cb.Shape == ColliderShape.Box)
+            return BoxBox(posA, ca, posB, cb, out normal, out depth);
+
+        if (ca.Shape == ColliderShape.Circle && cb.Shape == ColliderShape.Circle)
+            return CircleCircle(posA, ca, posB, cb, out normal, out depth);
+
+        if (ca.Shape == ColliderShape.Box && cb.Shape == ColliderShape.Circle)
+            return BoxCircle(posA, ca, posB, cb, out normal, out depth);
+
+        // CircleBox: delegate to BoxCircle with args swapped, then flip normal
+        if (BoxCircle(posB, cb, posA, ca, out normal, out depth))
+        {
+            normal = -normal;
+            return true;
+        }
+        return false;
+    }
+
+    private static bool BoxBox(Vector2 posA, Collider a, Vector2 posB, Collider b,
+        out Vector2 normal, out float depth)
+    {
+        normal = Vector2.Zero;
+        depth = 0f;
+
+        float dx = posB.X - posA.X;
+        float dy = posB.Y - posA.Y;
+        float ox = a.Width * 0.5f + b.Width * 0.5f - MathF.Abs(dx);
+        float oy = a.Height * 0.5f + b.Height * 0.5f - MathF.Abs(dy);
+
+        if (ox <= 0f || oy <= 0f) return false;
+
+        if (ox < oy)
+        {
+            normal = new Vector2(MathF.Sign(dx), 0f);
+            depth = ox;
+        }
+        else
+        {
+            normal = new Vector2(0f, MathF.Sign(dy));
+            depth = oy;
+        }
+        return true;
+    }
+
+    private static bool CircleCircle(Vector2 posA, Collider a, Vector2 posB, Collider b,
+        out Vector2 normal, out float depth)
+    {
+        normal = Vector2.Zero;
+        depth = 0f;
+
+        var diff = posB - posA;
+        float distSq = diff.LengthSquared();
+        float sumR = a.Radius + b.Radius;
+
+        if (distSq >= sumR * sumR) return false;
+
+        float dist = MathF.Sqrt(distSq);
+        normal = dist > 1e-6f ? diff / dist : Vector2.UnitY;
+        depth = sumR - dist;
+        return true;
+    }
+
+    // normal convention: points from box center toward circle center
+    private static bool BoxCircle(Vector2 boxPos, Collider box, Vector2 circPos, Collider circ,
+        out Vector2 normal, out float depth)
+    {
+        normal = Vector2.Zero;
+        depth = 0f;
+
+        float halfX = box.Width * 0.5f, halfY = box.Height * 0.5f;
+        float cx = Math.Clamp(circPos.X, boxPos.X - halfX, boxPos.X + halfX);
+        float cy = Math.Clamp(circPos.Y, boxPos.Y - halfY, boxPos.Y + halfY);
+
+        var diff = circPos - new Vector2(cx, cy);
+        float distSq = diff.LengthSquared();
+
+        if (distSq >= circ.Radius * circ.Radius) return false;
+
+        if (distSq < 1e-12f)
+        {
+            // Circle center inside box: push out along shortest axis
+            var d = circPos - boxPos;
+            float overX = halfX - MathF.Abs(d.X);
+            float overY = halfY - MathF.Abs(d.Y);
+            if (overX < overY)
+            {
+                normal = new Vector2(MathF.Sign(d.X), 0f);
+                depth = circ.Radius + overX;
+            }
+            else
+            {
+                normal = new Vector2(0f, MathF.Sign(d.Y));
+                depth = circ.Radius + overY;
+            }
+        }
+        else
+        {
+            float dist = MathF.Sqrt(distSq);
+            normal = diff / dist;
+            depth = circ.Radius - dist;
+        }
+        return true;
+    }
+
+    private void NotifyCollision(int entityId, Entity other, CollisionInfo info)
+    {
+        for (int i = 0; i < _behaviors.Count; i++)
+        {
+            var b = _behaviors[i];
+            if (b.Entity.Id == entityId && b.Enabled)
+                b.OnCollision(other, info);
+        }
+    }
+
+    private void NotifyTriggerEnter(int entityId, Entity other)
+    {
+        for (int i = 0; i < _behaviors.Count; i++)
+        {
+            var b = _behaviors[i];
+            if (b.Entity.Id == entityId && b.Enabled)
+                b.OnTriggerEnter(other);
+        }
+    }
+
+    private void NotifyTriggerExit(int entityId, Entity other)
+    {
+        for (int i = 0; i < _behaviors.Count; i++)
+        {
+            var b = _behaviors[i];
+            if (b.Entity.Id == entityId && b.Enabled)
+                b.OnTriggerExit(other);
+        }
+    }
+
+    private static long PairKey(int idA, int idB)
+        => idA < idB ? ((long)idA << 32) | (uint)idB : ((long)idB << 32) | (uint)idA;
 
     /// <summary>
     /// Desenha sprites e tilemaps intercalados por camada. Com câmera, tiles fora
