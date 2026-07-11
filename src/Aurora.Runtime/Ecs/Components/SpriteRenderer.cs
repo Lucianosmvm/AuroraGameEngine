@@ -22,6 +22,9 @@ public sealed class SpriteRenderer : IComponent
     public bool FlipY;
     public bool Visible = true;
 
+    /// <summary>Recorte do sprite sheet em pixels. Null = textura inteira.</summary>
+    public RectF? SourceRect;
+
     public SpriteRenderer()
     {
     }

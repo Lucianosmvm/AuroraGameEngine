@@ -27,6 +27,10 @@ public sealed class ComponentViewModel : ViewModelBase
             ("Texture", ""), ("TileWidth", 16f), ("TileHeight", 16f),
             ("Width", 0f), ("Height", 0f), ("Layer", 0f),
         ],
+        ["Animator"] =
+        [
+            ("FrameWidth", 0f), ("FrameHeight", 0f), ("SheetColumns", 1f),
+        ],
     };
 
     public JsonObject Node { get; }

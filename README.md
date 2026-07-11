@@ -16,6 +16,9 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ Variáveis e switches globais (`GameState`) com save/load em JSON
 - ✅ Eventos visuais (`EventTrigger`): gatilhos SceneStart/PlayerTouch/SwitchOn e
   ações SetVariable, SetSwitch, Teleport, Destroy, Wait, ShowMessage
+- ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações
+  PlaySound/PlayMusic/StopMusic nos eventos visuais
+- ✅ **Animação de sprites**: componente `Animator` com clipes de sprite sheet, troca de clipe em runtime
 
 ## Editor
 
@@ -104,13 +107,86 @@ public class MyGame : Game
 new MyGame().Run("Meu Jogo", 1280, 720);
 ```
 
+## Animação de sprites
+
+Coloque o sprite sheet como qualquer textura e adicione um `Animator`:
+
+```csharp
+var hero = World.CreateEntity("Hero");
+hero.Add(new Transform(0, 0));
+hero.Add(new SpriteRenderer(Assets.LoadTexture("sprites/hero.png")));
+var anim = hero.Add(new Animator
+{
+    FrameWidth = 32, FrameHeight = 48, SheetColumns = 4,
+    Clips =
+    [
+        new AnimationClip { Name = "idle", Frames = [0, 1, 2, 3], FrameDuration = 0.2f },
+        new AnimationClip { Name = "walk", Frames = [4, 5, 6, 7], FrameDuration = 0.1f },
+        new AnimationClip { Name = "attack", Frames = [8, 9, 10], FrameDuration = 0.08f, Loop = false },
+    ],
+});
+```
+
+Dentro de um `Behavior`:
+
+```csharp
+var anim = Get<Animator>()!;
+if (moving) anim.Play("walk");
+else        anim.Play("idle");
+
+if (attacking && anim.IsFinished) anim.Play("idle");
+```
+
+O frame ativo é calculado do índice na grade: `col = frame % SheetColumns`, `row = frame / SheetColumns`.
+O `Animator` atualiza o `SourceRect` do `SpriteRenderer` automaticamente a cada frame.
+
+### Cena JSON
+
+```json
+{
+  "Type": "Animator",
+  "FrameWidth": 32, "FrameHeight": 48, "SheetColumns": 4,
+  "Clips": [
+    { "Name": "idle", "Frames": [0,1,2,3], "Duration": 0.2 },
+    { "Name": "walk", "Frames": [4,5,6,7], "Duration": 0.1 }
+  ]
+}
+```
+
+## Áudio
+
+Coloque os arquivos em `Assets/sounds/`. Formatos suportados: **WAV** (PCM 8/16 bits) e **OGG Vorbis**.
+
+```csharp
+// Em OnLoad():
+Audio.Preload("sounds/bgm.ogg");          // opcional: pré-carrega sem tocar
+
+// Em OnUpdate() ou Behavior:
+Audio.Play("sounds/coin.wav");            // SFX (one-shot, pool de 16 fontes)
+Audio.Play("sounds/hit.wav", volume: 0.6f, pitch: 1.2f);
+Audio.PlayMusic("sounds/bgm.ogg");        // canal de música com loop
+Audio.StopMusic();
+Audio.MasterVolume = 0.8f;               // volume global (0..1)
+```
+
+### Nos eventos visuais (JSON de cena)
+
+```json
+{ "Action": "PlaySound", "Name": "sounds/coin.wav", "Value": 1.0 }
+{ "Action": "PlayMusic", "Name": "sounds/bgm.ogg", "On": true, "Value": 0.7 }
+{ "Action": "StopMusic" }
+```
+
+`Value` = volume (0..1, padrão 1.0). `On` no PlayMusic = loop (padrão true).
+Se não houver dispositivo de áudio, `Audio.IsAvailable` é false e todas as chamadas são no-op.
+
 ## Roadmap
 
 1. **Fase 1 — Runtime básico** ✅
 2. **Fase 1.5 — Prova de conceito Android** (sprite rodando em APK) — próximo
-3. **Fase 2 — Editor** (Avalonia): hierarquia, inspector, scene view, asset browser
-4. **Fase 3 — Ferramentas RPG**: tiles, eventos visuais, diálogos, inventário, quests, save
-5. **Fase 4 — Avançado**: state machine de animação, partículas, luzes 2D, behavior trees, A*
+3. **Fase 2 — Editor** (Avalonia): hierarquia, inspector, scene view, asset browser ✅ (parcial)
+4. **Fase 3 — Ferramentas RPG**: tiles ✅, eventos visuais ✅, diálogos ✅, **áudio** ✅, inventário, quests, save
+5. **Fase 4 — Avançado**: animação de sprites, partículas, luzes 2D, física 2D, A*
 6. **Fase 5 — Exportação**: Android (APK/AAB), Windows, Linux, Web, plugins
 
 ## Requisitos

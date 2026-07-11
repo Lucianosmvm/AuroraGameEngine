@@ -1,4 +1,5 @@
 using Aurora.Runtime.Assets;
+using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Events;
@@ -28,6 +29,7 @@ public abstract class Game : IDisposable
     public InputManager Input { get; private set; } = null!;
     public SpriteBatch SpriteBatch { get; private set; } = null!;
     public AssetManager Assets { get; private set; } = null!;
+    public AudioManager Audio { get; private set; } = null!;
 
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
@@ -88,7 +90,11 @@ public abstract class Game : IDisposable
 
         bool isGles = View.API.API == ContextAPI.OpenGLES;
         SpriteBatch = new SpriteBatch(Gl, isGles);
-        Assets = new AssetManager(Gl, AssetSource ?? new FileAssetSource());
+
+        var source = AssetSource ?? new FileAssetSource();
+        Assets = new AssetManager(Gl, source);
+        Audio = new AudioManager(source);
+        Events.Audio = Audio;
 
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
@@ -140,6 +146,7 @@ public abstract class Game : IDisposable
     private void HandleClosing()
     {
         OnUnload();
+        Audio?.Dispose();
         Assets?.Dispose();
         SpriteBatch?.Dispose();
     }

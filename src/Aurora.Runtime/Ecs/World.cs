@@ -192,9 +192,10 @@ public sealed class World
             if (renderable is SpriteRenderer sprite)
             {
                 var texture = sprite.Texture!;
-                var size = (sprite.Size ?? new Vector2(texture.Width, texture.Height)) * transform.Scale;
+                var source = sprite.SourceRect ?? new RectF(0f, 0f, texture.Width, texture.Height);
+                var size = (sprite.Size ?? new Vector2(source.Width, source.Height)) * transform.Scale;
                 batch.Draw(texture, transform.Position, size, sprite.Origin, transform.Rotation,
-                    sprite.Color, sprite.FlipX, sprite.FlipY);
+                    sprite.Color, source, sprite.FlipX, sprite.FlipY);
             }
             else if (renderable is Tilemap tilemap)
             {

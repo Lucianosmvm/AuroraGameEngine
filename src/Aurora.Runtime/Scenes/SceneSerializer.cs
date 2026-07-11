@@ -117,6 +117,7 @@ public sealed class SceneSerializer
 
     private void RegisterBuiltIns()
     {
+        RegisterAnimator();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -310,6 +311,63 @@ public sealed class SceneSerializer
                         }
                         json.WriteEndArray();
                     }
+
+                    json.WriteEndObject();
+                }
+                json.WriteEndArray();
+            });
+    }
+
+    private void RegisterAnimator()
+    {
+        Register<Animator>("Animator",
+            static (json, _) =>
+            {
+                var animator = new Animator
+                {
+                    FrameWidth = GetInt(json, "FrameWidth", 0),
+                    FrameHeight = GetInt(json, "FrameHeight", 0),
+                    SheetColumns = GetInt(json, "SheetColumns", 1),
+                };
+
+                if (json.TryGetProperty("Clips", out var clipsEl))
+                {
+                    foreach (var clipEl in clipsEl.EnumerateArray())
+                    {
+                        var clip = new AnimationClip
+                        {
+                            Name = GetString(clipEl, "Name", ""),
+                            FrameDuration = GetFloat(clipEl, "Duration", 0.1f),
+                            Loop = GetBool(clipEl, "Loop", true),
+                        };
+
+                        if (clipEl.TryGetProperty("Frames", out var framesEl))
+                            clip.Frames = framesEl.EnumerateArray().Select(f => f.GetInt32()).ToArray();
+
+                        animator.Clips.Add(clip);
+                    }
+                }
+
+                return animator;
+            },
+            static (json, component, _) =>
+            {
+                var a = (Animator)component;
+                json.WriteNumber("FrameWidth", a.FrameWidth);
+                json.WriteNumber("FrameHeight", a.FrameHeight);
+                if (a.SheetColumns != 1) json.WriteNumber("SheetColumns", a.SheetColumns);
+
+                json.WriteStartArray("Clips");
+                foreach (var clip in a.Clips)
+                {
+                    json.WriteStartObject();
+                    json.WriteString("Name", clip.Name);
+                    json.WriteNumber("Duration", clip.FrameDuration);
+                    if (!clip.Loop) json.WriteBoolean("Loop", false);
+
+                    json.WriteStartArray("Frames");
+                    foreach (int f in clip.Frames) json.WriteNumberValue(f);
+                    json.WriteEndArray();
 
                     json.WriteEndObject();
                 }

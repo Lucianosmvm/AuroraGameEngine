@@ -1,4 +1,5 @@
 using System.Numerics;
+using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.UI;
@@ -23,6 +24,9 @@ public sealed class EventSystem
     /// de ações pausa até o jogador dispensar (modelo RPG Maker).
     /// </summary>
     public DialogueSystem? Dialogue { get; set; }
+
+    /// <summary>Quando presente, PlaySound/PlayMusic/StopMusic reproduzem áudio.</summary>
+    public AudioManager? Audio { get; set; }
 
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
@@ -154,6 +158,18 @@ public sealed class EventSystem
                 // Name = nome do falante (opcional).
                 Dialogue?.ShowMessage(action.Text, action.Name);
                 MessageShown?.Invoke(action.Text);
+                break;
+
+            case "PlaySound" when action.Name is not null:
+                Audio?.Play(action.Name, action.Value > 0f ? action.Value : 1f);
+                break;
+
+            case "PlayMusic" when action.Name is not null:
+                Audio?.PlayMusic(action.Name, action.On, action.Value > 0f ? action.Value : 1f);
+                break;
+
+            case "StopMusic":
+                Audio?.StopMusic();
                 break;
 
             case "ShowChoice" when Dialogue is not null && action.Options.Count > 0:
