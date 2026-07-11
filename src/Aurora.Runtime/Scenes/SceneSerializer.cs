@@ -207,6 +207,22 @@ public sealed class SceneSerializer
                 if (json.TryGetProperty("Tiles", out var tiles))
                     map.Tiles = tiles.EnumerateArray().Select(t => t.GetInt32()).ToArray();
 
+                // SolidTiles: aceita string "1, 3, 5" (editor) ou array [1, 3, 5]
+                if (json.TryGetProperty("SolidTiles", out var solidEl))
+                {
+                    if (solidEl.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        foreach (var part in (solidEl.GetString() ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            if (int.TryParse(part, out int idx))
+                                map.SolidTiles.Add(idx);
+                    }
+                    else if (solidEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var t in solidEl.EnumerateArray())
+                            map.SolidTiles.Add(t.GetInt32());
+                    }
+                }
+
                 map.EnsureSize();
                 return map;
             },
@@ -221,6 +237,10 @@ public sealed class SceneSerializer
                 json.WriteNumber("Height", map.Height);
                 if (map.Layer != 0)
                     json.WriteNumber("Layer", map.Layer);
+
+                if (map.SolidTiles.Count > 0)
+                    json.WriteString("SolidTiles",
+                        string.Join(", ", map.SolidTiles.OrderBy(x => x)));
 
                 json.WriteStartArray("Tiles");
                 foreach (int tile in map.Tiles)

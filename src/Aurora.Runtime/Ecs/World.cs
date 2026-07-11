@@ -18,6 +18,8 @@ public sealed class World
     private readonly List<(int Layer, Transform Transform, IComponent Renderable)> _renderList = new();
 
     private readonly List<(Entity Entity, Transform Transform, Collider Collider)> _collisionBuffer = [];
+    private readonly List<(Entity Entity, Transform Transform, Tilemap Tilemap)> _tilemapBuffer = [];
+    private readonly Collider _tileCollider = new() { IsKinematic = true };
     private HashSet<long> _activeTriggers = [];
     private HashSet<long> _prevTriggers = [];
 
@@ -36,6 +38,7 @@ public sealed class World
         _destroyQueue.Clear();
         _renderList.Clear();
         _collisionBuffer.Clear();
+        _tilemapBuffer.Clear();
         _activeTriggers.Clear();
         _prevTriggers.Clear();
         _nextId = 1;
@@ -239,6 +242,79 @@ public sealed class World
             int idB = (int)(key & 0xFFFF_FFFF);
             if (_alive.Contains(idA)) NotifyTriggerExit(idA, new Entity(idB, this));
             if (_alive.Contains(idB)) NotifyTriggerExit(idB, new Entity(idA, this));
+        }
+
+        ProcessTilemapCollisions();
+    }
+
+    private void ProcessTilemapCollisions()
+    {
+        // Build tilemap list (only maps with solid tiles)
+        _tilemapBuffer.Clear();
+        foreach (var entry in Query<Transform, Tilemap>())
+        {
+            if (entry.C2.SolidTiles.Count > 0)
+                _tilemapBuffer.Add(entry);
+        }
+
+        if (_tilemapBuffer.Count == 0) return;
+
+        for (int i = 0; i < _collisionBuffer.Count; i++)
+        {
+            var (entity, transform, collider) = _collisionBuffer[i];
+            if (collider.IsKinematic) continue;
+
+            Vector2 center = transform.Position + collider.Offset;
+
+            for (int m = 0; m < _tilemapBuffer.Count; m++)
+            {
+                var (mapEntity, mapTransform, tilemap) = _tilemapBuffer[m];
+                CheckTilemapCollision(entity, transform, collider, ref center, mapEntity, mapTransform, tilemap);
+            }
+        }
+    }
+
+    private void CheckTilemapCollision(
+        Entity entity, Transform transform, Collider collider, ref Vector2 center,
+        Entity mapEntity, Transform mapTransform, Tilemap tilemap)
+    {
+        float tileW = tilemap.TileWidth * mapTransform.Scale.X;
+        float tileH = tilemap.TileHeight * mapTransform.Scale.Y;
+        if (tileW <= 0f || tileH <= 0f) return;
+
+        // Collider half-extents for sweep range
+        float hw = collider.Shape == ColliderShape.Circle ? collider.Radius : collider.Width * 0.5f;
+        float hh = collider.Shape == ColliderShape.Circle ? collider.Radius : collider.Height * 0.5f;
+
+        Vector2 origin = mapTransform.Position;
+        int minX = Math.Max(0, (int)MathF.Floor((center.X - hw - origin.X) / tileW));
+        int maxX = Math.Min(tilemap.Width - 1, (int)MathF.Floor((center.X + hw - origin.X) / tileW));
+        int minY = Math.Max(0, (int)MathF.Floor((center.Y - hh - origin.Y) / tileH));
+        int maxY = Math.Min(tilemap.Height - 1, (int)MathF.Floor((center.Y + hh - origin.Y) / tileH));
+
+        _tileCollider.Width = tileW;
+        _tileCollider.Height = tileH;
+
+        for (int ty = minY; ty <= maxY; ty++)
+        {
+            for (int tx = minX; tx <= maxX; tx++)
+            {
+                int tileIndex = tilemap.Tiles[ty * tilemap.Width + tx];
+                if (tileIndex < 0 || !tilemap.SolidTiles.Contains(tileIndex))
+                    continue;
+
+                // Tile center in world space
+                var tileCenter = origin + new Vector2((tx + 0.5f) * tileW, (ty + 0.5f) * tileH);
+
+                if (!Overlap(center, collider, tileCenter, _tileCollider, out var normal, out var depth))
+                    continue;
+
+                // Tile is always kinematic — push entity out
+                transform.Position -= normal * depth;
+                center -= normal * depth;
+
+                NotifyCollision(entity.Id, mapEntity, new CollisionInfo(-normal, depth));
+            }
         }
     }
 

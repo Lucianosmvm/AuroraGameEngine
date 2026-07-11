@@ -23,6 +23,13 @@ public sealed class Tilemap : IComponent
     /// <summary>Width*Height índices; -1 = célula vazia.</summary>
     public int[] Tiles = [];
 
+    /// <summary>
+    /// Índices de tile que bloqueiam movimento (colisão sólida).
+    /// Ex.: {1, 3} = tile 1 e tile 3 são paredes.
+    /// Vazio = nenhuma célula bloqueia (tilemap decorativo).
+    /// </summary>
+    public HashSet<int> SolidTiles = [];
+
     public int TilesPerRow => Tileset is null || TileWidth <= 0
         ? 1
         : Math.Max(1, Tileset.Width / TileWidth);

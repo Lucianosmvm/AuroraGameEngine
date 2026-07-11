@@ -26,6 +26,7 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Texture", ""), ("TileWidth", 16f), ("TileHeight", 16f),
             ("Width", 0f), ("Height", 0f), ("Layer", 0f),
+            ("SolidTiles", ""),   // índices separados por vírgula, ex: "1, 3, 5"
         ],
         ["Animator"] =
         [
