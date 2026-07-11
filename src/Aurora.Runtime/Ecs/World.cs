@@ -127,6 +127,10 @@ public sealed class World
         if (!_alive.Remove(id))
             return;
 
+        // Snapshot: OnDestroy pode chamar Destroy() em cascata, modificando _behaviors
+        foreach (var b in _behaviors.Where(b => b.Entity.Id == id).ToArray())
+            b.OnDestroy();
+
         _names.Remove(id);
         foreach (var store in _stores.Values)
             store.Remove(id);

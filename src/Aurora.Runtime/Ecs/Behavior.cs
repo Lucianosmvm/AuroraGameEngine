@@ -19,6 +19,9 @@ public abstract class Behavior : IComponent
     /// <summary>Chamado a cada frame com o delta em segundos.</summary>
     public virtual void Update(float deltaTime) { }
 
+    /// <summary>Chamado quando a entidade é destruída (antes dos componentes serem removidos).</summary>
+    public virtual void OnDestroy() { }
+
     /// <summary>Chamado após resolução de colisão sólida. Normal aponta para fora da outra entidade.</summary>
     public virtual void OnCollision(Entity other, CollisionInfo info) { }
 
