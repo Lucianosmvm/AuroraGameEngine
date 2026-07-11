@@ -157,9 +157,9 @@
             <TextBox Grid.Column="1" Text="{Binding SecondsText}" FontSize="11" Padding="4,3"/>
           </Grid>
 
-          <!-- Texto (ShowMessage, ShowChoice) -->
+          <!-- Texto / Clipe (ShowMessage, ShowChoice, PlayAnimation) -->
           <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowText}">
-            <TextBlock Text="Texto" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBlock Text="{Binding TextLabel}" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
             <TextBox Grid.Column="1" Text="{Binding Text}" FontSize="11" Padding="4,3"
                      TextWrapping="Wrap"/>
           </Grid>

@@ -21,6 +21,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Wait", "SetVariable", "SetSwitch",
         "ShowMessage", "ShowChoice",
         "Teleport", "Destroy",
+        "PlayAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
         "ChangeScene", "Save",
     ];
@@ -63,7 +64,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string NameLabel => ActionType switch
     {
         "SetVariable" or "SetSwitch" => "Variável",
-        "Teleport" or "Destroy" => "Entidade",
+        "Teleport" or "Destroy" or "PlayAnimation" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         _ => "Falante",
     };
@@ -165,15 +166,17 @@ public sealed class EventActionViewModel : ViewModelBase
         }
     }
 
+    public string TextLabel => ActionType == "PlayAnimation" ? "Clipe" : "Texto";
+
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
-        or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
+        or "PlayAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic";
     public bool ShowXY => ActionType == "Teleport";
     public bool ShowSeconds => ActionType == "Wait";
-    public bool ShowText => ActionType is "ShowMessage" or "ShowChoice";
+    public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";
     public bool ShowOptions => ActionType == "ShowChoice";
 
     private void RaiseVisibility()
@@ -189,6 +192,7 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(NameLabel));
         Raise(nameof(ValueLabel));
         Raise(nameof(OnLabel));
+        Raise(nameof(TextLabel));
     }
 
     private void AddOption()

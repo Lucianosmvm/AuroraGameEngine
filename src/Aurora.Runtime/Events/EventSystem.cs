@@ -219,6 +219,10 @@ public sealed class EventSystem
                 Audio?.StopMusic();
                 break;
 
+            case "PlayAnimation" when action.Text is not null:
+                ResolveTarget(self, action.Name)?.Get<Animator>()?.Play(action.Text, restart: true);
+                break;
+
             case "ShowChoice" when Dialogue is not null && action.Options.Count > 0:
                 Dialogue.ShowChoice(action.Text ?? "",
                     action.Options.Select(o => o.Text).ToList(),
