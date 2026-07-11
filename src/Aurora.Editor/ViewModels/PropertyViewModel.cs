@@ -26,6 +26,20 @@ public abstract class PropertyViewModel : ViewModelBase
     }
 
     protected void NotifyEdited() => Edited?.Invoke(Name);
+
+    /// <summary>
+    /// Lê um número do nó JSON como float, tolerando inteiros armazenados como
+    /// Int32/Int64 (System.Text.Json não converte implicitamente para Single).
+    /// </summary>
+    internal static float ReadFloat(JsonNode? node, float fallback)
+    {
+        if (node is not JsonValue jv) return fallback;
+        if (jv.TryGetValue(out float  f)) return f;
+        if (jv.TryGetValue(out double d)) return (float)d;
+        if (jv.TryGetValue(out long   l)) return l;
+        if (jv.TryGetValue(out int    i)) return i;
+        return fallback;
+    }
 }
 
 public sealed class NumberPropertyViewModel : PropertyViewModel
@@ -40,7 +54,7 @@ public sealed class NumberPropertyViewModel : PropertyViewModel
 
     public float Value
     {
-        get => Component[Name]?.GetValue<float>() ?? _fallback;
+        get => ReadFloat(Component[Name], _fallback);
         set
         {
             if (Math.Abs(Value - value) < float.Epsilon)

@@ -119,7 +119,7 @@ public class ComponentViewModel : ViewModelBase
         => Properties.OfType<TextPropertyViewModel>().FirstOrDefault(p => p.Name == name);
 
     // Leitura direta do nó para renderização do canvas (sem passar pelos VMs de propriedade).
-    public float GetFloat(string name, float fallback) => Node[name]?.GetValue<float>() ?? fallback;
+    public float GetFloat(string name, float fallback) => PropertyViewModel.ReadFloat(Node[name], fallback);
     public string? GetString(string name) => Node[name]?.GetValue<string>();
     public bool GetBool(string name, bool fallback) => Node[name]?.GetValue<bool>() ?? fallback;
 }
