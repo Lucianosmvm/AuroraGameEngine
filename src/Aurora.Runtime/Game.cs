@@ -110,6 +110,7 @@ public abstract class Game : IDisposable
         Assets = new AssetManager(Gl, source);
         Audio = new AudioManager(source);
         Events.Audio = Audio;
+        Events.Input = Input;
 
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
         Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);

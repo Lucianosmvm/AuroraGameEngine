@@ -9,7 +9,10 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 {
     private readonly JsonObject _triggerNode;
 
-    public string[] TriggerTypes { get; } = ["SceneStart", "PlayerTouch", "SwitchOn"];
+    public string[] TriggerTypes { get; } =
+        ["SceneStart", "PlayerTouch", "SwitchOn", "KeyPress", "Timer", "VariableCompare"];
+
+    public string[] CompareOps { get; } = [">=", "<=", ">", "<", "==", "!="];
 
     public ICommand AddActionCommand { get; }
 
@@ -31,6 +34,9 @@ public sealed class EventTriggerViewModel : ComponentViewModel
             Raise();
             Raise(nameof(ShowRadius));
             Raise(nameof(ShowSwitch));
+            Raise(nameof(ShowKey));
+            Raise(nameof(ShowInterval));
+            Raise(nameof(ShowCompare));
             RaiseEdited("trigger");
         }
     }
@@ -69,8 +75,69 @@ public sealed class EventTriggerViewModel : ComponentViewModel
         }
     }
 
-    public bool ShowRadius => TriggerType == "PlayerTouch";
-    public bool ShowSwitch => TriggerType == "SwitchOn";
+    public bool ShowRadius   => TriggerType == "PlayerTouch";
+    public bool ShowSwitch   => TriggerType == "SwitchOn";
+    public bool ShowKey      => TriggerType == "KeyPress";
+    public bool ShowInterval => TriggerType == "Timer";
+    public bool ShowCompare  => TriggerType == "VariableCompare";
+
+    public string Key
+    {
+        get => _triggerNode["Key"]?.GetValue<string>() ?? "E";
+        set { _triggerNode["Key"] = value; Raise(); RaiseEdited("key"); }
+    }
+
+    public float Interval
+    {
+        get => _triggerNode["Interval"]?.GetValue<float>() ?? 5f;
+        set { _triggerNode["Interval"] = value; Raise(); Raise(nameof(IntervalText)); RaiseEdited("interval"); }
+    }
+
+    public string IntervalText
+    {
+        get => Interval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        set
+        {
+            if (float.TryParse(value.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float f))
+                Interval = f;
+        }
+    }
+
+    public string Variable
+    {
+        get => _triggerNode["Variable"]?.GetValue<string>() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value)) _triggerNode.Remove("Variable");
+            else _triggerNode["Variable"] = value;
+            Raise();
+            RaiseEdited("variable");
+        }
+    }
+
+    public string CompareOp
+    {
+        get => _triggerNode["CompareOp"]?.GetValue<string>() ?? ">=";
+        set { _triggerNode["CompareOp"] = value; Raise(); RaiseEdited("compare-op"); }
+    }
+
+    public float CompareValue
+    {
+        get => _triggerNode["CompareValue"]?.GetValue<float>() ?? 0f;
+        set { _triggerNode["CompareValue"] = value; Raise(); Raise(nameof(CompareValueText)); RaiseEdited("compare-value"); }
+    }
+
+    public string CompareValueText
+    {
+        get => CompareValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        set
+        {
+            if (float.TryParse(value.Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out float f))
+                CompareValue = f;
+        }
+    }
 
     public void AddAction()
     {

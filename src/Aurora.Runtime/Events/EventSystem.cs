@@ -2,8 +2,10 @@ using System.Numerics;
 using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.Input;
 using Aurora.Runtime.Saves;
 using Aurora.Runtime.UI;
+using Silk.NET.Input;
 
 namespace Aurora.Runtime.Events;
 
@@ -25,6 +27,9 @@ public sealed class EventSystem
     /// de ações pausa até o jogador dispensar (modelo RPG Maker).
     /// </summary>
     public DialogueSystem? Dialogue { get; set; }
+
+    /// <summary>Quando presente, KeyPress detecta teclas pressionadas.</summary>
+    public InputManager? Input { get; set; }
 
     /// <summary>Quando presente, PlaySound/PlayMusic/StopMusic reproduzem áudio.</summary>
     public AudioManager? Audio { get; set; }
@@ -62,6 +67,10 @@ public sealed class EventSystem
 
         foreach (var (entity, transform, trigger) in _buffer)
         {
+            // Timer acumula sempre, mesmo enquanto a sequência está rodando
+            if (trigger.Trigger == "Timer")
+                trigger._timer += deltaTime;
+
             if (trigger.Running)
             {
                 Advance(entity, trigger, deltaTime);
@@ -73,6 +82,8 @@ public sealed class EventSystem
 
             if (ShouldFire(trigger, transform, playerPosition))
             {
+                if (trigger.Trigger == "Timer")
+                    trigger._timer = 0f;
                 trigger.Fired = true;
                 trigger.Running = true;
                 trigger.ActionIndex = 0;
@@ -87,12 +98,30 @@ public sealed class EventSystem
     private bool ShouldFire(EventTrigger trigger, Transform transform, Vector2? playerPosition)
         => trigger.Trigger switch
         {
-            "SceneStart" => !_sceneStartFired,
-            "PlayerTouch" => playerPosition is { } player
-                && Vector2.Distance(player, transform.Position) <= trigger.Radius,
-            "SwitchOn" => trigger.Switch is not null && _state.GetSwitch(trigger.Switch),
+            "SceneStart"       => !_sceneStartFired,
+            "PlayerTouch"      => playerPosition is { } p
+                                  && Vector2.Distance(p, transform.Position) <= trigger.Radius,
+            "SwitchOn"         => trigger.Switch is not null && _state.GetSwitch(trigger.Switch),
+            "KeyPress"         => Input?.WasKeyPressed(ParseKey(trigger.Key)) ?? false,
+            "Timer"            => trigger._timer >= trigger.Interval,
+            "VariableCompare"  => trigger.Variable is not null
+                                  && Compare(_state.GetVariable(trigger.Variable),
+                                             trigger.CompareOp, trigger.CompareValue),
             _ => false,
         };
+
+    private static Key ParseKey(string name)
+        => Enum.TryParse<Key>(name, ignoreCase: true, out var k) ? k : Key.Unknown;
+
+    private static bool Compare(float actual, string op, float value) => op switch
+    {
+        ">=" => actual >= value,
+        "<=" => actual <= value,
+        ">"  => actual > value,
+        "<"  => actual < value,
+        "!=" => MathF.Abs(actual - value) > 1e-6f,
+        _    => MathF.Abs(actual - value) < 1e-6f,   // "==" default
+    };
 
     private void Advance(Entity self, EventTrigger trigger, float deltaTime)
     {

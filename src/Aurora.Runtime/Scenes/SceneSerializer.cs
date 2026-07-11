@@ -253,10 +253,15 @@ public sealed class SceneSerializer
             {
                 var trigger = new EventTrigger
                 {
-                    Trigger = GetString(json, "Trigger", "PlayerTouch"),
-                    Switch = json.TryGetProperty("Switch", out var sw) ? sw.GetString() : null,
-                    Radius = GetFloat(json, "Radius", 20f),
-                    Once = GetBool(json, "Once", true),
+                    Trigger      = GetString(json, "Trigger", "PlayerTouch"),
+                    Switch       = json.TryGetProperty("Switch", out var sw) ? sw.GetString() : null,
+                    Radius       = GetFloat(json, "Radius", 20f),
+                    Key          = GetString(json, "Key", "E"),
+                    Interval     = GetFloat(json, "Interval", 5f),
+                    Variable     = json.TryGetProperty("Variable", out var varProp) ? varProp.GetString() : null,
+                    CompareOp    = GetString(json, "CompareOp", ">="),
+                    CompareValue = GetFloat(json, "CompareValue", 0f),
+                    Once         = GetBool(json, "Once", true),
                 };
 
                 if (json.TryGetProperty("Actions", out var actions))
@@ -302,6 +307,16 @@ public sealed class SceneSerializer
                     json.WriteString("Switch", trigger.Switch);
                 if (trigger.Radius != 20f)
                     json.WriteNumber("Radius", trigger.Radius);
+                if (trigger.Key != "E")
+                    json.WriteString("Key", trigger.Key);
+                if (trigger.Interval != 5f)
+                    json.WriteNumber("Interval", trigger.Interval);
+                if (trigger.Variable is not null)
+                    json.WriteString("Variable", trigger.Variable);
+                if (trigger.CompareOp != ">=")
+                    json.WriteString("CompareOp", trigger.CompareOp);
+                if (trigger.CompareValue != 0f)
+                    json.WriteNumber("CompareValue", trigger.CompareValue);
                 if (!trigger.Once)
                     json.WriteBoolean("Once", false);
 

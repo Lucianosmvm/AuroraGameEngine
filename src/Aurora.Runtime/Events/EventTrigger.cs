@@ -38,7 +38,7 @@ public sealed class EventOption
 /// </summary>
 public sealed class EventTrigger : IComponent
 {
-    /// <summary>SceneStart | PlayerTouch | SwitchOn.</summary>
+    /// <summary>SceneStart | PlayerTouch | SwitchOn | KeyPress | Timer | VariableCompare.</summary>
     public string Trigger = "PlayerTouch";
 
     /// <summary>Switch observado quando Trigger = SwitchOn.</summary>
@@ -46,6 +46,21 @@ public sealed class EventTrigger : IComponent
 
     /// <summary>Distância ao jogador que dispara PlayerTouch (pixels do mundo).</summary>
     public float Radius = 20f;
+
+    /// <summary>Tecla para KeyPress, ex: "Space", "E", "Enter". Nomes do enum Silk.NET.Input.Key.</summary>
+    public string Key = "E";
+
+    /// <summary>Intervalo em segundos entre disparos para Timer.</summary>
+    public float Interval = 5f;
+
+    /// <summary>Nome da variável GameState para VariableCompare.</summary>
+    public string? Variable;
+
+    /// <summary>Operador de comparação para VariableCompare: ==, !=, &gt;=, &lt;=, &gt;, &lt;</summary>
+    public string CompareOp = ">=";
+
+    /// <summary>Valor de comparação para VariableCompare.</summary>
+    public float CompareValue;
 
     /// <summary>True = dispara uma única vez.</summary>
     public bool Once = true;
@@ -58,4 +73,5 @@ public sealed class EventTrigger : IComponent
     internal int ActionIndex;
     internal float WaitTimer;
     internal bool WaitingDialogue;
+    internal float _timer; // acumulador para Timer
 }
