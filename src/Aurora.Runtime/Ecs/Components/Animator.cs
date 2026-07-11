@@ -44,6 +44,9 @@ public sealed class Animator : Behavior
     /// <summary>True quando um clipe não-loop chegou ao último frame.</summary>
     public bool IsFinished => _finished;
 
+    /// <summary>Congela a animação no frame atual sem limpar o clipe corrente.</summary>
+    public void Stop() => _finished = true;
+
     /// <summary>Troca para o clipe com o nome dado. Ignorado se já está tocando (a menos que restart=true).</summary>
     public void Play(string clipName, bool restart = false)
     {

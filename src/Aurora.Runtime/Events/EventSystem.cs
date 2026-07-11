@@ -223,6 +223,10 @@ public sealed class EventSystem
                 ResolveTarget(self, action.Name)?.Get<Animator>()?.Play(action.Text, restart: true);
                 break;
 
+            case "StopAnimation":
+                ResolveTarget(self, action.Name)?.Get<Animator>()?.Stop();
+                break;
+
             case "ShowChoice" when Dialogue is not null && action.Options.Count > 0:
                 Dialogue.ShowChoice(action.Text ?? "",
                     action.Options.Select(o => o.Text).ToList(),

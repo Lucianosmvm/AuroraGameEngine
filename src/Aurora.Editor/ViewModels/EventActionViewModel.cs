@@ -21,7 +21,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Wait", "SetVariable", "SetSwitch",
         "ShowMessage", "ShowChoice",
         "Teleport", "Destroy",
-        "PlayAnimation",
+        "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
         "ChangeScene", "Save",
     ];
@@ -64,7 +64,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string NameLabel => ActionType switch
     {
         "SetVariable" or "SetSwitch" => "Variável",
-        "Teleport" or "Destroy" or "PlayAnimation" => "Entidade",
+        "Teleport" or "Destroy" or "PlayAnimation" or "StopAnimation" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         _ => "Falante",
     };
@@ -170,7 +170,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
-        or "PlayAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
+        or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic";
