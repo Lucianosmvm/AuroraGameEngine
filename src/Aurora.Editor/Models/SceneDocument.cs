@@ -27,6 +27,21 @@ public sealed class SceneDocument
         AssetsRoot = assetsRoot;
     }
 
+    /// <summary>Cria e salva uma cena vazia no caminho indicado.</summary>
+    public static SceneDocument New(string filePath)
+    {
+        string sceneName = Path.GetFileNameWithoutExtension(filePath);
+        var root = new JsonObject
+        {
+            ["Scene"] = sceneName,
+            ["Objects"] = new JsonArray(),
+        };
+        string assetsRoot = Path.GetDirectoryName(Path.GetFullPath(filePath))!;
+        var doc = new SceneDocument(root, filePath, assetsRoot);
+        doc.Save();
+        return doc;
+    }
+
     public static SceneDocument Load(string path)
     {
         var root = JsonNode.Parse(File.ReadAllText(path)) as JsonObject

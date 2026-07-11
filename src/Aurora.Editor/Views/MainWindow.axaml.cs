@@ -61,6 +61,11 @@ public partial class MainWindow : Window
                 ViewModel.SaveScene();
                 e.Handled = true;
             }
+            else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.N)
+            {
+                _ = PickAndNewSceneAsync();
+                e.Handled = true;
+            }
             else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.O)
             {
                 _ = PickAndOpenSceneAsync();
@@ -90,6 +95,32 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         };
+    }
+
+    private async Task PickAndNewSceneAsync()
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Nova cena — escolha onde salvar",
+            DefaultExtension = "json",
+            SuggestedFileName = "novacena.json",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Cena Aurora (JSON)") { Patterns = ["*.json"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is { } path)
+        {
+            try
+            {
+                ViewModel.NewScene(path);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.Status = $"Erro ao criar cena: {ex.Message}";
+            }
+        }
     }
 
     private async Task PickAndOpenSceneAsync()
@@ -135,6 +166,8 @@ public partial class MainWindow : Window
         if (file?.TryGetLocalPath() is { } path)
             ViewModel.SaveSceneAs(path);
     }
+
+    private void OnNewScene(object? sender, RoutedEventArgs e) => _ = PickAndNewSceneAsync();
 
     private void OnOpenScene(object? sender, RoutedEventArgs e) => _ = PickAndOpenSceneAsync();
 

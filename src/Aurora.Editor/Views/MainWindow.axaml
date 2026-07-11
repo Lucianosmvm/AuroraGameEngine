@@ -253,6 +253,7 @@
   <DockPanel>
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_Arquivo">
+        <MenuItem Header="_Nova Cena…" Click="OnNewScene" InputGesture="Ctrl+N"/>
         <MenuItem Header="_Abrir Cena…" Click="OnOpenScene" InputGesture="Ctrl+O"/>
         <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>
         <MenuItem Header="Salvar _Como…" Click="OnSaveSceneAs" InputGesture="Ctrl+Shift+S" IsEnabled="{Binding HasDocument}"/>

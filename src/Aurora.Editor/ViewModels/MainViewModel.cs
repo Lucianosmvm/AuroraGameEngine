@@ -64,6 +64,27 @@ public sealed class MainViewModel : ViewModelBase
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
 
+    public void NewScene(string filePath)
+    {
+        _document = SceneDocument.New(filePath);
+
+        RebuildEntities();
+        SelectedEntity = null;
+
+        _undoStack.Clear();
+        _redoStack.Clear();
+        _lastSnapshot = _document.Root.ToJsonString();
+        _lastEditTag = null;
+
+        IsDirty = false;
+        Status = $"Nova cena: {_document.SceneName} | assets: {_document.AssetsRoot}";
+        Raise(nameof(Title));
+        Raise(nameof(HasDocument));
+        RaiseUndoState();
+        ReloadAssets();
+        SceneEdited?.Invoke();
+    }
+
     public void OpenScene(string path)
     {
         _document = SceneDocument.Load(path);
