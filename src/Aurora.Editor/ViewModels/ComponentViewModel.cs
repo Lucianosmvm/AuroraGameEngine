@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Windows.Input;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -44,6 +45,9 @@ public class ComponentViewModel : ViewModelBase
     public JsonObject Node { get; }
     public string Type { get; }
     public List<PropertyViewModel> Properties { get; } = [];
+
+    /// <summary>Definido por EntityViewModel para componentes removíveis (todos exceto Transform).</summary>
+    public ICommand? RemoveCommand { get; internal set; }
 
     public event Action<string>? Edited;
 

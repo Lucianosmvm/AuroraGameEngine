@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Text.Json.Nodes;
+using System.Windows.Input;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -6,27 +8,32 @@ namespace Aurora.Editor.ViewModels;
 public sealed class EntityViewModel : ViewModelBase
 {
     public JsonObject Node { get; }
-    public List<ComponentViewModel> Components { get; } = [];
+    public ObservableCollection<ComponentViewModel> Components { get; } = [];
 
     /// <summary>Tag identifica o gesto de edição (coalescência de undo).</summary>
     public event Action<string>? Edited;
 
+    public string[] AvailableComponentTypes { get; } =
+        ["SpriteRenderer", "Animator", "Collider", "EventTrigger"];
+
+    private string _newComponentType = "Collider";
+    public string NewComponentType
+    {
+        get => _newComponentType;
+        set => Set(ref _newComponentType, value);
+    }
+
+    public ICommand AddComponentCommand { get; }
+
     public EntityViewModel(JsonObject node)
     {
         Node = node;
+        AddComponentCommand = new RelayCommand(AddComponent);
 
         if (node["Components"] is JsonArray components)
         {
             foreach (var componentNode in components.OfType<JsonObject>())
-            {
-                ComponentViewModel component =
-                    componentNode["Type"]?.GetValue<string>() == "EventTrigger"
-                        ? new EventTriggerViewModel(componentNode)
-                        : new ComponentViewModel(componentNode);
-
-                component.Edited += tag => Edited?.Invoke($"{Node.GetHashCode()}/{tag}");
-                Components.Add(component);
-            }
+                AddVm(BuildVm(componentNode));
         }
     }
 
@@ -49,6 +56,67 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Transform => Component("Transform");
     public ComponentViewModel? Sprite => Component("SpriteRenderer");
     public ComponentViewModel? Tilemap => Component("Tilemap");
+
+    // ---- Add / Remove ----
+
+    public void AddComponent()
+    {
+        if (Node["Components"] is not JsonArray components)
+            return;
+
+        JsonObject newNode = NewComponentType switch
+        {
+            "Animator" => new JsonObject
+            {
+                ["Type"] = "Animator",
+                ["FrameWidth"] = 16,
+                ["FrameHeight"] = 16,
+                ["SheetColumns"] = 1,
+                ["Clips"] = new JsonArray(),
+            },
+            "Collider" => new JsonObject
+            {
+                ["Type"] = "Collider",
+                ["Width"] = 16f,
+                ["Height"] = 16f,
+            },
+            "EventTrigger" => new JsonObject
+            {
+                ["Type"] = "EventTrigger",
+                ["Trigger"] = "PlayerTouch",
+                ["Once"] = true,
+                ["Actions"] = new JsonArray(),
+            },
+            "SpriteRenderer" => new JsonObject
+            {
+                ["Type"] = "SpriteRenderer",
+            },
+            _ => new JsonObject { ["Type"] = NewComponentType },
+        };
+
+        components.Add(newNode);
+        AddVm(BuildVm(newNode));
+        Edited?.Invoke($"addcomp:{Node.GetHashCode()}");
+    }
+
+    public void RemoveComponent(ComponentViewModel vm)
+    {
+        if (Node["Components"] is JsonArray components)
+        {
+            for (int i = 0; i < components.Count; i++)
+            {
+                if (components[i] is JsonObject obj && ReferenceEquals(obj, vm.Node))
+                {
+                    components.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+        Components.Remove(vm);
+        Edited?.Invoke($"removecomp:{Node.GetHashCode()}");
+    }
+
+    // ---- Tile painting ----
 
     /// <summary>Pinta uma célula do tilemap. Um traço contínuo = um passo de undo.</summary>
     public void SetTile(int x, int y, int index)
@@ -76,6 +144,8 @@ public sealed class EntityViewModel : ViewModelBase
         Edited?.Invoke($"paint:{Node.GetHashCode()}");
     }
 
+    // ---- Transform helpers ----
+
     /// <summary>Move a entidade (arrasto no canvas), sincronizando o inspector. Um gesto = um undo.</summary>
     public void SetPosition(float x, float y)
         => SetTransformFields($"move:{Node.GetHashCode()}", ("X", x), ("Y", y));
@@ -99,5 +169,24 @@ public sealed class EntityViewModel : ViewModelBase
         }
 
         Edited?.Invoke(tag);
+    }
+
+    // ---- Helpers ----
+
+    private static ComponentViewModel BuildVm(JsonObject node) =>
+        node["Type"]?.GetValue<string>() switch
+        {
+            "EventTrigger" => new EventTriggerViewModel(node),
+            "Animator"     => new AnimatorViewModel(node),
+            _              => new ComponentViewModel(node),
+        };
+
+    private void AddVm(ComponentViewModel vm)
+    {
+        if (vm.Type != "Transform")
+            vm.RemoveCommand = new RelayCommand(() => RemoveComponent(vm));
+
+        vm.Edited += tag => Edited?.Invoke($"{Node.GetHashCode()}/{tag}");
+        Components.Add(vm);
     }
 }

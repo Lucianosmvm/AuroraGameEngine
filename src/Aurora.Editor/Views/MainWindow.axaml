@@ -25,17 +25,70 @@
       <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
     </DataTemplate>
 
-    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Animator, Collider…) -->
+    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
     <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
-      <Expander Header="{Binding Type}" IsExpanded="True" Margin="0,0,0,6"
-                HorizontalAlignment="Stretch">
-        <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
-      </Expander>
+      <Panel Margin="0,0,0,6">
+        <Expander Header="{Binding Type}" IsExpanded="True" HorizontalAlignment="Stretch">
+          <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
+        </Expander>
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+                Command="{Binding RemoveCommand}"
+                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
+    </DataTemplate>
+
+    <!-- Animator: campos básicos + lista de clipes -->
+    <DataTemplate DataType="{x:Type vm:AnimatorViewModel}">
+      <Panel Margin="0,0,0,6">
+        <Expander Header="Animator" IsExpanded="True" HorizontalAlignment="Stretch">
+          <StackPanel Margin="6,4" Spacing="4">
+            <ItemsControl ItemsSource="{Binding Properties}" Margin="0,0,0,4"/>
+            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+                    Margin="0,2,0,2" Padding="0,4,0,0">
+              <TextBlock Text="CLIPES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Clips}"/>
+            <Button Content="+ Clipe" Command="{Binding AddClipCommand}"
+                    FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
+          </StackPanel>
+        </Expander>
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+                Command="{Binding RemoveCommand}"
+                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
+    </DataTemplate>
+
+    <!-- AnimationClip: uma linha por clipe -->
+    <DataTemplate DataType="{x:Type vm:AnimationClipViewModel}">
+      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+        <StackPanel Spacing="3">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Text="{Binding ClipName}" FontSize="12" Padding="4,3" Watermark="Nome…"/>
+            <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Background="Transparent" BorderThickness="0"/>
+          </Grid>
+          <Grid ColumnDefinitions="60,*,8,35,*">
+            <TextBlock Text="Frames" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding FramesText}" FontSize="11" Padding="4,3"
+                     Watermark="0, 1, 2…"/>
+            <TextBlock Grid.Column="3" Text="Dur" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="4" Text="{Binding FrameDurationText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+          <CheckBox Content="Loop" IsChecked="{Binding Loop}" FontSize="11"/>
+        </StackPanel>
+      </Border>
     </DataTemplate>
 
     <!-- EventTrigger: editor completo de gatilho + lista de ações -->
     <DataTemplate DataType="{x:Type vm:EventTriggerViewModel}">
-      <Expander Header="EventTrigger" IsExpanded="True" Margin="0,0,0,6"
+      <Panel Margin="0,0,0,6">
+      <Expander Header="EventTrigger" IsExpanded="True"
                 HorizontalAlignment="Stretch">
         <StackPanel Margin="6,4" Spacing="4">
 
@@ -101,6 +154,12 @@
                   FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
         </StackPanel>
       </Expander>
+      <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+              Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+              Command="{Binding RemoveCommand}"
+              IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+              Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
     </DataTemplate>
 
     <!-- Uma ação dentro de EventTrigger -->
@@ -311,6 +370,16 @@
             </Grid>
 
             <ItemsControl ItemsSource="{Binding Components}"/>
+
+            <!-- Adicionar Componente -->
+            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860" Margin="0,8,0,4"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <ComboBox ItemsSource="{Binding AvailableComponentTypes}"
+                        SelectedItem="{Binding NewComponentType}" FontSize="12"/>
+              <Button Grid.Column="1" Content="+ Add" FontSize="12"
+                      Padding="8,4" Margin="4,0,0,0"
+                      Command="{Binding AddComponentCommand}"/>
+            </Grid>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
