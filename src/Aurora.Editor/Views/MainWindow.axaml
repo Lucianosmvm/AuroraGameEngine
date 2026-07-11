@@ -25,20 +25,6 @@
       <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
     </DataTemplate>
 
-    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
-    <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
-      <Panel Margin="0,0,0,6">
-        <Expander Header="{Binding Type}" IsExpanded="True" HorizontalAlignment="Stretch">
-          <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
-        </Expander>
-        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
-                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
-                Command="{Binding RemoveCommand}"
-                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
-      </Panel>
-    </DataTemplate>
-
     <!-- Animator: campos básicos + lista de clipes -->
     <DataTemplate DataType="{x:Type vm:AnimatorViewModel}">
       <Panel Margin="0,0,0,6">
@@ -85,6 +71,22 @@
       </Border>
     </DataTemplate>
 
+    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
+    <!-- IMPORTANTE: deve vir depois dos templates específicos (AnimatorViewModel, EventTriggerViewModel)
+         pois no Avalonia o primeiro DataTemplate que bate vence e esses herdam de ComponentViewModel. -->
+    <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
+      <Panel Margin="0,0,0,6">
+        <Expander Header="{Binding Type}" IsExpanded="True" HorizontalAlignment="Stretch">
+          <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
+        </Expander>
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+                Command="{Binding RemoveCommand}"
+                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
+    </DataTemplate>
+
     <!-- EventTrigger: editor completo de gatilho + lista de ações -->
     <DataTemplate DataType="{x:Type vm:EventTriggerViewModel}">
       <Panel Margin="0,0,0,6">
@@ -98,6 +100,8 @@
             <ComboBox Grid.Column="1" ItemsSource="{Binding TriggerTypes}"
                       SelectedItem="{Binding TriggerType}" FontSize="12"/>
           </Grid>
+          <TextBlock Text="{Binding TriggerDescription}" FontSize="11" FontStyle="Italic"
+                     Opacity="0.5" Margin="0,-2,0,2"/>
 
           <!-- Once -->
           <CheckBox Content="Once (dispara uma vez)" IsChecked="{Binding Once}" FontSize="12"/>
@@ -327,14 +331,52 @@
             <Button Content="Excluir" Click="OnDeleteEntity" FontSize="12"
                     IsEnabled="{Binding SelectedEntity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
           </StackPanel>
-          <ListBox ItemsSource="{Binding Entities}"
-                   SelectedItem="{Binding SelectedEntity}">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Name}" FontSize="13"/>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
+          <Grid RowDefinitions="*,4,Auto">
+            <ListBox Grid.Row="0" ItemsSource="{Binding Entities}"
+                     SelectedItem="{Binding SelectedEntity}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Background="#2D1E50" CornerRadius="3" Padding="5,2"
+                            Margin="6,0,0,0" VerticalAlignment="Center"
+                            IsVisible="{Binding HasEventTrigger}">
+                      <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
+                                 Foreground="#B89FFF" FontWeight="SemiBold"/>
+                    </Border>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <GridSplitter Grid.Row="1" Background="#2A2740"
+                          IsVisible="{Binding HasEventEntities}"/>
+
+            <!-- Painel EVENTOS: lista rápida de entidades com EventTrigger -->
+            <Border Grid.Row="2" Background="#100D1A"
+                    IsVisible="{Binding HasEventEntities}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="EVENTOS" FontSize="10" FontWeight="Bold"
+                           Opacity="0.5" Margin="10,6,8,3"/>
+                <ListBox ItemsSource="{Binding EventEntities}"
+                         SelectedItem="{Binding SelectedEntity}"
+                         Background="Transparent" MaxHeight="120">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" Background="#2D1E50" CornerRadius="3" Padding="4,1"
+                                Margin="4,0,0,0" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
+                                     Foreground="#B89FFF"/>
+                        </Border>
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </DockPanel>
+            </Border>
+          </Grid>
         </DockPanel>
       </Grid>
 

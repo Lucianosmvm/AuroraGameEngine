@@ -37,6 +37,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
             Raise(nameof(ShowKey));
             Raise(nameof(ShowInterval));
             Raise(nameof(ShowCompare));
+            Raise(nameof(TriggerDescription));
             RaiseEdited("trigger");
         }
     }
@@ -80,6 +81,17 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     public bool ShowKey      => TriggerType == "KeyPress";
     public bool ShowInterval => TriggerType == "Timer";
     public bool ShowCompare  => TriggerType == "VariableCompare";
+
+    public string TriggerDescription => TriggerType switch
+    {
+        "SceneStart"      => "Disparado ao carregar a cena",
+        "PlayerTouch"     => "Disparado quando o jogador entra no raio",
+        "SwitchOn"        => "Disparado quando um switch é ativado",
+        "KeyPress"        => "Disparado ao pressionar uma tecla",
+        "Timer"           => "Disparado em intervalos regulares",
+        "VariableCompare" => "Disparado quando variável atinge o valor",
+        _                 => "",
+    };
 
     public string Key
     {

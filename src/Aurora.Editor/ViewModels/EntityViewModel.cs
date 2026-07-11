@@ -58,6 +58,19 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Tilemap => Component("Tilemap");
     public ComponentViewModel? Camera => Component("CameraController");
 
+    // ---- EventTrigger visibility in hierarchy ----
+
+    public bool HasEventTrigger => Components.Any(c => c.Type == "EventTrigger");
+
+    public string TriggerTypeLabel
+    {
+        get
+        {
+            var etvm = Components.OfType<EventTriggerViewModel>().FirstOrDefault();
+            return etvm?.TriggerType ?? "";
+        }
+    }
+
     // ---- Add / Remove ----
 
     public void AddComponent()
@@ -121,6 +134,8 @@ public sealed class EntityViewModel : ViewModelBase
             }
         }
         Components.Remove(vm);
+        Raise(nameof(HasEventTrigger));
+        Raise(nameof(TriggerTypeLabel));
         Edited?.Invoke($"removecomp:{Node.GetHashCode()}");
     }
 
@@ -195,6 +210,18 @@ public sealed class EntityViewModel : ViewModelBase
             vm.RemoveCommand = new RelayCommand(() => RemoveComponent(vm));
 
         vm.Edited += tag => Edited?.Invoke($"{Node.GetHashCode()}/{tag}");
+
+        if (vm is EventTriggerViewModel etvm)
+        {
+            etvm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(EventTriggerViewModel.TriggerType))
+                    Raise(nameof(TriggerTypeLabel));
+            };
+        }
+
         Components.Add(vm);
+        Raise(nameof(HasEventTrigger));
+        Raise(nameof(TriggerTypeLabel));
     }
 }

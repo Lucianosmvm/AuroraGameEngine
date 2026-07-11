@@ -26,6 +26,8 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<EntityViewModel> Entities { get; } = [];
     public ObservableCollection<AssetViewModel> Assets { get; } = [];
+    public ObservableCollection<EntityViewModel> EventEntities { get; } = [];
+    public bool HasEventEntities => EventEntities.Count > 0;
 
     public SceneDocument? Document => _document;
 
@@ -182,7 +184,10 @@ public sealed class MainViewModel : ViewModelBase
     {
         Entities.Clear();
         if (_document is null)
+        {
+            RebuildEventEntities();
             return;
+        }
 
         foreach (var objectNode in _document.Objects.OfType<System.Text.Json.Nodes.JsonObject>())
         {
@@ -190,6 +195,15 @@ public sealed class MainViewModel : ViewModelBase
             entity.Edited += OnEdited;
             Entities.Add(entity);
         }
+        RebuildEventEntities();
+    }
+
+    private void RebuildEventEntities()
+    {
+        EventEntities.Clear();
+        foreach (var e in Entities.Where(e => e.HasEventTrigger))
+            EventEntities.Add(e);
+        Raise(nameof(HasEventEntities));
     }
 
     private static readonly string[] TextureExtensions = [".png", ".jpg", ".jpeg"];
@@ -482,6 +496,9 @@ public sealed class MainViewModel : ViewModelBase
         _lastSnapshot = _document.Root.ToJsonString();
         _lastEditTag = tag;
         _lastEditAt = DateTime.UtcNow;
+
+        if (tag.StartsWith("addcomp:") || tag.StartsWith("removecomp:"))
+            RebuildEventEntities();
 
         IsDirty = true;
         RebuildTilePalette();
