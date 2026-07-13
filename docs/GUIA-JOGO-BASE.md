@@ -334,29 +334,64 @@ caso em que ele fica `IsSolid: true` separado do trigger de diálogo). Entidade 
 }
 ```
 
-Encadeie outro `EventTrigger` (`SwitchOn`, `Switch: comprou_espada`) pra dar o item e cobrar o ouro:
+**Não** encadeie um `EventTrigger` `SwitchOn` puro pra cobrar o ouro: `RemoveItem` nunca deixa a
+quantidade negativa (trava em 0), e `EventTrigger` não combina duas condições (AND) num só
+componente — não dá pra checar "`HasItem` Gold≥10 **e** switch ligado" de uma vez, então o
+jogador ganharia a espada de graça sem ouro suficiente (testado, reproduzido). Pra uma loja de
+verdade use um script pequeno como gate, injetado igual `Input` no `PlayerController`:
+
+```csharp
+[SceneScript]
+public sealed class ShopKeeper : Behavior
+{
+    public string Switch = "comprou_espada";
+    public string Currency = "Gold";
+    public int Price = 10;
+    public string ItemToBuy = "Espada";
+
+    public GameState? State { get; set; }         // injetado pelo Game
+    public InventoryManager? Inventory { get; set; }
+    public DialogueSystem? Dialogue { get; set; }
+
+    public override void Update(float dt)
+    {
+        if (State is null || Inventory is null || !State.GetSwitch(Switch)) return;
+        State.SetSwitch(Switch, false); // consome, permite tentar de novo depois
+
+        if (Inventory.GetCount(Currency) >= Price)
+        {
+            Inventory.Add(Currency, -Price);
+            Inventory.Add(ItemToBuy, 1);
+            Dialogue?.ShowMessage($"{ItemToBuy} comprada!");
+        }
+        else
+        {
+            Dialogue?.ShowMessage("Ouro insuficiente.");
+        }
+    }
+}
+```
 
 ```json
-{ "Type": "EventTrigger", "Trigger": "SwitchOn", "Switch": "comprou_espada", "Once": true,
-  "Actions": [
-    { "Action": "RemoveItem", "Name": "Gold", "Value": 10 },
-    { "Action": "AddItem", "Name": "Espada", "Value": 1 },
-    { "Action": "ShowMessage", "Text": "Espada comprada!" }
-  ]
+{ "Name": "Shop", "Components": [
+  { "Type": "Transform", "X": -60, "Y": 0 },
+  { "Type": "ShopKeeper", "Switch": "comprou_espada", "Currency": "Gold", "Price": 10, "ItemToBuy": "Espada" }
+] }
+```
+
+```csharp
+// No Game, junto da injeção de Input:
+foreach (var (_, shop) in World.Query<ShopKeeper>())
+{
+    shop.State = State;
+    shop.Inventory = Inventory;
+    shop.Dialogue = Dialogue;
 }
 ```
 
 Seu jogo precisa chamar `Dialogue.Draw(...)` e `Input` (Espaço/Enter avança, W/S ou setas
 navegam escolha) em `OnRenderUI`/`OnUpdate` — ver `samples/Aurora.Sandbox.Core/SandboxGame.cs`
 pro padrão pronto.
-
-> **Limitação conhecida (testada):** esse exemplo cobra o ouro sem checar se o jogador tem o
-> suficiente antes — `RemoveItem` nunca deixa a quantidade negativa (trava em 0), então o
-> jogador ganha a espada de graça se não tiver ouro. `EventTrigger` não combina duas condições
-> (AND) num só componente, então não dá pra checar "`HasItem` Gold≥10 **e** switch ligado" de
-> uma vez sem código. Pra uma loja de verdade, ou aceite essa simplificação num protótipo, ou
-> resolva num script pequeno (`if (Inventory.Has("Gold", 10)) { ...cobra e dá o item... }`
-> chamado a partir do `OnChosen` do `ShowChoice`/de um Behavior que observa o switch).
 
 ---
 
@@ -445,15 +480,14 @@ public sealed class EnemyAI : Behavior
 ```
 
 ```csharp
-// No Game, junto da injeção de Input:
-if (World.TryFind("Enemy1", out var enemy))
+// No Game, junto da injeção de Input. NÃO faça World.TryFind("Enemy1", ...) —
+// só liga UM inimigo com esse nome exato e todo o resto do bicho fica parado
+// (bug testado). Use Query pra pegar TODOS os EnemyAI da cena de uma vez:
+bool hasPlayer = World.TryFind("Player", out var player);
+foreach (var (_, enemy) in World.Query<EnemyAI>())
 {
-    var ai = enemy.Get<EnemyAI>();
-    if (ai is not null && !ai.HasTargetEntity && World.TryFind("Player", out var target))
-    {
-        ai.TargetEntity = target;
-        ai.HasTargetEntity = true;
-    }
+    enemy.HasTargetEntity = hasPlayer;
+    if (hasPlayer) enemy.TargetEntity = player;
 }
 ```
 
