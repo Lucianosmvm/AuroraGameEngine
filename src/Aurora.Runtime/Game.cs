@@ -48,11 +48,15 @@ public abstract class Game : IDisposable
     public InventoryManager Inventory { get; } = new();
     public QuestManager Quests { get; } = new();
     public DialogueSystem Dialogue { get; } = new();
+    public UIManager UI { get; } = new();
     public EventSystem Events { get; }
 
     protected Game()
     {
-        Events = new EventSystem(World, State) { Dialogue = Dialogue, Inventory = Inventory, Quests = Quests };
+        Events = new EventSystem(World, State)
+        {
+            Dialogue = Dialogue, Inventory = Inventory, Quests = Quests, UI = UI,
+        };
     }
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;

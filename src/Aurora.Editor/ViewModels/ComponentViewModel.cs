@@ -50,6 +50,26 @@ public class ComponentViewModel : ViewModelBase
             ("BoundsX", 0f), ("BoundsY", 0f),
             ("BoundsWidth", 1280f), ("BoundsHeight", 720f),
         ],
+        // Componentes de UI (HUD/menu): X/Y em pixel de tela, não seguem a câmera.
+        // Texto suporta tokens {Var}, {Item:Nome}, {Quest:Nome} — ver Aurora.Runtime.UI.UIManager.
+        ["UiText"] =
+        [
+            ("X", 0f), ("Y", 0f), ("Text", ""), ("Color", "#FFFFFFFF"), ("Scale", 1f),
+        ],
+        ["UiImage"] =
+        [
+            ("X", 0f), ("Y", 0f), ("Texture", ""), ("Width", 0f), ("Height", 0f), ("Color", "#FFFFFFFF"),
+        ],
+        ["UiBar"] =
+        [
+            ("X", 0f), ("Y", 0f), ("Width", 100f), ("Height", 12f),
+            ("Variable", ""), ("Max", 100f),
+            ("FillColor", "#40C040FF"), ("BackColor", "#303030FF"),
+        ],
+        ["UiPanel"] =
+        [
+            ("X", 0f), ("Y", 0f), ("Width", 100f), ("Height", 100f), ("Color", "#000000AA"),
+        ],
     };
 
     public JsonObject Node { get; }

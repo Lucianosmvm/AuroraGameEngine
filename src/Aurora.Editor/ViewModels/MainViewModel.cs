@@ -28,6 +28,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<AssetViewModel> Assets { get; } = [];
     public ObservableCollection<EntityViewModel> EventEntities { get; } = [];
     public ObservableCollection<SceneFileViewModel> SceneFiles { get; } = [];
+    public ObservableCollection<SceneFileViewModel> UiScreens { get; } = [];
     public ObservableCollection<PrefabFileViewModel> Prefabs { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
 
@@ -180,6 +181,7 @@ public sealed class MainViewModel : ViewModelBase
         ReloadAssets();
         ReloadSceneFiles();
         ReloadPrefabs();
+        ReloadUiScreens();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -208,6 +210,7 @@ public sealed class MainViewModel : ViewModelBase
         ReloadAssets();
         ReloadSceneFiles();
         ReloadPrefabs();
+        ReloadUiScreens();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -259,7 +262,8 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     /// <summary>Varre a raiz de assets por cenas .json (para o painel CENAS). Cena tem "Objects"
-    /// na raiz — prefab (mesma pasta de assets) tem "Components" na raiz e nunca aparece aqui.</summary>
+    /// na raiz sem marca "UI" — tela de UI (mesma pasta) tem "Objects" + "UI":true; prefab tem
+    /// "Components" na raiz sem "Objects". As três nunca se confundem.</summary>
     public void ReloadSceneFiles()
     {
         SceneFiles.Clear();
@@ -274,6 +278,30 @@ public sealed class MainViewModel : ViewModelBase
         {
             string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
             SceneFiles.Add(new SceneFileViewModel(file, relative)
+            {
+                IsCurrent = string.Equals(Path.GetFullPath(file), Path.GetFullPath(_document.FilePath),
+                    StringComparison.OrdinalIgnoreCase),
+            });
+        }
+    }
+
+    /// <summary>Varre a raiz de assets por telas de UI .json (para o painel TELAS UI). Mesmo
+    /// formato de cena (Objects/Components), com componentes UiText/UiImage/UiBar/UiPanel em
+    /// pixels de tela — persistem entre trocas de cena no runtime (ver Aurora.Runtime.UI.UIManager).</summary>
+    public void ReloadUiScreens()
+    {
+        UiScreens.Clear();
+        if (_document is null || !Directory.Exists(_document.AssetsRoot))
+            return;
+
+        var files = Directory.EnumerateFiles(_document.AssetsRoot, "*.json", SearchOption.AllDirectories)
+            .Where(f => LooksLikeUiScreen(f))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
+            UiScreens.Add(new SceneFileViewModel(file, relative)
             {
                 IsCurrent = string.Equals(Path.GetFullPath(file), Path.GetFullPath(_document.FilePath),
                     StringComparison.OrdinalIgnoreCase),
@@ -305,10 +333,23 @@ public sealed class MainViewModel : ViewModelBase
         try
         {
             using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
-            return doc.RootElement.TryGetProperty("Objects", out _);
+            return doc.RootElement.TryGetProperty("Objects", out _) && !IsUiMarked(doc.RootElement);
         }
         catch { return false; }
     }
+
+    private static bool LooksLikeUiScreen(string jsonPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+            return doc.RootElement.TryGetProperty("Objects", out _) && IsUiMarked(doc.RootElement);
+        }
+        catch { return false; }
+    }
+
+    private static bool IsUiMarked(System.Text.Json.JsonElement root)
+        => root.TryGetProperty("UI", out var ui) && ui.ValueKind == System.Text.Json.JsonValueKind.True;
 
     private static bool LooksLikePrefab(string jsonPath)
     {
@@ -319,6 +360,23 @@ public sealed class MainViewModel : ViewModelBase
                 && !doc.RootElement.TryGetProperty("Objects", out _);
         }
         catch { return false; }
+    }
+
+    /// <summary>Cria uma tela de UI vazia (mesmo formato de cena, com a marca "UI":true) e
+    /// já abre pra edição — reusa toda a maquinaria de OpenScene (hierarquia, inspector,
+    /// undo/redo funcionam sem nenhum código a mais).</summary>
+    public void NewUiScreen(string filePath)
+    {
+        var root = new System.Text.Json.Nodes.JsonObject
+        {
+            ["Scene"] = Path.GetFileNameWithoutExtension(filePath),
+            ["UI"] = true,
+            ["Objects"] = new System.Text.Json.Nodes.JsonArray(),
+        };
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        File.WriteAllText(filePath,
+            root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        OpenScene(filePath);
     }
 
     /// <summary>Troca de cena a partir do painel CENAS. Salva a atual antes, se suja (sem
@@ -443,6 +501,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(Title));
         Status = $"Salvo: {path}";
         ReloadSceneFiles();
+        ReloadUiScreens();
     }
 
     /// <summary>

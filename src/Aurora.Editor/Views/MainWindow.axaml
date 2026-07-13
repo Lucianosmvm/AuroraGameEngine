@@ -294,10 +294,10 @@
 
     <Grid ColumnDefinitions="230,4,*,4,330">
 
-      <!-- Cenas + Prefabs + Assets + Hierarquia -->
-      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,*,4,*">
+      <!-- Cenas + Telas UI + Prefabs + Assets + Hierarquia -->
+      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,Auto,4,*,4,*">
 
-        <DockPanel Grid.Row="0" MaxHeight="140">
+        <DockPanel Grid.Row="0" MaxHeight="130">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshScenes" IsEnabled="{Binding HasDocument}"
@@ -320,7 +320,31 @@
 
         <GridSplitter Grid.Row="1" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="2" MaxHeight="120">
+        <DockPanel Grid.Row="2" MaxHeight="110">
+          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
+            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
+                    Click="OnRefreshUiScreens" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Reescanear telas de UI do projeto"/>
+            <Button DockPanel.Dock="Right" Content="+" FontSize="12" Padding="8,2" Margin="0,0,4,0"
+                    Click="OnNewUiScreen" ToolTip.Tip="Nova tela de UI (HUD/menu)"/>
+            <TextBlock Text="TELAS UI" FontSize="11" FontWeight="Bold" Opacity="0.5"
+                       VerticalAlignment="Center"/>
+          </DockPanel>
+          <ListBox ItemsSource="{Binding UiScreens}" DoubleTapped="OnSceneFileDoubleTapped"
+                    ToolTip.Tip="HUD/menu — componentes UiText/UiImage/UiBar/UiPanel em pixel de tela">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding Name}"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="3" Background="#2A2740"/>
+
+        <DockPanel Grid.Row="4" MaxHeight="110">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshPrefabs" IsEnabled="{Binding HasDocument}"
@@ -338,9 +362,9 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="3" Background="#2A2740"/>
+        <GridSplitter Grid.Row="5" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="4">
+        <DockPanel Grid.Row="6">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
@@ -365,9 +389,9 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="5" Background="#2A2740"/>
+        <GridSplitter Grid.Row="7" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="6">
+        <DockPanel Grid.Row="8">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">

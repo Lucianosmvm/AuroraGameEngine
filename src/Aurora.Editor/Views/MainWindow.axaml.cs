@@ -160,6 +160,32 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task PickAndNewUiScreenAsync()
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Nova tela de UI — escolha onde salvar",
+            DefaultExtension = "json",
+            SuggestedFileName = "hud.json",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Tela de UI Aurora (JSON)") { Patterns = ["*.json"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is { } path)
+        {
+            try
+            {
+                ViewModel.NewUiScreen(path);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.Status = $"Erro ao criar tela de UI: {ex.Message}";
+            }
+        }
+    }
+
     private async Task PickAndOpenSceneAsync()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -282,6 +308,10 @@ public partial class MainWindow : Window
     }
 
     private void OnRefreshScenes(object? sender, RoutedEventArgs e) => ViewModel.ReloadSceneFiles();
+
+    private void OnRefreshUiScreens(object? sender, RoutedEventArgs e) => ViewModel.ReloadUiScreens();
+
+    private void OnNewUiScreen(object? sender, RoutedEventArgs e) => _ = PickAndNewUiScreenAsync();
 
     private void OnSceneFileDoubleTapped(object? sender, TappedEventArgs e)
     {

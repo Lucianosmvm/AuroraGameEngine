@@ -107,7 +107,7 @@ public sealed class SceneDocument
             .FirstOrDefault(t => t is not null);
 
         if (firstTexture is null)
-            return sceneDir;
+            return FindAssetsRootViaProjectFile(sceneDir) ?? sceneDir;
 
         for (var dir = new DirectoryInfo(sceneDir); dir is not null; dir = dir.Parent)
         {
@@ -115,6 +115,26 @@ public sealed class SceneDocument
                 return dir.FullName;
         }
 
-        return sceneDir;
+        return FindAssetsRootViaProjectFile(sceneDir) ?? sceneDir;
+    }
+
+    /// <summary>
+    /// Fallback quando não há textura pra guiar a heurística (cena/tela de UI sem imagem
+    /// nenhuma, ex.: tela de UI só com UiText/UiBar): sobe procurando aurora.project.json —
+    /// mesma convenção que ProjectSettings.Find já usa — e usa a pasta "Assets" ao lado dele.
+    /// Sem isso, uma tela de UI sem imagem "esconderia" CENAS/PREFABS/outras telas do resto
+    /// do projeto (AssetsRoot cairia na própria pasta da tela).
+    /// </summary>
+    private static string? FindAssetsRootViaProjectFile(string sceneDir)
+    {
+        for (var dir = new DirectoryInfo(sceneDir); dir is not null; dir = dir.Parent)
+        {
+            if (!File.Exists(Path.Combine(dir.FullName, "aurora.project.json")))
+                continue;
+
+            string assets = Path.Combine(dir.FullName, "Assets");
+            return Directory.Exists(assets) ? assets : dir.FullName;
+        }
+        return null;
     }
 }

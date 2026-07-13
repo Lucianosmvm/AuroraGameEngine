@@ -43,6 +43,10 @@ public sealed class EventSystem
     /// <summary>Quando presente, ações SetQuestStage/AdvanceQuest e gatilho QuestStageAtLeast operam aqui.</summary>
     public QuestManager? Quests { get; set; }
 
+    /// <summary>Quando presente, ações ShowUI/HideUI/ToggleUI mostram/escondem telas já carregadas
+    /// via <see cref="UIManager.Load"/> (tipicamente em OnLoad).</summary>
+    public UIManager? UI { get; set; }
+
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
 
@@ -238,6 +242,18 @@ public sealed class EventSystem
 
             case "AdvanceQuest" when action.Name is not null:
                 Quests?.Advance(action.Name, action.Value == 0f ? 1 : (int)action.Value);
+                break;
+
+            case "ShowUI" when action.Name is not null:
+                UI?.Show(action.Name);
+                break;
+
+            case "HideUI" when action.Name is not null:
+                UI?.Hide(action.Name);
+                break;
+
+            case "ToggleUI" when action.Name is not null:
+                UI?.Toggle(action.Name);
                 break;
 
             case "ChangeScene" when action.Name is not null:

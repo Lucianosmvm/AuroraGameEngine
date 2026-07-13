@@ -15,7 +15,8 @@ public sealed class EntityViewModel : ViewModelBase
     public event Action<string>? Edited;
 
     private static readonly string[] BuiltInComponentTypes =
-        ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger"];
+        ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger",
+         "UiText", "UiImage", "UiBar", "UiPanel"];
 
     private readonly MainViewModel? _owner;
 
@@ -217,6 +218,40 @@ public sealed class EntityViewModel : ViewModelBase
             "SpriteRenderer" => new JsonObject
             {
                 ["Type"] = "SpriteRenderer",
+            },
+            "UiText" => new JsonObject
+            {
+                ["Type"] = "UiText",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Text"] = "Texto",
+                ["Color"] = "#FFFFFFFF",
+            },
+            "UiImage" => new JsonObject
+            {
+                ["Type"] = "UiImage",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Width"] = 32f,
+                ["Height"] = 32f,
+            },
+            "UiBar" => new JsonObject
+            {
+                ["Type"] = "UiBar",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Width"] = 150f,
+                ["Height"] = 12f,
+                ["Max"] = 100f,
+            },
+            "UiPanel" => new JsonObject
+            {
+                ["Type"] = "UiPanel",
+                ["X"] = 10f,
+                ["Y"] = 10f,
+                ["Width"] = 200f,
+                ["Height"] = 100f,
+                ["Color"] = "#000000A0",
             },
             _ => BuildCustomScriptNode(),
         };
