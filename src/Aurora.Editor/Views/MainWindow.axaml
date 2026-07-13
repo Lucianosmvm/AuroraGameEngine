@@ -266,6 +266,8 @@
         <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>
         <MenuItem Header="Salvar _Como…" Click="OnSaveSceneAs" InputGesture="Ctrl+Shift+S" IsEnabled="{Binding HasDocument}"/>
         <Separator/>
+        <MenuItem Header="_Build Jogo (Release)…" Click="OnBuildGame" IsEnabled="{Binding CanBuild}"/>
+        <Separator/>
         <MenuItem Header="Sai_r" Click="OnExit"/>
       </MenuItem>
       <MenuItem Header="_Editar">

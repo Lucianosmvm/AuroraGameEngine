@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Aurora.Editor.ViewModels;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -276,6 +277,27 @@ public partial class MainWindow : Window
     private void OnChangeAssetsRoot(object? sender, RoutedEventArgs e) => _ = PickAssetsRootAsync();
 
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
+
+    private async Task PickAndBuildAsync()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Build Jogo — escolha a pasta de saída",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } outputDir)
+            return;
+
+        bool ok = await ViewModel.BuildGameAsync(outputDir);
+        if (ok)
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", $"\"{outputDir}\"")); }
+            catch { /* abrir o Explorer é conveniência, não impede o build ter dado certo */ }
+        }
+    }
+
+    private void OnBuildGame(object? sender, RoutedEventArgs e) => _ = PickAndBuildAsync();
 
     private async Task PickGameProjectAsync()
     {

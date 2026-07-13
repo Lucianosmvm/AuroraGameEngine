@@ -109,6 +109,7 @@ public sealed class MainViewModel : ViewModelBase
             try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
             Raise();
             Raise(nameof(CanPlay));
+            Raise(nameof(CanBuild));
             RefreshScriptCatalog();
         }
     }
@@ -145,6 +146,91 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private bool _isBuilding;
+    public bool IsBuilding
+    {
+        get => _isBuilding;
+        private set
+        {
+            if (Set(ref _isBuilding, value))
+                Raise(nameof(CanBuild));
+        }
+    }
+
+    public bool CanBuild => _document is not null && !string.IsNullOrWhiteSpace(_settings?.GameProject) && !IsBuilding;
+
+    /// <summary>
+    /// Publica o jogo self-contained (Release) pra pasta escolhida — dotnet publish por
+    /// trás, mesma engrenagem que Play() já usa pra achar o projeto. Não builda plataforma
+    /// diferente da que está rodando o editor (self-contained pro RID atual).
+    /// </summary>
+    public async Task<bool> BuildGameAsync(string outputDir)
+    {
+        if (_document is null || string.IsNullOrWhiteSpace(_settings?.GameProject))
+        {
+            Status = "Configure o caminho do projeto (Inspector → PROJETO) antes de buildar.";
+            return false;
+        }
+
+        string project = _settings!.GameProject!.Trim();
+        if (project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "PROJETO aponta pra um .exe — build precisa do .csproj (ou pasta) do jogo.";
+            return false;
+        }
+
+        SaveScene();
+        IsBuilding = true;
+        string rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        Status = $"Buildando ({rid}, Release)... pode levar um tempo na primeira vez.";
+
+        try
+        {
+            var psi = new ProcessStartInfo("dotnet",
+                $"publish \"{project}\" -c Release -r {rid} --self-contained true -o \"{outputDir}\"")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi)
+                ?? throw new InvalidOperationException("Não consegui iniciar o dotnet publish.");
+
+            string stdout = await process.StandardOutput.ReadToEndAsync();
+            string stderr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                Status = $"Build falhou (código {process.ExitCode}): {FirstErrorLine(stdout, stderr)}";
+                return false;
+            }
+
+            Status = $"Build concluído: {outputDir}";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Status = $"Erro ao buildar: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            IsBuilding = false;
+        }
+    }
+
+    private static string FirstErrorLine(string stdout, string stderr)
+    {
+        string combined = stderr.Length > 0 ? stderr : stdout;
+        string? line = combined.Split('\n')
+            .Select(l => l.Trim())
+            .FirstOrDefault(l => l.Contains("error", StringComparison.OrdinalIgnoreCase));
+        return line ?? "veja o log completo no terminal.";
+    }
+
     public void ChangeAssetsRoot(string absolutePath)
     {
         if (_document is null)
@@ -176,6 +262,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(HasDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
+        Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
@@ -205,6 +292,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(HasDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
+        Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
