@@ -299,6 +299,38 @@ public partial class MainWindow : Window
 
     private void OnBuildGame(object? sender, RoutedEventArgs e) => _ = PickAndBuildAsync();
 
+    private async Task PickAndExportAndroidAsync()
+    {
+        string gameName = string.IsNullOrWhiteSpace(ViewModel.GameProjectPath)
+            ? "MeuJogo"
+            : Path.GetFileNameWithoutExtension(ViewModel.GameProjectPath.TrimEnd('\\', '/'));
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Exportar Android — pasta do projeto Android",
+            SuggestedFileName = $"{gameName}.Android",
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+            return;
+
+        string parent = Path.GetDirectoryName(path)!;
+        string folderName = Path.GetFileName(path);
+        string androidProjectDir = Path.Combine(parent, folderName);
+
+        string appId = "com.auroraengine." + System.Text.RegularExpressions.Regex
+            .Replace(gameName.ToLowerInvariant(), "[^a-z0-9]", "");
+
+        string? apk = await ViewModel.ExportAndroidAsync(androidProjectDir, appId, gameName);
+        if (apk is not null)
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{apk}\"")); }
+            catch { /* abrir o Explorer é conveniência, não impede a exportação ter dado certo */ }
+        }
+    }
+
+    private void OnExportAndroid(object? sender, RoutedEventArgs e) => _ = PickAndExportAndroidAsync();
+
     private async Task PickGameProjectAsync()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions

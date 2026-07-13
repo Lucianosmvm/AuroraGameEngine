@@ -306,6 +306,7 @@
         <MenuItem Header="Salvar _Como…" Click="OnSaveSceneAs" InputGesture="Ctrl+Shift+S" IsEnabled="{Binding HasDocument}"/>
         <Separator/>
         <MenuItem Header="_Build Jogo (Release)…" Click="OnBuildGame" IsEnabled="{Binding CanBuild}"/>
+        <MenuItem Header="Exportar _Android (APK)…" Click="OnExportAndroid" IsEnabled="{Binding CanExportAndroid}"/>
         <Separator/>
         <MenuItem Header="Sai_r" Click="OnExit"/>
       </MenuItem>

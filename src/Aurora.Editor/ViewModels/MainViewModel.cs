@@ -231,6 +231,111 @@ public sealed class MainViewModel : ViewModelBase
         return line ?? "veja o log completo no terminal.";
     }
 
+    private bool _isExportingAndroid;
+    public bool IsExportingAndroid
+    {
+        get => _isExportingAndroid;
+        private set
+        {
+            if (Set(ref _isExportingAndroid, value))
+                Raise(nameof(CanExportAndroid));
+        }
+    }
+
+    public bool CanExportAndroid => _document is not null && !string.IsNullOrWhiteSpace(_settings?.GameProject) && !IsExportingAndroid;
+
+    /// <summary>
+    /// Gera um segundo projeto (.csproj net10.0-android + MainActivity + AndroidAssetSource)
+    /// a partir do jogo desktop atual e builda em Release — mesmo padrão testado manualmente
+    /// em <c>docs/GUIA-ANDROID.md</c>, agora automático. Retorna o .apk gerado (ou null se falhou).
+    /// </summary>
+    public async Task<string?> ExportAndroidAsync(string androidProjectDir, string applicationId, string displayName)
+    {
+        if (_document is null || string.IsNullOrWhiteSpace(_settings?.GameProject))
+        {
+            Status = "Configure o caminho do projeto (Inspector → PROJETO) antes de exportar.";
+            return null;
+        }
+
+        string project = _settings!.GameProject!.Trim();
+        if (project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "PROJETO aponta pra um .exe — exportar Android precisa do .csproj (ou pasta) do jogo.";
+            return null;
+        }
+
+        string? gameCsproj = Directory.Exists(project)
+            ? Directory.EnumerateFiles(project, "*.csproj").FirstOrDefault()
+            : project;
+        if (gameCsproj is null)
+        {
+            Status = $"Não achei nenhum .csproj em '{project}'.";
+            return null;
+        }
+
+        SaveScene();
+        IsExportingAndroid = true;
+        Status = "Gerando projeto Android...";
+
+        try
+        {
+            Models.AndroidExporter.Result result;
+            try
+            {
+                result = Models.AndroidExporter.Export(gameCsproj, androidProjectDir, applicationId, displayName);
+            }
+            catch (Exception ex)
+            {
+                Status = $"Falha ao gerar projeto Android: {ex.Message}";
+                return null;
+            }
+
+            string warningSuffix = result.Warnings.Count > 0 ? $" ({result.Warnings.Count} aviso(s), veja o log)" : "";
+            Status = $"Projeto Android gerado. Buildando (pode levar minutos na 1ª vez){warningSuffix}...";
+            foreach (string warning in result.Warnings)
+                Console.WriteLine($"[export-android] aviso: {warning}");
+
+            var psi = new ProcessStartInfo("dotnet", $"build \"{result.CsprojPath}\" -c Release")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+
+            using var process = Process.Start(psi)
+                ?? throw new InvalidOperationException("Não consegui iniciar o dotnet build.");
+
+            string stdout = await process.StandardOutput.ReadToEndAsync();
+            string stderr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                Status = $"Build Android falhou (código {process.ExitCode}): {FirstErrorLine(stdout, stderr)}";
+                return null;
+            }
+
+            string? apk = Directory.Exists(androidProjectDir)
+                ? Directory.EnumerateFiles(androidProjectDir, "*-Signed.apk", SearchOption.AllDirectories).FirstOrDefault()
+                : null;
+
+            Status = apk is not null
+                ? $"APK gerado: {apk}"
+                : $"Build concluído mas não achei o .apk em {androidProjectDir}.";
+            return apk;
+        }
+        catch (Exception ex)
+        {
+            Status = $"Erro ao exportar Android: {ex.Message}";
+            return null;
+        }
+        finally
+        {
+            IsExportingAndroid = false;
+        }
+    }
+
     public void ChangeAssetsRoot(string absolutePath)
     {
         if (_document is null)
