@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Aurora.Editor.Models;
@@ -30,14 +31,31 @@ public static class GameProjectScaffolder
         Directory.CreateDirectory(projectDir);
         string scenesDir = Path.Combine(projectDir, "Assets", "scenes");
         Directory.CreateDirectory(scenesDir);
+        string spritesDir = Path.Combine(projectDir, "Assets", "sprites");
+        Directory.CreateDirectory(spritesDir);
 
         string relativeRuntimePath = Path.GetRelativePath(projectDir, runtimeCsproj);
         File.WriteAllText(Path.Combine(projectDir, $"{projectName}.csproj"), BuildCsproj(relativeRuntimePath));
         File.WriteAllText(Path.Combine(projectDir, "Program.cs"), BuildProgram(identifier));
         File.WriteAllText(Path.Combine(projectDir, $"{identifier}Game.cs"), BuildGameClass(identifier));
+        File.WriteAllBytes(Path.Combine(spritesDir, "placeholder.png"), Convert.FromBase64String(PlaceholderPngBase64));
 
+        // Cena não vem vazia: uma entidade já com o sprite placeholder, pra Play mostrar
+        // algo visível de cara em vez de só a tela azul do ClearColor padrão.
         string scenePath = Path.Combine(scenesDir, "main.json");
-        SceneDocument.New(scenePath);
+        var sceneRoot = new JsonObject
+        {
+            ["Scene"] = "main",
+            ["Objects"] = new JsonArray(
+                new JsonObject
+                {
+                    ["Name"] = "Placeholder",
+                    ["Components"] = new JsonArray(
+                        new JsonObject { ["Type"] = "Transform", ["X"] = 0f, ["Y"] = 0f },
+                        new JsonObject { ["Type"] = "SpriteRenderer", ["Texture"] = "sprites/placeholder.png" }),
+                }),
+        };
+        File.WriteAllText(scenePath, sceneRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
         var settings = new ProjectSettings { GameProject = Path.Combine(projectDir, $"{projectName}.csproj") };
         File.WriteAllText(Path.Combine(projectDir, "aurora.project.json"),
@@ -45,6 +63,12 @@ public static class GameProjectScaffolder
 
         return scenePath;
     }
+
+    /// <summary>Quadriculado magenta/roxo 32x32 — mesma vibe do placeholder que o editor já desenha
+    /// pra sprites sem textura, só que como arquivo real (o runtime não desenha placeholder, precisa
+    /// de textura de verdade pra aparecer algo).</summary>
+    private const string PlaceholderPngBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABGSURBVFhH7c6hDQAwDANBD9EhMkT3VyfpGg03swJKHjwxsE53nzepVo2SH6b5YRoAAAAAAAAAQD6kOSgNAAAAAAAAAPAd0C92mHnKU5Y6AAAAAElFTkSuQmCC";
 
     /// <summary>Sobe a partir da pasta do executável do editor até achar src/Aurora.Runtime/Aurora.Runtime.csproj.</summary>
     private static string? FindRuntimeCsproj()
