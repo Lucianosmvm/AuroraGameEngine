@@ -1,4 +1,5 @@
 using System.Numerics;
+using Aurora.Runtime.AI;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Graphics;
 
@@ -26,6 +27,7 @@ public sealed class World
     private int _nextId = 1;
     private bool _updating;
     private readonly Random _random = new();
+    private NavGrid? _navGrid;
 
     public int EntityCount => _alive.Count;
 
@@ -42,6 +44,7 @@ public sealed class World
         _tilemapBuffer.Clear();
         _activeTriggers.Clear();
         _prevTriggers.Clear();
+        _navGrid = null;
         _nextId = 1;
     }
 
@@ -182,6 +185,7 @@ public sealed class World
             behavior.Update(deltaTime);
         }
 
+        UpdateNavAgents(deltaTime);
         ProcessCollisions();
         UpdateParticles(deltaTime);
 
@@ -196,6 +200,83 @@ public sealed class World
     }
 
     /// <summary>Nasce/envelhece/mata partículas de todo ParticleEmitter vivo.</summary>
+    /// <summary>
+    /// Move todo NavAgent com alvo definido: calcula caminho (A* se houver tilemap com
+    /// SolidTiles, reto senão) na primeira vez e avança waypoint a waypoint.
+    /// </summary>
+    private void UpdateNavAgents(float deltaTime)
+    {
+        foreach (var (_, transform, agent) in Query<Transform, NavAgent>())
+        {
+            if (!agent.HasTarget)
+                continue;
+
+            if (agent.Path is null)
+            {
+                var grid = EnsureNavGrid();
+                // A grade só é uma restrição válida dentro da própria área mapeada - fora
+                // dela (ou sem tilemap na cena) não há dado de bloqueio, então anda reto.
+                bool useGrid = grid is not null
+                    && IsWithinGrid(grid, transform.Position) && IsWithinGrid(grid, agent.Target);
+
+                agent.Path = useGrid
+                    ? AStarPathfinder.FindPath(grid!, transform.Position, agent.Target)
+                    : [agent.Target];
+                agent.WaypointIndex = 0;
+
+                if (agent.Path is null)
+                {
+                    agent.HasTarget = false; // destino bloqueado/inalcançável
+                    continue;
+                }
+            }
+
+            if (agent.WaypointIndex >= agent.Path.Count)
+            {
+                agent.HasTarget = false;
+                continue;
+            }
+
+            var waypoint = agent.Path[agent.WaypointIndex];
+            var toWaypoint = waypoint - transform.Position;
+            float distance = toWaypoint.Length();
+
+            if (distance <= agent.ArriveThreshold)
+            {
+                agent.WaypointIndex++;
+                if (agent.WaypointIndex >= agent.Path.Count)
+                    agent.HasTarget = false;
+                continue;
+            }
+
+            transform.Position += toWaypoint / distance * agent.Speed * deltaTime;
+        }
+    }
+
+    /// <summary>Constrói (uma vez por cena) a grade de navegação a partir do primeiro Tilemap
+    /// com SolidTiles não vazio. Sem tilemap assim, NavAgent anda reto até o alvo.</summary>
+    private NavGrid? EnsureNavGrid()
+    {
+        if (_navGrid is not null)
+            return _navGrid;
+
+        foreach (var (_, transform, tilemap) in Query<Transform, Tilemap>())
+        {
+            if (tilemap.SolidTiles.Count > 0)
+            {
+                _navGrid = NavGrid.FromTilemap(transform, tilemap);
+                break;
+            }
+        }
+        return _navGrid;
+    }
+
+    private static bool IsWithinGrid(NavGrid grid, Vector2 world)
+    {
+        var cell = grid.WorldToCell(world);
+        return cell.X >= 0 && cell.Y >= 0 && cell.X < grid.Width && cell.Y < grid.Height;
+    }
+
     private void UpdateParticles(float deltaTime)
     {
         foreach (var (_, transform, emitter) in Query<Transform, ParticleEmitter>())

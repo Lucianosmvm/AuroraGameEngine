@@ -263,6 +263,7 @@ public sealed class SceneSerializer
         RegisterCameraController();
         RegisterParticleEmitter();
         RegisterLight2D();
+        RegisterNavAgent();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -707,6 +708,24 @@ public sealed class SceneSerializer
                 if (l.Intensity != 1f) json.WriteNumber("Intensity", l.Intensity);
                 if (!l.Enabled) json.WriteBoolean("Enabled", false);
                 if (l.Color.ToHex() != "#FFDC96FF") json.WriteString("Color", l.Color.ToHex());
+            });
+    }
+
+    private void RegisterNavAgent()
+    {
+        // Target/Path/HasTarget são estado de runtime (setados via SetTarget em código) -
+        // não fazem sentido persistidos numa cena estática, só Speed/ArriveThreshold.
+        Register<NavAgent>("NavAgent",
+            static (json, _) => new NavAgent
+            {
+                Speed = GetFloat(json, "Speed", 100f),
+                ArriveThreshold = GetFloat(json, "ArriveThreshold", 4f),
+            },
+            static (json, component, _) =>
+            {
+                var a = (NavAgent)component;
+                if (a.Speed != 100f) json.WriteNumber("Speed", a.Speed);
+                if (a.ArriveThreshold != 4f) json.WriteNumber("ArriveThreshold", a.ArriveThreshold);
             });
     }
 

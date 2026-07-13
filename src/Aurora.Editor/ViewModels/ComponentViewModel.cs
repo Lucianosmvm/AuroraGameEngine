@@ -87,6 +87,11 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Radius", 100f), ("Color", "#FFDC96FF"), ("Intensity", 1f), ("Enabled", true),
         ],
+        // NavAgent: alvo é setado em código (SetTarget), só Speed/ArriveThreshold são autoráveis na cena.
+        ["NavAgent"] =
+        [
+            ("Speed", 100f), ("ArriveThreshold", 4f),
+        ],
     };
 
     public JsonObject Node { get; }

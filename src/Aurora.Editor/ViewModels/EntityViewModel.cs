@@ -16,7 +16,7 @@ public sealed class EntityViewModel : ViewModelBase
 
     private static readonly string[] BuiltInComponentTypes =
         ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger",
-         "UiText", "UiImage", "UiBar", "UiPanel", "ParticleEmitter", "Light2D"];
+         "UiText", "UiImage", "UiBar", "UiPanel", "ParticleEmitter", "Light2D", "NavAgent"];
 
     private readonly MainViewModel? _owner;
 
@@ -272,6 +272,12 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Radius"] = 100f,
                 ["Color"] = "#FFDC96FF",
                 ["Intensity"] = 1f,
+            },
+            "NavAgent" => new JsonObject
+            {
+                ["Type"] = "NavAgent",
+                ["Speed"] = 100f,
+                ["ArriveThreshold"] = 4f,
             },
             _ => BuildCustomScriptNode(),
         };
