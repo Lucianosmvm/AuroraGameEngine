@@ -294,10 +294,10 @@
 
     <Grid ColumnDefinitions="230,4,*,4,330">
 
-      <!-- Cenas + Assets + Hierarquia -->
-      <Grid Grid.Column="0" RowDefinitions="Auto,4,*,4,*">
+      <!-- Cenas + Prefabs + Assets + Hierarquia -->
+      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,*,4,*">
 
-        <DockPanel Grid.Row="0" MaxHeight="170">
+        <DockPanel Grid.Row="0" MaxHeight="140">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshScenes" IsEnabled="{Binding HasDocument}"
@@ -320,7 +320,27 @@
 
         <GridSplitter Grid.Row="1" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="2">
+        <DockPanel Grid.Row="2" MaxHeight="120">
+          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
+            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
+                    Click="OnRefreshPrefabs" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Reescanear prefabs do projeto"/>
+            <TextBlock Text="PREFABS" FontSize="11" FontWeight="Bold" Opacity="0.5"
+                       VerticalAlignment="Center"/>
+          </DockPanel>
+          <ListBox ItemsSource="{Binding Prefabs}" DoubleTapped="OnPrefabDoubleTapped"
+                    ToolTip.Tip="Duplo-clique instancia na cena">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="3" Background="#2A2740"/>
+
+        <DockPanel Grid.Row="4">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
@@ -345,9 +365,9 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="3" Background="#2A2740"/>
+        <GridSplitter Grid.Row="5" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="4">
+        <DockPanel Grid.Row="6">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
@@ -483,6 +503,26 @@
               <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
               <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="13" Padding="6,4"/>
             </Grid>
+
+            <!-- Prefab: sem link vira botão pra criar; com link mostra nome + sync/apply -->
+            <Button Content="Salvar como Prefab…" Click="OnSaveAsPrefab" FontSize="12"
+                    HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                    IsVisible="{Binding !HasPrefab}"/>
+            <Border Background="#1A1830" CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
+                    IsVisible="{Binding HasPrefab}">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{Binding PrefabPath}" FontSize="11" Opacity="0.6"
+                           TextTrimming="CharacterEllipsis"/>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Button Content="↓ Atualizar da prefab" FontSize="11" Padding="6,3"
+                          Command="{Binding SyncFromPrefabCommand}"
+                          ToolTip.Tip="Substitui os componentes (menos Transform) pelos da prefab"/>
+                  <Button Content="↑ Aplicar na prefab" FontSize="11" Padding="6,3"
+                          Command="{Binding ApplyToPrefabCommand}"
+                          ToolTip.Tip="Grava os componentes atuais (menos Transform) no arquivo da prefab"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
 
             <ItemsControl ItemsSource="{Binding Components}"/>
 

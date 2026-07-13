@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
 
@@ -30,21 +31,21 @@ public sealed class EntityViewModel : ViewModelBase
     }
 
     public ICommand AddComponentCommand { get; }
+    public ICommand SyncFromPrefabCommand { get; }
+    public ICommand ApplyToPrefabCommand { get; }
 
     public EntityViewModel(JsonObject node, MainViewModel? owner = null)
     {
         Node = node;
         _owner = owner;
         AddComponentCommand = new RelayCommand(AddComponent);
+        SyncFromPrefabCommand = new RelayCommand(() => SyncFromPrefab());
+        ApplyToPrefabCommand = new RelayCommand(() => ApplyToPrefab());
 
         if (owner is not null)
             owner.CustomScripts.CollectionChanged += (_, _) => Raise(nameof(AvailableComponentTypes));
 
-        if (node["Components"] is JsonArray components)
-        {
-            foreach (var componentNode in components.OfType<JsonObject>())
-                AddVm(BuildVm(componentNode));
-        }
+        RebuildComponents();
     }
 
     public string Name
@@ -79,6 +80,101 @@ public sealed class EntityViewModel : ViewModelBase
             var etvm = Components.OfType<EventTriggerViewModel>().FirstOrDefault();
             return etvm?.TriggerType ?? "";
         }
+    }
+
+    // ---- Prefabs ----
+
+    /// <summary>Caminho relativo (à raiz de assets) da prefab linkada, se houver. Campo "Prefab"
+    /// na cena, ignorado pelo runtime (não faz parte do schema que ele lê).</summary>
+    public string? PrefabPath
+    {
+        get => Node["Prefab"]?.GetValue<string>();
+        private set
+        {
+            if (value is null) Node.Remove("Prefab");
+            else Node["Prefab"] = value;
+            Raise();
+            Raise(nameof(HasPrefab));
+        }
+    }
+
+    public bool HasPrefab => PrefabPath is not null;
+
+    /// <summary>Salva os Components desta entidade (exceto Transform — posição é por instância,
+    /// não faz parte do molde) num arquivo de prefab reutilizável e linka esta entidade a ele.</summary>
+    public void SaveAsPrefab(string filePath)
+    {
+        WritePrefabFile(filePath);
+
+        string? assetsRoot = _owner?.Document?.AssetsRoot;
+        PrefabPath = assetsRoot is null
+            ? filePath
+            : Path.GetRelativePath(assetsRoot, filePath).Replace('\\', '/');
+        Edited?.Invoke($"prefablink:{Node.GetHashCode()}");
+    }
+
+    /// <summary>
+    /// Substitui os componentes desta entidade pelos da prefab linkada — preserva o Transform
+    /// (posição/rotação/escala são por instância, não fazem parte do "molde" reutilizável).
+    /// </summary>
+    public bool SyncFromPrefab()
+    {
+        string? assetsRoot = _owner?.Document?.AssetsRoot;
+        if (PrefabPath is not { } rel || assetsRoot is null)
+            return false;
+
+        string full = Path.Combine(assetsRoot, rel);
+        if (!File.Exists(full))
+            return false;
+
+        if (JsonNode.Parse(File.ReadAllText(full)) is not JsonObject prefabRoot
+            || prefabRoot["Components"] is not JsonArray prefabComponents)
+            return false;
+
+        var transformNode = Transform?.Node;
+        var newComponents = new JsonArray();
+        if (transformNode is not null)
+            newComponents.Add(JsonNode.Parse(transformNode.ToJsonString()));
+
+        foreach (var comp in prefabComponents)
+        {
+            if (comp is JsonObject obj && obj["Type"]?.GetValue<string>() == "Transform")
+                continue;
+            newComponents.Add(JsonNode.Parse(comp!.ToJsonString()));
+        }
+
+        Node["Components"] = newComponents;
+        RebuildComponents();
+        Edited?.Invoke($"prefabsync:{Node.GetHashCode()}");
+        return true;
+    }
+
+    /// <summary>Escreve os componentes atuais (exceto Transform) de volta no arquivo da prefab
+    /// linkada, pra outras instâncias puxarem via <see cref="SyncFromPrefab"/>.</summary>
+    public bool ApplyToPrefab()
+    {
+        string? assetsRoot = _owner?.Document?.AssetsRoot;
+        if (PrefabPath is not { } rel || assetsRoot is null)
+            return false;
+
+        WritePrefabFile(Path.Combine(assetsRoot, rel));
+        return true;
+    }
+
+    /// <summary>Grava Name + Components desta entidade (exceto Transform) no arquivo indicado —
+    /// usado tanto por <see cref="SaveAsPrefab"/> quanto por <see cref="ApplyToPrefab"/>.</summary>
+    private void WritePrefabFile(string filePath)
+    {
+        var componentsToSave = new JsonArray();
+        foreach (var vm in Components)
+        {
+            if (vm.Type == "Transform")
+                continue;
+            componentsToSave.Add(JsonNode.Parse(vm.Node.ToJsonString()));
+        }
+
+        var prefabRoot = new JsonObject { ["Name"] = Name, ["Components"] = componentsToSave };
+        File.WriteAllText(filePath, prefabRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     // ---- Add / Remove ----
@@ -234,6 +330,16 @@ public sealed class EntityViewModel : ViewModelBase
     }
 
     // ---- Helpers ----
+
+    private void RebuildComponents()
+    {
+        Components.Clear();
+        if (Node["Components"] is JsonArray components)
+        {
+            foreach (var componentNode in components.OfType<JsonObject>())
+                AddVm(BuildVm(componentNode));
+        }
+    }
 
     private static ComponentViewModel BuildVm(JsonObject node) =>
         node["Type"]?.GetValue<string>() switch

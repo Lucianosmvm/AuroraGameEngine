@@ -289,5 +289,45 @@ public partial class MainWindow : Window
             ViewModel.OpenSceneFile(file);
     }
 
+    private void OnRefreshPrefabs(object? sender, RoutedEventArgs e) => ViewModel.ReloadPrefabs();
+
+    private void OnPrefabDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is ViewModels.PrefabFileViewModel prefab)
+        {
+            var center = Scene.CameraCenter;
+            ViewModel.CreatePrefabInstance(prefab, center.X, center.Y);
+        }
+    }
+
+    private async Task PickSaveAsPrefabAsync()
+    {
+        if (ViewModel.SelectedEntity is not { } entity || ViewModel.Document is null)
+            return;
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Salvar como prefab",
+            DefaultExtension = "json",
+            SuggestedFileName = $"{entity.Name}.json",
+            SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(
+                Path.Combine(ViewModel.Document.AssetsRoot, "prefabs")),
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Prefab Aurora (JSON)") { Patterns = ["*.json"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+            return;
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        entity.SaveAsPrefab(path);
+        ViewModel.ReloadPrefabs();
+        ViewModel.Status = $"Prefab salva: {Path.GetFileName(path)}";
+    }
+
+    private void OnSaveAsPrefab(object? sender, RoutedEventArgs e) => _ = PickSaveAsPrefabAsync();
+
     private void OnExit(object? sender, RoutedEventArgs e) => Close();
 }

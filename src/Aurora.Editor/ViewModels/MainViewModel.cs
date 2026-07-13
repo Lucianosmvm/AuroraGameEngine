@@ -28,6 +28,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<AssetViewModel> Assets { get; } = [];
     public ObservableCollection<EntityViewModel> EventEntities { get; } = [];
     public ObservableCollection<SceneFileViewModel> SceneFiles { get; } = [];
+    public ObservableCollection<PrefabFileViewModel> Prefabs { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
 
     /// <summary>Scripts [SceneScript] descobertos no projeto do jogo — alimenta o dropdown
@@ -178,6 +179,7 @@ public sealed class MainViewModel : ViewModelBase
         RaiseUndoState();
         ReloadAssets();
         ReloadSceneFiles();
+        ReloadPrefabs();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -205,6 +207,7 @@ public sealed class MainViewModel : ViewModelBase
         RaiseUndoState();
         ReloadAssets();
         ReloadSceneFiles();
+        ReloadPrefabs();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -255,7 +258,8 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Varre a raiz de assets por cenas .json (para o painel CENAS).</summary>
+    /// <summary>Varre a raiz de assets por cenas .json (para o painel CENAS). Cena tem "Objects"
+    /// na raiz — prefab (mesma pasta de assets) tem "Components" na raiz e nunca aparece aqui.</summary>
     public void ReloadSceneFiles()
     {
         SceneFiles.Clear();
@@ -263,6 +267,7 @@ public sealed class MainViewModel : ViewModelBase
             return;
 
         var files = Directory.EnumerateFiles(_document.AssetsRoot, "*.json", SearchOption.AllDirectories)
+            .Where(f => LooksLikeScene(f))
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
 
         foreach (var file in files)
@@ -274,6 +279,46 @@ public sealed class MainViewModel : ViewModelBase
                     StringComparison.OrdinalIgnoreCase),
             });
         }
+    }
+
+    /// <summary>Varre a raiz de assets por prefabs .json (para o painel PREFABS). Prefab tem
+    /// "Components" na raiz sem "Objects" — o oposto de uma cena.</summary>
+    public void ReloadPrefabs()
+    {
+        Prefabs.Clear();
+        if (_document is null || !Directory.Exists(_document.AssetsRoot))
+            return;
+
+        var files = Directory.EnumerateFiles(_document.AssetsRoot, "*.json", SearchOption.AllDirectories)
+            .Where(f => LooksLikePrefab(f))
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
+            Prefabs.Add(new PrefabFileViewModel(file, relative));
+        }
+    }
+
+    private static bool LooksLikeScene(string jsonPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+            return doc.RootElement.TryGetProperty("Objects", out _);
+        }
+        catch { return false; }
+    }
+
+    private static bool LooksLikePrefab(string jsonPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(jsonPath));
+            return doc.RootElement.TryGetProperty("Components", out _)
+                && !doc.RootElement.TryGetProperty("Objects", out _);
+        }
+        catch { return false; }
     }
 
     /// <summary>Troca de cena a partir do painel CENAS. Salva a atual antes, se suja (sem
@@ -485,6 +530,57 @@ public sealed class MainViewModel : ViewModelBase
         SelectedEntity = entity;
         OnEdited($"create:{node.GetHashCode()}");
         Status = $"{name} criado — defina o tileset (duplo-clique num asset) e pinte.";
+    }
+
+    /// <summary>Instancia uma prefab na cena atual: clona os Components do arquivo, dá um
+    /// Transform novo na posição pedida e linka a entidade à prefab (duplo-clique no painel PREFABS).</summary>
+    public void CreatePrefabInstance(PrefabFileViewModel prefab, double x, double y)
+    {
+        if (_document is null)
+            return;
+
+        if (System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(prefab.FullPath))
+                is not System.Text.Json.Nodes.JsonObject prefabRoot
+            || prefabRoot["Components"] is not System.Text.Json.Nodes.JsonArray prefabComponents)
+        {
+            Status = $"Prefab '{prefab.Name}' inválida — sem 'Components'.";
+            return;
+        }
+
+        var names = Entities.Select(e => e.Name).ToHashSet();
+        string name = prefab.Name;
+        for (int number = 1; names.Contains(name); number++)
+            name = $"{prefab.Name}{number}";
+
+        var components = new System.Text.Json.Nodes.JsonArray(
+            new System.Text.Json.Nodes.JsonObject
+            {
+                ["Type"] = "Transform",
+                ["X"] = (float)Math.Round(x),
+                ["Y"] = (float)Math.Round(y),
+            });
+        foreach (var comp in prefabComponents)
+        {
+            if (comp is System.Text.Json.Nodes.JsonObject obj && obj["Type"]?.GetValue<string>() == "Transform")
+                continue;
+            components.Add(System.Text.Json.Nodes.JsonNode.Parse(comp!.ToJsonString()));
+        }
+
+        var node = new System.Text.Json.Nodes.JsonObject
+        {
+            ["Name"] = name,
+            ["Prefab"] = prefab.RelativePath,
+            ["Components"] = components,
+        };
+
+        _document.Objects.Add(node);
+
+        var entity = new EntityViewModel(node, this);
+        entity.Edited += OnEdited;
+        Entities.Add(entity);
+        SelectedEntity = entity;
+        OnEdited($"create:{node.GetHashCode()}");
+        Status = $"{name} instanciada de {prefab.Name}.";
     }
 
     public void DeleteSelectedEntity()
