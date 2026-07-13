@@ -37,6 +37,12 @@ public sealed class EventSystem
     /// <summary>Quando presente, a ação Save grava o estado em disco.</summary>
     public SaveManager? Save { get; set; }
 
+    /// <summary>Quando presente, ações AddItem/RemoveItem e gatilho HasItem operam aqui.</summary>
+    public InventoryManager? Inventory { get; set; }
+
+    /// <summary>Quando presente, ações SetQuestStage/AdvanceQuest e gatilho QuestStageAtLeast operam aqui.</summary>
+    public QuestManager? Quests { get; set; }
+
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
 
@@ -106,6 +112,12 @@ public sealed class EventSystem
             "Timer"            => trigger._timer >= trigger.Interval,
             "VariableCompare"  => trigger.Variable is not null
                                   && Compare(_state.GetVariable(trigger.Variable),
+                                             trigger.CompareOp, trigger.CompareValue),
+            "HasItem"          => trigger.Variable is not null
+                                  && Compare(Inventory?.GetCount(trigger.Variable) ?? 0,
+                                             trigger.CompareOp, trigger.CompareValue),
+            "QuestStageAtLeast" => trigger.Variable is not null
+                                  && Compare(Quests?.GetStage(trigger.Variable) ?? 0,
                                              trigger.CompareOp, trigger.CompareValue),
             _ => false,
         };
@@ -210,6 +222,22 @@ public sealed class EventSystem
 
             case "Save":
                 Save?.Save((int)action.Value);
+                break;
+
+            case "AddItem" when action.Name is not null:
+                Inventory?.Add(action.Name, (int)action.Value);
+                break;
+
+            case "RemoveItem" when action.Name is not null:
+                Inventory?.Remove(action.Name, (int)action.Value);
+                break;
+
+            case "SetQuestStage" when action.Name is not null:
+                Quests?.SetStage(action.Name, (int)action.Value);
+                break;
+
+            case "AdvanceQuest" when action.Name is not null:
+                Quests?.Advance(action.Name, action.Value == 0f ? 1 : (int)action.Value);
                 break;
 
             case "ChangeScene" when action.Name is not null:

@@ -19,16 +19,21 @@ public sealed class SaveManager
 {
     private readonly GameState _state;
     private readonly SceneManager _sceneManager;
+    private readonly InventoryManager? _inventory;
+    private readonly QuestManager? _quests;
     private readonly string _saveDir;
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
     public string SaveDirectory => _saveDir;
 
-    public SaveManager(GameState state, SceneManager sceneManager, string gameName = "AuroraGame")
+    public SaveManager(GameState state, SceneManager sceneManager, string gameName = "AuroraGame",
+        InventoryManager? inventory = null, QuestManager? quests = null)
     {
         _state = state;
         _sceneManager = sceneManager;
+        _inventory = inventory;
+        _quests = quests;
         _saveDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             Sanitize(gameName), "saves");
@@ -73,7 +78,9 @@ public sealed class SaveManager
             Scene: _sceneManager.CurrentScene,
             SavedAt: DateTime.UtcNow,
             Variables: new Dictionary<string, float>(_state.Variables),
-            Switches: new Dictionary<string, bool>(_state.Switches));
+            Switches: new Dictionary<string, bool>(_state.Switches),
+            Items: _inventory is null ? [] : new Dictionary<string, int>(_inventory.Items),
+            QuestStages: _quests is null ? [] : new Dictionary<string, int>(_quests.Stages));
 
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
     }
@@ -91,6 +98,9 @@ public sealed class SaveManager
             return false;
 
         _state.LoadFromDictionaries(dto.Variables, dto.Switches);
+        // Items/QuestStages podem faltar num save de antes desta feature - trata como vazio.
+        if (dto.Items is not null) _inventory?.LoadFromDictionary(dto.Items);
+        if (dto.QuestStages is not null) _quests?.LoadFromDictionary(dto.QuestStages);
 
         if (dto.Scene is not null)
             _sceneManager.LoadWithFade(dto.Scene);
@@ -121,5 +131,7 @@ public sealed class SaveManager
         string? Scene,
         DateTime SavedAt,
         Dictionary<string, float> Variables,
-        Dictionary<string, bool> Switches);
+        Dictionary<string, bool> Switches,
+        Dictionary<string, int>? Items = null,
+        Dictionary<string, int>? QuestStages = null);
 }

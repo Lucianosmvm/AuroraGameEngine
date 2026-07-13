@@ -10,7 +10,8 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     private readonly JsonObject _triggerNode;
 
     public string[] TriggerTypes { get; } =
-        ["SceneStart", "PlayerTouch", "SwitchOn", "KeyPress", "Timer", "VariableCompare"];
+        ["SceneStart", "PlayerTouch", "SwitchOn", "KeyPress", "Timer", "VariableCompare",
+         "HasItem", "QuestStageAtLeast"];
 
     public string[] CompareOps { get; } = [">=", "<=", ">", "<", "==", "!="];
 
@@ -37,6 +38,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
             Raise(nameof(ShowKey));
             Raise(nameof(ShowInterval));
             Raise(nameof(ShowCompare));
+            Raise(nameof(CompareLabel));
             Raise(nameof(TriggerDescription));
             RaiseEdited("trigger");
         }
@@ -80,17 +82,27 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     public bool ShowSwitch   => TriggerType == "SwitchOn";
     public bool ShowKey      => TriggerType == "KeyPress";
     public bool ShowInterval => TriggerType == "Timer";
-    public bool ShowCompare  => TriggerType == "VariableCompare";
+    public bool ShowCompare  => TriggerType is "VariableCompare" or "HasItem" or "QuestStageAtLeast";
+
+    /// <summary>Rótulo do campo "Variável" — muda pra Item/Quest quando o gatilho é sobre inventário/progresso.</summary>
+    public string CompareLabel => TriggerType switch
+    {
+        "HasItem"          => "Item",
+        "QuestStageAtLeast" => "Quest",
+        _                  => "Variável",
+    };
 
     public string TriggerDescription => TriggerType switch
     {
-        "SceneStart"      => "Disparado ao carregar a cena",
-        "PlayerTouch"     => "Disparado quando o jogador entra no raio",
-        "SwitchOn"        => "Disparado quando um switch é ativado",
-        "KeyPress"        => "Disparado ao pressionar uma tecla",
-        "Timer"           => "Disparado em intervalos regulares",
-        "VariableCompare" => "Disparado quando variável atinge o valor",
-        _                 => "",
+        "SceneStart"        => "Disparado ao carregar a cena",
+        "PlayerTouch"       => "Disparado quando o jogador entra no raio",
+        "SwitchOn"          => "Disparado quando um switch é ativado",
+        "KeyPress"          => "Disparado ao pressionar uma tecla",
+        "Timer"             => "Disparado em intervalos regulares",
+        "VariableCompare"   => "Disparado quando variável atinge o valor",
+        "HasItem"           => "Disparado quando a quantidade do item atinge o valor",
+        "QuestStageAtLeast" => "Disparado quando a quest atinge o estágio",
+        _                   => "",
     };
 
     public string Key

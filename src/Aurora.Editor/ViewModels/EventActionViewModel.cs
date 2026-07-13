@@ -24,6 +24,8 @@ public sealed class EventActionViewModel : ViewModelBase
         "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
         "ChangeScene", "Save",
+        "AddItem", "RemoveItem",
+        "SetQuestStage", "AdvanceQuest",
     ];
 
     public string[] OpTypes { get; } = ["Set", "Add"];
@@ -66,6 +68,8 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetVariable" or "SetSwitch" => "Variável",
         "Teleport" or "Destroy" or "PlayAnimation" or "StopAnimation" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
+        "AddItem" or "RemoveItem" => "Item",
+        "SetQuestStage" or "AdvanceQuest" => "Quest",
         _ => "Falante",
     };
 
@@ -95,6 +99,9 @@ public sealed class EventActionViewModel : ViewModelBase
     {
         "PlaySound" or "PlayMusic" => "Volume",
         "Save" => "Slot",
+        "AddItem" or "RemoveItem" => "Quantidade",
+        "SetQuestStage" => "Estágio",
+        "AdvanceQuest" => "Incremento",
         _ => "Valor",
     };
 
@@ -184,14 +191,20 @@ public sealed class EventActionViewModel : ViewModelBase
         "StopMusic"      => "Para a música que está tocando",
         "ChangeScene"    => "Carrega outra cena (arquivo .json)",
         "Save"           => "Salva o jogo num slot",
+        "AddItem"        => "Adiciona quantidade ao item no inventário",
+        "RemoveItem"     => "Remove quantidade do item no inventário (nunca fica negativo)",
+        "SetQuestStage"  => "Define o estágio atual da quest",
+        "AdvanceQuest"   => "Avança o estágio da quest (padrão +1)",
         _                => "",
     };
 
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
-        or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
+        or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
+        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest";
     public bool ShowOp => ActionType == "SetVariable";
-    public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save";
+    public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
+        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic";
     public bool ShowXY => ActionType == "Teleport";
     public bool ShowSeconds => ActionType == "Wait";

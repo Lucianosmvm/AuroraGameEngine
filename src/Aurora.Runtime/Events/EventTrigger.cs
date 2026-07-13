@@ -5,10 +5,11 @@ namespace Aurora.Runtime.Events;
 /// <summary>Uma ação de um evento. Campos usados dependem de <see cref="Type"/> (ver EventSystem).</summary>
 public sealed class EventAction
 {
-    /// <summary>SetVariable | SetSwitch | Teleport | Destroy | Wait | ShowMessage.</summary>
+    /// <summary>SetVariable | SetSwitch | Teleport | Destroy | Wait | ShowMessage | AddItem |
+    /// RemoveItem | SetQuestStage | AdvanceQuest | ...</summary>
     public string Type = "";
 
-    /// <summary>Nome da variável/switch, ou da entidade alvo (null = a própria entidade do evento).</summary>
+    /// <summary>Nome da variável/switch/item/quest, ou da entidade alvo (null = a própria entidade do evento).</summary>
     public string? Name;
 
     /// <summary>SetVariable: "Set" (padrão) ou "Add".</summary>
@@ -38,7 +39,8 @@ public sealed class EventOption
 /// </summary>
 public sealed class EventTrigger : IComponent
 {
-    /// <summary>SceneStart | PlayerTouch | SwitchOn | KeyPress | Timer | VariableCompare.</summary>
+    /// <summary>SceneStart | PlayerTouch | SwitchOn | KeyPress | Timer | VariableCompare |
+    /// HasItem | QuestStageAtLeast.</summary>
     public string Trigger = "PlayerTouch";
 
     /// <summary>Switch observado quando Trigger = SwitchOn.</summary>
@@ -53,13 +55,13 @@ public sealed class EventTrigger : IComponent
     /// <summary>Intervalo em segundos entre disparos para Timer.</summary>
     public float Interval = 5f;
 
-    /// <summary>Nome da variável GameState para VariableCompare.</summary>
+    /// <summary>Nome da variável (VariableCompare), item (HasItem) ou quest (QuestStageAtLeast) comparado.</summary>
     public string? Variable;
 
-    /// <summary>Operador de comparação para VariableCompare: ==, !=, &gt;=, &lt;=, &gt;, &lt;</summary>
+    /// <summary>Operador de comparação: ==, !=, &gt;=, &lt;=, &gt;, &lt;</summary>
     public string CompareOp = ">=";
 
-    /// <summary>Valor de comparação para VariableCompare.</summary>
+    /// <summary>Valor de comparação (quantidade de item / número do estágio / valor da variável).</summary>
     public float CompareValue;
 
     /// <summary>True = dispara uma única vez.</summary>

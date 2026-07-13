@@ -45,12 +45,14 @@ public abstract class Game : IDisposable
     public World World { get; } = new();
     public SceneSerializer Scenes { get; } = new();
     public GameState State { get; } = new();
+    public InventoryManager Inventory { get; } = new();
+    public QuestManager Quests { get; } = new();
     public DialogueSystem Dialogue { get; } = new();
     public EventSystem Events { get; }
 
     protected Game()
     {
-        Events = new EventSystem(World, State) { Dialogue = Dialogue };
+        Events = new EventSystem(World, State) { Dialogue = Dialogue, Inventory = Inventory, Quests = Quests };
     }
 
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
@@ -160,7 +162,7 @@ public abstract class Game : IDisposable
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
         Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
 
-        Save = new SaveManager(State, SceneManager, GameName);
+        Save = new SaveManager(State, SceneManager, GameName, Inventory, Quests);
         Events.Save = Save;
 
         Gl.Enable(EnableCap.Blend);
