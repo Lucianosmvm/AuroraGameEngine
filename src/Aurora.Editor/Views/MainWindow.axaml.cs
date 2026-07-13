@@ -281,5 +281,13 @@ public partial class MainWindow : Window
             ViewModel.ApplyTextureToSelection(asset);
     }
 
+    private void OnRefreshScenes(object? sender, RoutedEventArgs e) => ViewModel.ReloadSceneFiles();
+
+    private void OnSceneFileDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is ViewModels.SceneFileViewModel file)
+            ViewModel.OpenSceneFile(file);
+    }
+
     private void OnExit(object? sender, RoutedEventArgs e) => Close();
 }

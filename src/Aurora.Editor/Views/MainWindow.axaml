@@ -294,10 +294,33 @@
 
     <Grid ColumnDefinitions="230,4,*,4,330">
 
-      <!-- Assets + Hierarquia -->
-      <Grid Grid.Column="0" RowDefinitions="*,4,*">
+      <!-- Cenas + Assets + Hierarquia -->
+      <Grid Grid.Column="0" RowDefinitions="Auto,4,*,4,*">
 
-        <DockPanel Grid.Row="0">
+        <DockPanel Grid.Row="0" MaxHeight="170">
+          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
+            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
+                    Click="OnRefreshScenes" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Reescanear cenas do projeto"/>
+            <Button DockPanel.Dock="Right" Content="+" FontSize="12" Padding="8,2" Margin="0,0,4,0"
+                    Click="OnNewScene" ToolTip.Tip="Nova cena"/>
+            <TextBlock Text="CENAS" FontSize="11" FontWeight="Bold" Opacity="0.5"
+                       VerticalAlignment="Center"/>
+          </DockPanel>
+          <ListBox ItemsSource="{Binding SceneFiles}" DoubleTapped="OnSceneFileDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding Name}"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="1" Background="#2A2740"/>
+
+        <DockPanel Grid.Row="2">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
@@ -322,9 +345,9 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="1" Background="#2A2740"/>
+        <GridSplitter Grid.Row="3" Background="#2A2740"/>
 
-        <DockPanel Grid.Row="2">
+        <DockPanel Grid.Row="4">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">

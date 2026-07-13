@@ -27,6 +27,7 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<EntityViewModel> Entities { get; } = [];
     public ObservableCollection<AssetViewModel> Assets { get; } = [];
     public ObservableCollection<EntityViewModel> EventEntities { get; } = [];
+    public ObservableCollection<SceneFileViewModel> SceneFiles { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
 
     /// <summary>Scripts [SceneScript] descobertos no projeto do jogo — alimenta o dropdown
@@ -176,6 +177,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
+        ReloadSceneFiles();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -202,6 +204,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
+        ReloadSceneFiles();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -250,6 +253,40 @@ public sealed class MainViewModel : ViewModelBase
             string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
             Assets.Add(new AssetViewModel(_document.AssetsRoot, relative));
         }
+    }
+
+    /// <summary>Varre a raiz de assets por cenas .json (para o painel CENAS).</summary>
+    public void ReloadSceneFiles()
+    {
+        SceneFiles.Clear();
+        if (_document is null || !Directory.Exists(_document.AssetsRoot))
+            return;
+
+        var files = Directory.EnumerateFiles(_document.AssetsRoot, "*.json", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
+            SceneFiles.Add(new SceneFileViewModel(file, relative)
+            {
+                IsCurrent = string.Equals(Path.GetFullPath(file), Path.GetFullPath(_document.FilePath),
+                    StringComparison.OrdinalIgnoreCase),
+            });
+        }
+    }
+
+    /// <summary>Troca de cena a partir do painel CENAS. Salva a atual antes, se suja (sem
+    /// diálogo de confirmação — mesmo comportamento silencioso que Play() já usa).</summary>
+    public void OpenSceneFile(SceneFileViewModel file)
+    {
+        if (file.IsCurrent)
+            return;
+
+        if (IsDirty)
+            SaveScene();
+
+        OpenScene(file.FullPath);
     }
 
     /// <summary>Aplica a textura no SpriteRenderer (ou Tilemap) da entidade selecionada.</summary>
@@ -360,6 +397,7 @@ public sealed class MainViewModel : ViewModelBase
         IsDirty = false;
         Raise(nameof(Title));
         Status = $"Salvo: {path}";
+        ReloadSceneFiles();
     }
 
     /// <summary>
