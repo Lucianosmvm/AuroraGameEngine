@@ -19,22 +19,49 @@ public sealed class InputManager
     private readonly HashSet<MouseButton> _buttonsDown = new();
     private readonly HashSet<MouseButton> _buttonsPressedThisFrame = new();
 
+    // O toque em Android não chega de forma confiável via IMouse do backend SDL do
+    // Silk.NET (mouse sintético de toque é frágil/incompleto nesse binding - confirmado
+    // reproduzindo em device real). MainActivity chama SetPointer direto do
+    // Activity.OnTouchEvent, contornando o Silk.NET.Input inteiro pro toque.
+    private readonly object _pointerLock = new();
+    private Vector2? _pointerOverride;
+    private bool _pointerOverrideDown;
+
     public InputManager(IInputContext context)
     {
         _context = context;
     }
 
-    // Sempre consultados de novo (não guardados em campo): no Android, o "mouse"
-    // sintético do toque só passa a existir depois do primeiro toque na tela -
-    // um FirstOrDefault() cacheado no construtor ficaria null pra sempre.
+    // Sempre consultados de novo (não guardados em campo): um FirstOrDefault()
+    // cacheado no construtor perderia dispositivo que conecta depois.
     private IKeyboard? Keyboard => _context.Keyboards.FirstOrDefault();
     private IMouse? Mouse => _context.Mice.FirstOrDefault();
+
+    /// <summary>Chamado pela plataforma (ex: MainActivity Android) com a posição em
+    /// coordenadas de tela do toque/clique ativo, ou null quando solto.</summary>
+    public void SetPointer(Vector2? screenPosition, bool down)
+    {
+        lock (_pointerLock)
+        {
+            _pointerOverride = screenPosition;
+            _pointerOverrideDown = down;
+        }
+    }
+
+    private (Vector2? Position, bool Down) ReadPointerOverride()
+    {
+        lock (_pointerLock)
+            return (_pointerOverride, _pointerOverrideDown);
+    }
 
     public bool IsKeyDown(Key key) => Keyboard?.IsKeyPressed(key) ?? false;
     public bool WasKeyPressed(Key key) => _keysPressedThisFrame.Contains(key);
 
-    public Vector2 MousePosition => Mouse?.Position ?? Vector2.Zero;
-    public bool IsMouseDown(MouseButton button = MouseButton.Left) => Mouse?.IsButtonPressed(button) ?? false;
+    public Vector2 MousePosition => ReadPointerOverride().Position ?? Mouse?.Position ?? Vector2.Zero;
+
+    public bool IsMouseDown(MouseButton button = MouseButton.Left)
+        => (button == MouseButton.Left && ReadPointerOverride().Down) || (Mouse?.IsButtonPressed(button) ?? false);
+
     public bool WasMouseClicked(MouseButton button = MouseButton.Left) => _buttonsPressedThisFrame.Contains(button);
 
     /// <summary>Eixo horizontal (-1..1) combinando A/D e setas.</summary>
@@ -46,8 +73,7 @@ public sealed class InputManager
                         - (IsKeyDown(Key.W) || IsKeyDown(Key.Up) ? 1f : 0f);
 
     /// <summary>Chamado pela engine no início de cada frame, antes do OnUpdate do jogo -
-    /// via polling (não evento), pra funcionar mesmo com dispositivo que aparece tarde
-    /// (mouse sintético do toque no Android).</summary>
+    /// via polling (não evento), pra funcionar mesmo com dispositivo que aparece tarde.</summary>
     internal void BeginFrame()
     {
         _keysPressedThisFrame.Clear();
@@ -64,16 +90,15 @@ public sealed class InputManager
         }
 
         _buttonsPressedThisFrame.Clear();
-        if (Mouse is { } mouse)
+        bool pointerDown = ReadPointerOverride().Down;
+        var mouse = Mouse;
+        foreach (var button in AllButtons)
         {
-            foreach (var button in AllButtons)
-            {
-                bool down = mouse.IsButtonPressed(button);
-                if (down && _buttonsDown.Add(button))
-                    _buttonsPressedThisFrame.Add(button);
-                else if (!down)
-                    _buttonsDown.Remove(button);
-            }
+            bool down = (mouse?.IsButtonPressed(button) ?? false) || (button == MouseButton.Left && pointerDown);
+            if (down && _buttonsDown.Add(button))
+                _buttonsPressedThisFrame.Add(button);
+            else if (!down)
+                _buttonsDown.Remove(button);
         }
     }
 }
