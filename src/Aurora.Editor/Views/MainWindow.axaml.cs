@@ -301,6 +301,36 @@ public partial class MainWindow : Window
         Scene.ClearTextureCache();
     }
 
+    private async Task PickAndImportAssetsAsync()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Importar assets",
+            AllowMultiple = true,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Imagem/Áudio/Fonte") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.wav", "*.ogg", "*.ttf"] },
+                new FilePickerFileType("Todos os arquivos") { Patterns = ["*"] },
+            ],
+        });
+
+        if (files.Count == 0)
+            return;
+
+        var paths = files.Select(f => f.TryGetLocalPath()).Where(p => p is not null).Select(p => p!);
+        try
+        {
+            ViewModel.ImportAssets(paths);
+            Scene.ClearTextureCache();
+        }
+        catch (Exception ex)
+        {
+            ViewModel.Status = $"Erro ao importar: {ex.Message}";
+        }
+    }
+
+    private void OnImportAssets(object? sender, RoutedEventArgs e) => _ = PickAndImportAssetsAsync();
+
     private void OnAssetDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is ViewModels.AssetViewModel asset)

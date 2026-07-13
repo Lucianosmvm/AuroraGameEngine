@@ -369,6 +369,9 @@
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
                     ToolTip.Tip="Reescanear pasta de assets"/>
+            <Button DockPanel.Dock="Right" Content="+ Importar…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
+                    Click="OnImportAssets" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Copia imagem/áudio/fonte pra dentro do projeto (sprites/sounds/fonts)"/>
             <TextBlock Text="ASSETS" FontSize="11" FontWeight="Bold" Opacity="0.5"
                        VerticalAlignment="Center"/>
           </DockPanel>

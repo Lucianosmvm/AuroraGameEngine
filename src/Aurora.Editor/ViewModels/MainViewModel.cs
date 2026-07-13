@@ -261,6 +261,60 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Subpasta de destino por extensão — mesma convenção que os samples já usam
+    /// (Assets/sprites, Assets/sounds, Assets/fonts). Extensão fora da lista vai pra raiz.</summary>
+    private static readonly Dictionary<string, string> ImportSubfolders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".png"] = "sprites", [".jpg"] = "sprites", [".jpeg"] = "sprites",
+        [".wav"] = "sounds", [".ogg"] = "sounds",
+        [".ttf"] = "fonts",
+    };
+
+    /// <summary>
+    /// Copia arquivos externos pra dentro da pasta de assets do projeto (subpasta por tipo)
+    /// e recarrega o painel ASSETS — sem precisar sair pro Explorer e copiar na mão.
+    /// Não sobrescreve: em conflito de nome, renomeia com sufixo numérico.
+    /// </summary>
+    public void ImportAssets(IEnumerable<string> sourcePaths)
+    {
+        if (_document is null)
+            return;
+
+        int imported = 0;
+        foreach (string source in sourcePaths)
+        {
+            string ext = Path.GetExtension(source);
+            string destDir = ImportSubfolders.TryGetValue(ext, out var subfolder)
+                ? Path.Combine(_document.AssetsRoot, subfolder)
+                : _document.AssetsRoot;
+
+            Directory.CreateDirectory(destDir);
+            string destPath = UniquePath(Path.Combine(destDir, Path.GetFileName(source)));
+            File.Copy(source, destPath);
+            imported++;
+        }
+
+        ReloadAssets();
+        Status = imported == 1 ? "1 asset importado." : $"{imported} assets importados.";
+    }
+
+    private static string UniquePath(string path)
+    {
+        if (!File.Exists(path))
+            return path;
+
+        string dir = Path.GetDirectoryName(path)!;
+        string name = Path.GetFileNameWithoutExtension(path);
+        string ext = Path.GetExtension(path);
+
+        for (int i = 1; ; i++)
+        {
+            string candidate = Path.Combine(dir, $"{name} ({i}){ext}");
+            if (!File.Exists(candidate))
+                return candidate;
+        }
+    }
+
     /// <summary>Varre a raiz de assets por cenas .json (para o painel CENAS). Cena tem "Objects"
     /// na raiz sem marca "UI" — tela de UI (mesma pasta) tem "Objects" + "UI":true; prefab tem
     /// "Components" na raiz sem "Objects". As três nunca se confundem.</summary>
