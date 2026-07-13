@@ -113,9 +113,17 @@ public sealed class SceneManager
             _events.Reset();
         }
 
-        _serializer.Load(_assets.LoadText(path),
-            new SceneContext { World = _world, Assets = _assets });
-
-        CurrentScene = path;
+        // Cena referenciando arquivo inexistente/inválido não deve derrubar o jogo inteiro
+        // (ex.: ação ChangeScene com nome de cena digitado errado no editor).
+        try
+        {
+            _serializer.Load(_assets.LoadText(path),
+                new SceneContext { World = _world, Assets = _assets });
+            CurrentScene = path;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[SceneManager] Falha ao carregar cena '{path}': {ex.Message}");
+        }
     }
 }

@@ -152,7 +152,16 @@ public sealed class EventSystem
                 continue;
             }
 
-            Execute(self, action);
+            // Uma ação com referência inválida (arquivo, entidade) não deve derrubar o jogo
+            // inteiro - loga e segue pra próxima ação/gatilho.
+            try
+            {
+                Execute(self, action);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[EventSystem] Falha na ação '{action.Type}': {ex.Message}");
+            }
 
             // Diálogo aberto: pausa a sequência até o jogador dispensar.
             if (action.Type is "ShowMessage" or "ShowChoice" && Dialogue?.IsActive == true)
