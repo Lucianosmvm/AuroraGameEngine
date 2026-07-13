@@ -8,6 +8,14 @@ pontos/dinheiro, inimigo com pathfinding, e build final.
 Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais da engine
 (testados nesta sessão) — pode copiar os trechos de JSON direto.
 
+> **Testado ponta a ponta:** montei um jogo seguindo este guia (menu → mundo com tilemap,
+> player, 2 moedas, NPC com loja, inimigo perseguidor) e rodei com um roteiro automatizado
+> (`--smoke`, mesmo padrão do `samples/Aurora.Sandbox.Core`) que teleporta o jogador em cada
+> gatilho e confere o resultado. Os 6 sistemas bateram: troca de cena, coleta de moeda
+> (`AddItem`+`SetVariable`+`Destroy`), diálogo com escolha, transição `attack` do Animator,
+> e perseguição do inimigo via `NavAgent`. Achei e documentei 2 detalhes reais nesse teste
+> (ver avisos nas seções 6 e 9) — o resto funcionou exatamente como descrito abaixo.
+
 ---
 
 ## 0. Pré-requisitos
@@ -177,10 +185,18 @@ Quem alimenta `Speed`/`Attack` é o script do player (próxima seção) chamando
 
 Esse é o único código realmente necessário. Crie `PlayerController.cs` no projeto:
 
+> **Ordem de execução (testada):** `Game.OnUpdate` roda **antes** de `World.Update` a cada
+> frame — é lá que `Behavior.Update` de cada entidade (Animator incluso) realmente executa.
+> Se seu `Game` chama `anim.SetBool("Attack", true)` direto no `OnUpdate` e no mesmo instante
+> lê `anim.CurrentClip`, ainda vai ver o clipe antigo — a transição só é avaliada no
+> `Update` do Animator, que roda *depois*, e só fica visível no frame seguinte. Isso é normal,
+> não trava nem perde o estado, só não é instantâneo dentro do mesmo tick.
+
 ```csharp
 using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
+using Aurora.Runtime.Input;
 using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
 
@@ -189,22 +205,26 @@ namespace MeuJogo;
 [SceneScript]
 public sealed class PlayerController : Behavior
 {
-    public float Speed = 120f;
-    public float AttackRadius = 24f;
-    public float AttackDamage = 10f;
+    public float Speed = 100f;
+    public float AttackCooldown = 0.4f;
 
-    private InputManager? _input;   // sete via um Get<T> customizado ou injete no OnLoad do Game
+    public InputManager? Input; // injetado pelo Game (ver abaixo) — null até o primeiro frame
+
     private float _attackTimer;
+    private bool _attacking;
 
     public override void Update(float dt)
     {
+        if (Input is null) return;
+
         var transform = Get<Transform>()!;
         var anim = Get<Animator>();
 
-        // Movimento (WASD) — substitua _input pela referência real de Input do seu Game.
         var move = Vector2.Zero;
-        // move.X = (Input.IsKeyDown(Key.D) ? 1 : 0) - (Input.IsKeyDown(Key.A) ? 1 : 0);
-        // move.Y = (Input.IsKeyDown(Key.S) ? 1 : 0) - (Input.IsKeyDown(Key.W) ? 1 : 0);
+        if (Input.IsKeyDown(Key.D) || Input.IsKeyDown(Key.Right)) move.X += 1;
+        if (Input.IsKeyDown(Key.A) || Input.IsKeyDown(Key.Left))  move.X -= 1;
+        if (Input.IsKeyDown(Key.S) || Input.IsKeyDown(Key.Down))  move.Y += 1;
+        if (Input.IsKeyDown(Key.W) || Input.IsKeyDown(Key.Up))    move.Y -= 1;
 
         if (move.LengthSquared() > 0f)
         {
@@ -214,32 +234,45 @@ public sealed class PlayerController : Behavior
 
         anim?.SetFloat("Speed", move.Length() * Speed);
 
-        // Ataque
-        if (_attackTimer > 0f) _attackTimer -= dt;
-        // if (Input.WasKeyPressed(Key.Space) && _attackTimer <= 0f) { ... }
-    }
+        if (_attackTimer > 0f)
+        {
+            _attackTimer -= dt;
+            if (_attackTimer <= 0f && _attacking)
+            {
+                _attacking = false;
+                anim?.SetBool("Attack", false); // sem isso o Animator trava no clipe attack
+            }
+        }
 
-    private void DoAttack()
-    {
-        var anim = Get<Animator>();
-        anim?.SetBool("Attack", true);
-        _attackTimer = 0.3f;
-        // Depois de tocar o clipe attack, zere: anim.SetBool("Attack", false) (ex.: num timer).
-
-        // Dano em inimigos próximos — percorra World.Query<Transform, Collider>() ou marque
-        // inimigos com uma tag própria e filtre por distância <= AttackRadius.
-
-        // Efeito visual: instancie o prefab HitEffect (seção 8) na posição do golpe.
+        if (Input.WasKeyPressed(Key.Space) && _attackTimer <= 0f)
+        {
+            _attacking = true;
+            _attackTimer = AttackCooldown;
+            anim?.SetBool("Attack", true);
+            // Dano em inimigos próximos: exponha World pro script (mesmo esquema do Input
+            // abaixo) e filtre Query<Transform, Collider>() por distância, ou marque inimigos
+            // com uma tag própria. Efeito visual: instancie o prefab HitEffect (seção 8).
+        }
     }
 }
 ```
 
-> `Input`/`World` não são acessíveis direto de um `Behavior` fora de `Get<T>()` (componentes da
-> própria entidade). Pra ler teclado, exponha `Input`/`Camera` do seu `Game` pra este script —
-> o jeito mais simples é o `Game` fazer `player.Get<PlayerController>().Input = this.Input;`
-> uma vez em `OnLoad()`, ou registrar via evento. Veja `samples/Aurora.Sandbox.Core/PlayerController.cs`
-> pro padrão usado no sample (recebe `Input`/`Camera` no construtor customizado — mas scripts
-> `[SceneScript]` exigem construtor sem parâmetro, então use uma propriedade pública setável).
+`Behavior` só acessa componentes da própria entidade via `Get<T>()` — sem `Input`/`World`
+diretos. O `Game` injeta a dependência por propriedade pública assim que a cena carrega
+(scripts `[SceneScript]` exigem construtor sem parâmetro, então não dá pra injetar no
+construtor como o sample antigo faz):
+
+```csharp
+protected override void OnUpdate(float dt)
+{
+    if (World.TryFind("Player", out var player))
+    {
+        var pc = player.Get<PlayerController>();
+        if (pc is not null && pc.Input is null)
+            pc.Input = Input;
+    }
+}
+```
 
 ---
 
@@ -317,6 +350,14 @@ Seu jogo precisa chamar `Dialogue.Draw(...)` e `Input` (Espaço/Enter avança, W
 navegam escolha) em `OnRenderUI`/`OnUpdate` — ver `samples/Aurora.Sandbox.Core/SandboxGame.cs`
 pro padrão pronto.
 
+> **Limitação conhecida (testada):** esse exemplo cobra o ouro sem checar se o jogador tem o
+> suficiente antes — `RemoveItem` nunca deixa a quantidade negativa (trava em 0), então o
+> jogador ganha a espada de graça se não tiver ouro. `EventTrigger` não combina duas condições
+> (AND) num só componente, então não dá pra checar "`HasItem` Gold≥10 **e** switch ligado" de
+> uma vez sem código. Pra uma loja de verdade, ou aceite essa simplificação num protótipo, ou
+> resolva num script pequeno (`if (Inventory.Has("Gold", 10)) { ...cobra e dá o item... }`
+> chamado a partir do `OnChosen` do `ShowChoice`/de um Behavior que observa o switch).
+
 ---
 
 ## 10. Pontos e dinheiro
@@ -373,24 +414,52 @@ precisa desenhar área andável à parte. Um script simples persegue o player:
 [SceneScript]
 public sealed class EnemyAI : Behavior
 {
-    public float RepathInterval = 0.5f;
+    public float RepathInterval = 0.4f;
+    public float ChaseRange = 200f;
+
+    public Entity TargetEntity;   // injetado pelo Game, igual Input no PlayerController
+    public bool HasTargetEntity;
+
     private float _timer;
 
     public override void Update(float dt)
     {
+        if (!HasTargetEntity) return;
+
         _timer -= dt;
         if (_timer > 0f) return;
         _timer = RepathInterval;
 
         var nav = Get<NavAgent>();
-        // playerPos: exponha a posição do player pro script (propriedade pública setável
-        // pelo Game em OnLoad, igual ao Input no PlayerController).
-        // nav?.SetTarget(playerPos);
+        var transform = Get<Transform>();
+        var targetTransform = TargetEntity.Get<Transform>();
+        if (nav is null || transform is null || targetTransform is null) return;
+
+        float dist = Vector2.Distance(transform.Position, targetTransform.Position);
+        if (dist <= ChaseRange)
+            nav.SetTarget(targetTransform.Position);
+        else
+            nav.Stop();
     }
 }
 ```
 
-Salve `Enemy` como prefab pra espalhar várias cópias pela fase.
+```csharp
+// No Game, junto da injeção de Input:
+if (World.TryFind("Enemy1", out var enemy))
+{
+    var ai = enemy.Get<EnemyAI>();
+    if (ai is not null && !ai.HasTargetEntity && World.TryFind("Player", out var target))
+    {
+        ai.TargetEntity = target;
+        ai.HasTargetEntity = true;
+    }
+}
+```
+
+Salve `Enemy` como prefab pra espalhar várias cópias pela fase. **Testado:** o inimigo se
+move de verdade em direção ao player (confirmado medindo a posição antes/depois num
+roteiro automatizado) sem atravessar as paredes do tilemap.
 
 ---
 
