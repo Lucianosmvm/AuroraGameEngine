@@ -257,6 +257,7 @@
   <DockPanel>
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_Arquivo">
+        <MenuItem Header="Novo _Projeto…" Click="OnNewProject" InputGesture="Ctrl+Shift+N"/>
         <MenuItem Header="_Nova Cena…" Click="OnNewScene" InputGesture="Ctrl+N"/>
         <MenuItem Header="_Abrir Cena…" Click="OnOpenScene" InputGesture="Ctrl+O"/>
         <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>

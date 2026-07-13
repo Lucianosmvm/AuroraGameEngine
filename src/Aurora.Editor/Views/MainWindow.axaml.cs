@@ -61,6 +61,11 @@ public partial class MainWindow : Window
                 ViewModel.SaveScene();
                 e.Handled = true;
             }
+            else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.N)
+            {
+                _ = PickAndNewProjectAsync();
+                e.Handled = true;
+            }
             else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.N)
             {
                 _ = PickAndNewSceneAsync();
@@ -95,6 +100,38 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         };
+    }
+
+    private async Task PickAndNewProjectAsync()
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Novo projeto — nome do jogo",
+            DefaultExtension = "csproj",
+            SuggestedFileName = "MeuJogo.csproj",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Projeto Aurora") { Patterns = ["*.csproj"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+            return;
+
+        string parent = Path.GetDirectoryName(path)!;
+        string name = Path.GetFileNameWithoutExtension(path);
+        string projectDir = Path.Combine(parent, name);
+
+        try
+        {
+            string scenePath = Models.GameProjectScaffolder.Create(projectDir, name);
+            ViewModel.OpenScene(scenePath);
+            ViewModel.Status = $"Projeto criado em {projectDir}";
+        }
+        catch (Exception ex)
+        {
+            ViewModel.Status = $"Erro ao criar projeto: {ex.Message}";
+        }
     }
 
     private async Task PickAndNewSceneAsync()
@@ -166,6 +203,8 @@ public partial class MainWindow : Window
         if (file?.TryGetLocalPath() is { } path)
             ViewModel.SaveSceneAs(path);
     }
+
+    private void OnNewProject(object? sender, RoutedEventArgs e) => _ = PickAndNewProjectAsync();
 
     private void OnNewScene(object? sender, RoutedEventArgs e) => _ = PickAndNewSceneAsync();
 
