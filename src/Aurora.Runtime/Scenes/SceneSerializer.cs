@@ -563,6 +563,23 @@ public sealed class SceneSerializer
                     }
                 }
 
+                if (json.TryGetProperty("Transitions", out var transitionsEl))
+                {
+                    foreach (var transEl in transitionsEl.EnumerateArray())
+                    {
+                        animator.Transitions.Add(new AnimatorTransition
+                        {
+                            From = GetString(transEl, "From", "Any"),
+                            To = GetString(transEl, "To", ""),
+                            Parameter = GetString(transEl, "Parameter", ""),
+                            IsBool = GetBool(transEl, "IsBool", false),
+                            CompareOp = GetString(transEl, "CompareOp", ">="),
+                            CompareValue = GetFloat(transEl, "CompareValue", 0f),
+                            BoolValue = GetBool(transEl, "BoolValue", true),
+                        });
+                    }
+                }
+
                 return animator;
             },
             static (json, component, _) =>
@@ -587,6 +604,24 @@ public sealed class SceneSerializer
                     json.WriteEndObject();
                 }
                 json.WriteEndArray();
+
+                if (a.Transitions.Count > 0)
+                {
+                    json.WriteStartArray("Transitions");
+                    foreach (var t in a.Transitions)
+                    {
+                        json.WriteStartObject();
+                        json.WriteString("From", t.From);
+                        json.WriteString("To", t.To);
+                        json.WriteString("Parameter", t.Parameter);
+                        if (t.IsBool) json.WriteBoolean("IsBool", true);
+                        if (t.CompareOp != ">=") json.WriteString("CompareOp", t.CompareOp);
+                        if (t.CompareValue != 0f) json.WriteNumber("CompareValue", t.CompareValue);
+                        if (!t.BoolValue) json.WriteBoolean("BoolValue", false);
+                        json.WriteEndObject();
+                    }
+                    json.WriteEndArray();
+                }
             });
     }
 

@@ -18,8 +18,31 @@ public sealed class AnimationClip
 }
 
 /// <summary>
+/// Transição automática entre clipes — checada todo frame. "Any" em From casa com qualquer
+/// clipe atual. Parâmetros (Set/GetFloat, Set/GetBool) são locais deste Animator, não do
+/// GameState global — sete-os de um Behavior próprio (ex.: SetFloat("Speed", velocidade)).
+/// </summary>
+public sealed class AnimatorTransition
+{
+    public string From = "Any";
+    public string To = "";
+
+    public string Parameter = "";
+
+    /// <summary>true = Parameter é bool (compara com BoolValue); false = float (compara com CompareOp/CompareValue).</summary>
+    public bool IsBool;
+
+    public string CompareOp = ">=";
+    public float CompareValue;
+    public bool BoolValue = true;
+}
+
+/// <summary>
 /// Behavior que anima um <see cref="SpriteRenderer"/> percorrendo frames de um sprite sheet.
-/// Chame <see cref="Play"/> para trocar de clipe. O primeiro clipe da lista é tocado no Start.
+/// Chame <see cref="Play"/> para trocar de clipe manualmente, ou defina <see cref="Transitions"/>
+/// pra trocar sozinho quando um parâmetro (SetFloat/SetBool) atinge a condição — um "state
+/// machine" simples, no estilo Animator Controller da Unity, mas com parâmetros locais.
+/// O primeiro clipe da lista é tocado no Start.
 /// </summary>
 public sealed class Animator : Behavior
 {
@@ -34,6 +57,12 @@ public sealed class Animator : Behavior
 
     public List<AnimationClip> Clips = [];
 
+    /// <summary>Transições automáticas — checadas a cada frame antes de avançar o clipe atual.</summary>
+    public List<AnimatorTransition> Transitions = [];
+
+    private readonly Dictionary<string, float> _floatParams = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, bool> _boolParams = new(StringComparer.OrdinalIgnoreCase);
+
     private AnimationClip? _current;
     private int _framePos;
     private float _elapsed;
@@ -43,6 +72,14 @@ public sealed class Animator : Behavior
 
     /// <summary>True quando um clipe não-loop chegou ao último frame.</summary>
     public bool IsFinished => _finished;
+
+    // ---- Parâmetros locais (state machine) ----
+
+    public void SetFloat(string name, float value) => _floatParams[name] = value;
+    public float GetFloat(string name, float fallback = 0f) => _floatParams.TryGetValue(name, out float v) ? v : fallback;
+
+    public void SetBool(string name, bool value) => _boolParams[name] = value;
+    public bool GetBool(string name) => _boolParams.TryGetValue(name, out bool v) && v;
 
     /// <summary>Congela a animação no frame atual sem limpar o clipe corrente.</summary>
     public void Stop() => _finished = true;
@@ -72,6 +109,8 @@ public sealed class Animator : Behavior
 
     public override void Update(float deltaTime)
     {
+        EvaluateTransitions();
+
         if (_current is null || _finished || _current.FrameDuration <= 0f)
             return;
 
@@ -99,6 +138,39 @@ public sealed class Animator : Behavior
 
         ApplyFrame();
     }
+
+    /// <summary>Testa as transições em ordem e troca de clipe na primeira que casar — uma
+    /// troca por frame, pra não pular dois clipes no mesmo tick.</summary>
+    private void EvaluateTransitions()
+    {
+        foreach (var t in Transitions)
+        {
+            if (t.From != "Any" && t.From != CurrentClip)
+                continue;
+            if (t.To == CurrentClip)
+                continue;
+
+            bool met = t.IsBool
+                ? GetBool(t.Parameter) == t.BoolValue
+                : Compare(GetFloat(t.Parameter), t.CompareOp, t.CompareValue);
+
+            if (met)
+            {
+                Play(t.To);
+                return;
+            }
+        }
+    }
+
+    private static bool Compare(float actual, string op, float value) => op switch
+    {
+        ">=" => actual >= value,
+        "<=" => actual <= value,
+        ">"  => actual > value,
+        "<"  => actual < value,
+        "!=" => MathF.Abs(actual - value) > 1e-6f,
+        _    => MathF.Abs(actual - value) < 1e-6f,   // "==" default
+    };
 
     private void ApplyFrame()
     {

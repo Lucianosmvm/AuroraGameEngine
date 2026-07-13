@@ -38,6 +38,16 @@
             <ItemsControl ItemsSource="{Binding Clips}"/>
             <Button Content="+ Clipe" Command="{Binding AddClipCommand}"
                     FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
+
+            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+                    Margin="0,4,0,2" Padding="0,4,0,0">
+              <TextBlock Text="TRANSIÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            </Border>
+            <TextBlock Text="Troca de clipe sozinho quando o parâmetro atinge a condição. Sete o parâmetro num script: anim.SetFloat(&quot;Speed&quot;, valor) ou anim.SetBool(&quot;Nome&quot;, valor)."
+                       FontSize="10" FontStyle="Italic" Opacity="0.45" TextWrapping="Wrap" Margin="0,0,0,2"/>
+            <ItemsControl ItemsSource="{Binding Transitions}"/>
+            <Button Content="+ Transição" Command="{Binding AddTransitionCommand}"
+                    FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
           </StackPanel>
         </Expander>
         <Button HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -67,6 +77,35 @@
             <TextBox Grid.Column="4" Text="{Binding FrameDurationText}" FontSize="11" Padding="4,3"/>
           </Grid>
           <CheckBox Content="Loop" IsChecked="{Binding Loop}" FontSize="11"/>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <!-- AnimatorTransition: De -> Para, condição sobre um parâmetro local -->
+    <DataTemplate DataType="{x:Type vm:AnimatorTransitionViewModel}">
+      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+        <StackPanel Spacing="3">
+          <Grid ColumnDefinitions="*,20,*,Auto">
+            <TextBox Text="{Binding From}" FontSize="11" Padding="4,3" Watermark="Any"/>
+            <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.6"/>
+            <TextBox Grid.Column="2" Text="{Binding To}" FontSize="11" Padding="4,3" Watermark="clipe…"/>
+            <Button Grid.Column="3" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Background="Transparent" BorderThickness="0"/>
+          </Grid>
+          <Grid ColumnDefinitions="60,*">
+            <TextBlock Text="Parâmetro" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding Parameter}" FontSize="11" Padding="4,3" Watermark="Speed…"/>
+          </Grid>
+          <CheckBox Content="É bool (em vez de número)" IsChecked="{Binding IsBool}" FontSize="11"/>
+          <Grid ColumnDefinitions="60,70,*" IsVisible="{Binding ShowCompare}">
+            <TextBlock Text="Condição" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding CompareOps}"
+                      SelectedItem="{Binding CompareOp}" FontSize="11" Margin="0,0,4,0"/>
+            <TextBox Grid.Column="2" Text="{Binding CompareValueText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+          <CheckBox Content="Precisa estar ligado" IsChecked="{Binding BoolValue}" FontSize="11"
+                    IsVisible="{Binding ShowBoolValue}"/>
         </StackPanel>
       </Border>
     </DataTemplate>

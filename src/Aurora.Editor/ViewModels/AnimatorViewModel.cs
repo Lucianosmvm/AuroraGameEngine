@@ -9,10 +9,15 @@ public sealed class AnimatorViewModel : ComponentViewModel
     public ObservableCollection<AnimationClipViewModel> Clips { get; } = [];
     public ICommand AddClipCommand { get; }
 
+    public ObservableCollection<AnimatorTransitionViewModel> Transitions { get; } = [];
+    public ICommand AddTransitionCommand { get; }
+
     public AnimatorViewModel(JsonObject node) : base(node)
     {
         AddClipCommand = new RelayCommand(AddClip);
+        AddTransitionCommand = new RelayCommand(AddTransition);
         RebuildClips();
+        RebuildTransitions();
     }
 
     private void RebuildClips()
@@ -51,4 +56,44 @@ public sealed class AnimatorViewModel : ComponentViewModel
     }
 
     private void OnClipEdited() => RaiseEdited("Clips");
+
+    private void RebuildTransitions()
+    {
+        Transitions.Clear();
+        if (Node["Transitions"] is JsonArray arr)
+        {
+            foreach (var item in arr.OfType<JsonObject>())
+                Transitions.Add(new AnimatorTransitionViewModel(item, OnTransitionEdited, RemoveTransition));
+        }
+    }
+
+    /// <summary>Novo estado padrão: de qualquer clipe pro primeiro da lista quando o
+    /// parâmetro "Speed" (convenção comum) atingir 1 — o autor ajusta os campos depois.</summary>
+    private void AddTransition()
+    {
+        var transitionNode = new JsonObject
+        {
+            ["From"] = "Any",
+            ["To"] = Clips.Count > 0 ? Clips[0].ClipName : "",
+            ["Parameter"] = "Speed",
+            ["CompareOp"] = ">=",
+            ["CompareValue"] = 1f,
+        };
+        if (Node["Transitions"] is not JsonArray arr)
+            Node["Transitions"] = arr = [];
+        arr.Add(transitionNode);
+        Transitions.Add(new AnimatorTransitionViewModel(transitionNode, OnTransitionEdited, RemoveTransition));
+        OnTransitionEdited();
+    }
+
+    private void RemoveTransition(AnimatorTransitionViewModel transition)
+    {
+        int index = Transitions.IndexOf(transition);
+        if (index >= 0 && Node["Transitions"] is JsonArray arr && index < arr.Count)
+            arr.RemoveAt(index);
+        Transitions.Remove(transition);
+        OnTransitionEdited();
+    }
+
+    private void OnTransitionEdited() => RaiseEdited("Transitions");
 }
