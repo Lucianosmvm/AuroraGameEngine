@@ -46,6 +46,59 @@ public sealed class SceneSerializer
             _writers[typeof(T)] = (typeName, writer);
     }
 
+    /// <summary>Um campo público exposto por um [SceneScript] — nome, tipo ("float"/"int"/"bool"/"string")
+    /// e o valor default de verdade da classe (não um chute por tipo — <c>Enabled</c> herdado de
+    /// <see cref="Behavior"/>, por exemplo, é <c>true</c>, não <c>false</c>).</summary>
+    public sealed record ScriptFieldInfo(string Name, string Kind, string Default);
+
+    /// <summary>Um [SceneScript] descoberto: nome do "Type" na cena + campos editáveis.</summary>
+    public sealed record ScriptInfo(string Name, List<ScriptFieldInfo> Fields);
+
+    /// <summary>
+    /// Varre os assemblies por classes [SceneScript] e descreve nome + campos (com default real,
+    /// instanciando a classe), sem registrar nada. Usado pelo editor (via <c>--describe-scripts</c>)
+    /// pra listar scripts custom no "+Add Componente" sem precisar abrir o jogo.
+    /// </summary>
+    public List<ScriptInfo> DescribeScripts(params Assembly[] assemblies)
+    {
+        var result = new List<ScriptInfo>();
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                var attr = type.GetCustomAttribute<SceneScriptAttribute>();
+                if (attr is null || type.IsAbstract || !typeof(Behavior).IsAssignableFrom(type))
+                    continue;
+
+                object? instance = null;
+                try { instance = Activator.CreateInstance(type); }
+                catch { /* sem construtor padrão acessível — segue sem defaults (tudo "0"/"false"/"") */ }
+
+                var fields = GetScriptableMembers(type)
+                    .Select(m => new ScriptFieldInfo(m.Name, KindName(m.Type),
+                        FormatDefault(instance is null ? null : m.GetValue(instance))))
+                    .ToList();
+                result.Add(new ScriptInfo(attr.Name ?? type.Name, fields));
+            }
+        }
+        return result;
+    }
+
+    private static string FormatDefault(object? value) => value switch
+    {
+        float f => f.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        int i => i.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        bool b => b ? "true" : "false",
+        string s => s,
+        _ => "",
+    };
+
+    private static string KindName(Type t) =>
+        t == typeof(float) ? "float"
+        : t == typeof(int) ? "int"
+        : t == typeof(bool) ? "bool"
+        : "string";
+
     private static readonly HashSet<Type> ScriptableFieldTypes = [typeof(float), typeof(int), typeof(bool), typeof(string)];
 
     /// <summary>

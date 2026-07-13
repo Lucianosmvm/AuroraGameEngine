@@ -13,8 +13,14 @@ public sealed class EntityViewModel : ViewModelBase
     /// <summary>Tag identifica o gesto de edição (coalescência de undo).</summary>
     public event Action<string>? Edited;
 
-    public string[] AvailableComponentTypes { get; } =
+    private static readonly string[] BuiltInComponentTypes =
         ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger"];
+
+    private readonly MainViewModel? _owner;
+
+    /// <summary>Nativos + scripts [SceneScript] descobertos no projeto do jogo (ver MainViewModel.CustomScripts).</summary>
+    public IEnumerable<string> AvailableComponentTypes =>
+        BuiltInComponentTypes.Concat(_owner?.CustomScripts.Select(s => s.Name) ?? []);
 
     private string _newComponentType = "Collider";
     public string NewComponentType
@@ -25,10 +31,14 @@ public sealed class EntityViewModel : ViewModelBase
 
     public ICommand AddComponentCommand { get; }
 
-    public EntityViewModel(JsonObject node)
+    public EntityViewModel(JsonObject node, MainViewModel? owner = null)
     {
         Node = node;
+        _owner = owner;
         AddComponentCommand = new RelayCommand(AddComponent);
+
+        if (owner is not null)
+            owner.CustomScripts.CollectionChanged += (_, _) => Raise(nameof(AvailableComponentTypes));
 
         if (node["Components"] is JsonArray components)
         {
@@ -112,12 +122,41 @@ public sealed class EntityViewModel : ViewModelBase
             {
                 ["Type"] = "SpriteRenderer",
             },
-            _ => new JsonObject { ["Type"] = NewComponentType },
+            _ => BuildCustomScriptNode(),
         };
 
         components.Add(newNode);
         AddVm(BuildVm(newNode));
         Edited?.Invoke($"addcomp:{Node.GetHashCode()}");
+    }
+
+    /// <summary>
+    /// NewComponentType não bateu com nenhum nativo — procura nos scripts [SceneScript]
+    /// descobertos e pré-popula um campo por propriedade pública (com default), pro
+    /// ComponentViewModel genérico já renderizar editor pra cada um. Nome desconhecido
+    /// (script ainda não descoberto/buildado) vira só "Type" mesmo, sem campos.
+    /// </summary>
+    private JsonObject BuildCustomScriptNode()
+    {
+        var node = new JsonObject { ["Type"] = NewComponentType };
+
+        var script = _owner?.CustomScripts.FirstOrDefault(s => s.Name == NewComponentType);
+        if (script is null)
+            return node;
+
+        foreach (var field in script.Fields)
+        {
+            node[field.Name] = field.Kind switch
+            {
+                "float" => float.TryParse(field.Default,
+                    System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture,
+                    out float f) ? f : 0f,
+                "int" => int.TryParse(field.Default, out int i) ? i : 0,
+                "bool" => field.Default == "true",
+                _ => field.Default,
+            };
+        }
+        return node;
     }
 
     public void RemoveComponent(ComponentViewModel vm)

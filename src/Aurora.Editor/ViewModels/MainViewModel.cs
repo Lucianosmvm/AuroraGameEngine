@@ -29,6 +29,29 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<EntityViewModel> EventEntities { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
 
+    /// <summary>Scripts [SceneScript] descobertos no projeto do jogo — alimenta o dropdown
+    /// "+Add Componente" das entidades. Atualizado em background ao abrir cena/projeto.</summary>
+    public ObservableCollection<GameScriptDiscovery.ScriptInfo> CustomScripts { get; } = [];
+
+    private int _scriptCatalogVersion;
+
+    /// <summary>Roda em background e substitui <see cref="CustomScripts"/> quando terminar.
+    /// Versão incremental evita corrida entre chamadas concorrentes sobrescrevendo com resultado velho.</summary>
+    private async void RefreshScriptCatalog()
+    {
+        if (string.IsNullOrWhiteSpace(_settings?.GameProject))
+            return;
+
+        int version = ++_scriptCatalogVersion;
+        var scripts = await GameScriptDiscovery.DiscoverAsync(_settings.GameProject);
+        if (version != _scriptCatalogVersion)
+            return; // outra chamada mais nova já está em andamento/terminou
+
+        CustomScripts.Clear();
+        foreach (var script in scripts)
+            CustomScripts.Add(script);
+    }
+
     public SceneDocument? Document => _document;
 
     /// <summary>Disparado em qualquer edição — o canvas usa para redesenhar.</summary>
@@ -83,6 +106,7 @@ public sealed class MainViewModel : ViewModelBase
             try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
             Raise();
             Raise(nameof(CanPlay));
+            RefreshScriptCatalog();
         }
     }
 
@@ -152,6 +176,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
+        RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
 
@@ -177,6 +202,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(GameProjectPath));
         RaiseUndoState();
         ReloadAssets();
+        RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
 
@@ -191,7 +217,7 @@ public sealed class MainViewModel : ViewModelBase
 
         foreach (var objectNode in _document.Objects.OfType<System.Text.Json.Nodes.JsonObject>())
         {
-            var entity = new EntityViewModel(objectNode);
+            var entity = new EntityViewModel(objectNode, this);
             entity.Edited += OnEdited;
             Entities.Add(entity);
         }
@@ -374,7 +400,7 @@ public sealed class MainViewModel : ViewModelBase
 
         _document.Objects.Add(node);
 
-        var entity = new EntityViewModel(node);
+        var entity = new EntityViewModel(node, this);
         entity.Edited += OnEdited;
         Entities.Add(entity);
         SelectedEntity = entity;
@@ -415,7 +441,7 @@ public sealed class MainViewModel : ViewModelBase
 
         _document.Objects.Add(node);
 
-        var entity = new EntityViewModel(node);
+        var entity = new EntityViewModel(node, this);
         entity.Edited += OnEdited;
         Entities.Add(entity);
         SelectedEntity = entity;

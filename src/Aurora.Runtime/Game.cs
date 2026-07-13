@@ -61,19 +61,22 @@ public abstract class Game : IDisposable
     /// </summary>
     protected string? BootScene { get; private set; }
 
+    private string? _describeScriptsOutputPath;
+
     /// <summary>
     /// Processa argumentos de linha de comando. Chame antes de <see cref="Run"/>.
-    /// <para>Argumento reconhecido: <c>--scene &lt;caminho&gt;</c></para>
+    /// <para>Argumentos reconhecidos: <c>--scene &lt;caminho&gt;</c>,
+    /// <c>--describe-scripts &lt;arquivo&gt;</c> (usado pelo editor pra descobrir
+    /// scripts [SceneScript] sem abrir janela).</para>
     /// </summary>
     public void ParseArgs(string[] args)
     {
         for (int i = 0; i < args.Length - 1; i++)
         {
             if (args[i] == "--scene")
-            {
                 BootScene = args[i + 1];
-                break;
-            }
+            else if (args[i] == "--describe-scripts")
+                _describeScriptsOutputPath = args[i + 1];
         }
     }
 
@@ -83,6 +86,12 @@ public abstract class Game : IDisposable
     /// <summary>Desktop: cria uma janela e bloqueia até o jogo fechar.</summary>
     public void Run(string title = "Aurora Game", int width = 1280, int height = 720, bool vsync = true)
     {
+        if (_describeScriptsOutputPath is { } outputPath)
+        {
+            DescribeScriptsAndWrite(outputPath);
+            return;
+        }
+
         var options = WindowOptions.Default with
         {
             Title = title,
@@ -93,6 +102,19 @@ public abstract class Game : IDisposable
         var window = Silk.NET.Windowing.Window.Create(options);
         Run(window);
         window.Dispose();
+    }
+
+    /// <summary>
+    /// Varre o assembly do jogo por [SceneScript] e escreve nome+campos em JSON no arquivo
+    /// indicado, sem criar janela. Não passa por HandleLoad — não precisa de GL/janela pra
+    /// só ler reflection.
+    /// </summary>
+    private void DescribeScriptsAndWrite(string outputPath)
+    {
+        var scripts = System.Reflection.Assembly.GetEntryAssembly() is { } entry
+            ? Scenes.DescribeScripts(entry)
+            : [];
+        File.WriteAllText(outputPath, System.Text.Json.JsonSerializer.Serialize(scripts));
     }
 
     /// <summary>Roda sobre uma view já criada (Android: obtida via Window.GetView na Activity).</summary>
