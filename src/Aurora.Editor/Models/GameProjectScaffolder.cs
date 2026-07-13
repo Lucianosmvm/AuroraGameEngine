@@ -38,10 +38,12 @@ public static class GameProjectScaffolder
         File.WriteAllText(Path.Combine(projectDir, $"{projectName}.csproj"), BuildCsproj(relativeRuntimePath));
         File.WriteAllText(Path.Combine(projectDir, "Program.cs"), BuildProgram(identifier));
         File.WriteAllText(Path.Combine(projectDir, $"{identifier}Game.cs"), BuildGameClass(identifier));
+        File.WriteAllText(Path.Combine(projectDir, "Spin.cs"), BuildExampleScript(identifier));
         File.WriteAllBytes(Path.Combine(spritesDir, "placeholder.png"), Convert.FromBase64String(PlaceholderPngBase64));
 
-        // Cena não vem vazia: uma entidade já com o sprite placeholder, pra Play mostrar
-        // algo visível de cara em vez de só a tela azul do ClearColor padrão.
+        // Cena não vem vazia: uma entidade já com o sprite placeholder + o script de exemplo
+        // (Spin), pra Play mostrar algo visível E rodando de cara — inclusive provando que
+        // scripting funciona sem precisar registrar nada na mão (ver Spin.cs).
         string scenePath = Path.Combine(scenesDir, "main.json");
         var sceneRoot = new JsonObject
         {
@@ -52,7 +54,8 @@ public static class GameProjectScaffolder
                     ["Name"] = "Placeholder",
                     ["Components"] = new JsonArray(
                         new JsonObject { ["Type"] = "Transform", ["X"] = 0f, ["Y"] = 0f },
-                        new JsonObject { ["Type"] = "SpriteRenderer", ["Texture"] = "sprites/placeholder.png" }),
+                        new JsonObject { ["Type"] = "SpriteRenderer", ["Texture"] = "sprites/placeholder.png" },
+                        new JsonObject { ["Type"] = "Spin", ["Speed"] = 90f }),
                 }),
         };
         File.WriteAllText(scenePath, sceneRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
@@ -131,6 +134,31 @@ public static class GameProjectScaffolder
             protected override void OnLoad()
             {
                 LoadScene(BootScene ?? "scenes/main.json");
+            }
+        }
+        """;
+
+    private static string BuildExampleScript(string identifier) => $$"""
+        using Aurora.Runtime.Ecs;
+        using Aurora.Runtime.Ecs.Components;
+        using Aurora.Runtime.Scenes;
+
+        namespace {{identifier}};
+
+        // Exemplo de script custom: marque com [SceneScript] e ele já funciona na cena,
+        // sem precisar registrar nada em OnLoad() nem escrever leitura/escrita de JSON.
+        // Campos públicos float/int/bool/string (ex.: Speed abaixo) viram campos editáveis
+        // no JSON da cena automaticamente, pelo próprio nome.
+        [SceneScript]
+        public sealed class Spin : Behavior
+        {
+            public float Speed = 90f;
+
+            public override void Update(float deltaTime)
+            {
+                var transform = Get<Transform>();
+                if (transform is not null)
+                    transform.Rotation += Speed * deltaTime;
             }
         }
         """;

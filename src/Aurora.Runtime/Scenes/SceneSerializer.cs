@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Aurora.Runtime.Assets;
@@ -43,6 +44,93 @@ public sealed class SceneSerializer
         _readers[typeName] = reader;
         if (writer is not null)
             _writers[typeof(T)] = (typeName, writer);
+    }
+
+    private static readonly HashSet<Type> ScriptableFieldTypes = [typeof(float), typeof(int), typeof(bool), typeof(string)];
+
+    /// <summary>
+    /// Varre os assemblies em busca de classes marcadas com <see cref="SceneScriptAttribute"/>
+    /// e registra cada uma automaticamente (leitura/escrita via reflection sobre campos e
+    /// propriedades públicas float/int/bool/string). Chamado por <see cref="Game.AutoRegisterScripts"/>
+    /// — não precisa chamar na mão.
+    /// </summary>
+    public void RegisterScripts(params Assembly[] assemblies)
+    {
+        foreach (var assembly in assemblies)
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                var attr = type.GetCustomAttribute<SceneScriptAttribute>();
+                if (attr is null || type.IsAbstract || !typeof(Behavior).IsAssignableFrom(type))
+                    continue;
+
+                RegisterReflective(type, attr.Name ?? type.Name);
+            }
+        }
+    }
+
+    private void RegisterReflective(Type type, string name)
+    {
+        var members = GetScriptableMembers(type);
+
+        _readers[name] = (json, _) =>
+        {
+            var instance = (IComponent)Activator.CreateInstance(type)!;
+            foreach (var member in members)
+            {
+                if (!json.TryGetProperty(member.Name, out var prop))
+                    continue;
+
+                object? value = member.Type == typeof(float) ? prop.GetSingle()
+                    : member.Type == typeof(int) ? prop.GetInt32()
+                    : member.Type == typeof(bool) ? prop.GetBoolean()
+                    : prop.GetString();
+
+                member.SetValue(instance, value);
+            }
+            return instance;
+        };
+
+        _writers[type] = (name, (json, component, _) =>
+        {
+            foreach (var member in members)
+            {
+                switch (member.GetValue(component))
+                {
+                    case float f: json.WriteNumber(member.Name, f); break;
+                    case int i: json.WriteNumber(member.Name, i); break;
+                    case bool b: json.WriteBoolean(member.Name, b); break;
+                    case string s: json.WriteString(member.Name, s); break;
+                }
+            }
+        });
+    }
+
+    private readonly record struct ScriptMember(string Name, Type Type,
+        Func<object, object?> GetValue, Action<object, object?> SetValue);
+
+    private static List<ScriptMember> GetScriptableMembers(Type type)
+    {
+        var result = new List<ScriptMember>();
+
+        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!ScriptableFieldTypes.Contains(field.FieldType))
+                continue;
+            result.Add(new ScriptMember(field.Name, field.FieldType,
+                field.GetValue!, field.SetValue!));
+        }
+
+        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!ScriptableFieldTypes.Contains(prop.PropertyType) || !prop.CanRead || !prop.CanWrite
+                || prop.GetIndexParameters().Length > 0)
+                continue;
+            result.Add(new ScriptMember(prop.Name, prop.PropertyType,
+                prop.GetValue!, prop.SetValue!));
+        }
+
+        return result;
     }
 
     /// <summary>Cria as entidades do JSON dentro de <paramref name="context"/>.World.</summary>

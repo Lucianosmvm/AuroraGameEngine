@@ -146,7 +146,19 @@ public abstract class Game : IDisposable
 
         Camera.SetViewport(View.FramebufferSize.X, View.FramebufferSize.Y);
 
+        AutoRegisterScripts();
         OnLoad();
+    }
+
+    /// <summary>
+    /// Varre o assembly do jogo em busca de classes marcadas com <c>[SceneScript]</c> e
+    /// registra cada uma automaticamente no serializador de cena — sem precisar chamar
+    /// <c>Scenes.Register</c> na mão nem escrever leitura/escrita de JSON campo a campo.
+    /// </summary>
+    private void AutoRegisterScripts()
+    {
+        if (System.Reflection.Assembly.GetEntryAssembly() is { } entry)
+            Scenes.RegisterScripts(entry);
     }
 
     private void HandleUpdate(double deltaTime)
