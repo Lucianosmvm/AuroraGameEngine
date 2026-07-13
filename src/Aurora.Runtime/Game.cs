@@ -192,13 +192,13 @@ public abstract class Game : IDisposable
     private void HandleUpdate(double deltaTime)
     {
         float dt = (float)deltaTime;
+        Input.BeginFrame();
         SceneManager.Update(dt);
         Dialogue.Update();
         OnUpdate(dt);
         World.Update(dt);
         Events.Update(dt);
         UpdateCamera(dt);
-        Input.EndFrame();
     }
 
     private void UpdateCamera(float dt)
