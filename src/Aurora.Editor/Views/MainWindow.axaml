@@ -179,6 +179,8 @@
                     Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
+          <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
+                     Opacity="0.5" Margin="0,-1,0,2"/>
 
           <!-- Nome (variável, entidade, arquivo, falante) -->
           <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowName}">

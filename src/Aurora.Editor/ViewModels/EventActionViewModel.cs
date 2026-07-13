@@ -168,6 +168,25 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public string TextLabel => ActionType == "PlayAnimation" ? "Clipe" : "Texto";
 
+    public string ActionDescription => ActionType switch
+    {
+        "Wait"           => "Espera X segundos antes da próxima ação",
+        "SetVariable"    => "Define ou soma um valor numa variável do GameState",
+        "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
+        "ShowMessage"    => "Mostra uma caixa de diálogo com texto",
+        "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
+        "Teleport"       => "Move uma entidade pra posição X,Y",
+        "Destroy"        => "Remove uma entidade da cena",
+        "PlayAnimation"  => "Troca o clipe ativo do Animator de uma entidade",
+        "StopAnimation"  => "Para a animação ativa de uma entidade",
+        "PlaySound"      => "Toca um efeito sonoro (arquivo em Assets)",
+        "PlayMusic"      => "Toca música em loop (canal separado dos efeitos)",
+        "StopMusic"      => "Para a música que está tocando",
+        "ChangeScene"    => "Carrega outra cena (arquivo .json)",
+        "Save"           => "Salva o jogo num slot",
+        _                => "",
+    };
+
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice";
@@ -193,6 +212,7 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(ValueLabel));
         Raise(nameof(OnLabel));
         Raise(nameof(TextLabel));
+        Raise(nameof(ActionDescription));
     }
 
     private void AddOption()
