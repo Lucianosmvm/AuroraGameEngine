@@ -261,6 +261,8 @@ public sealed class SceneSerializer
         RegisterAnimator();
         RegisterCollider();
         RegisterCameraController();
+        RegisterParticleEmitter();
+        RegisterLight2D();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -622,6 +624,89 @@ public sealed class SceneSerializer
                     json.WriteNumber("BoundsWidth", c.BoundsWidth);
                     json.WriteNumber("BoundsHeight", c.BoundsHeight);
                 }
+            });
+    }
+
+    private void RegisterParticleEmitter()
+    {
+        Register<ParticleEmitter>("ParticleEmitter",
+            static (json, context) =>
+            {
+                var emitter = new ParticleEmitter
+                {
+                    Rate = GetFloat(json, "Rate", 10f),
+                    Emitting = GetBool(json, "Emitting", true),
+                    LifeMin = GetFloat(json, "LifeMin", 0.6f),
+                    LifeMax = GetFloat(json, "LifeMax", 1.2f),
+                    SpeedMin = GetFloat(json, "SpeedMin", 20f),
+                    SpeedMax = GetFloat(json, "SpeedMax", 60f),
+                    AngleMin = GetFloat(json, "AngleMin", 0f),
+                    AngleMax = GetFloat(json, "AngleMax", 360f),
+                    SizeStart = GetFloat(json, "SizeStart", 8f),
+                    SizeEnd = GetFloat(json, "SizeEnd", 0f),
+                    Gravity = new(GetFloat(json, "GravityX", 0f), GetFloat(json, "GravityY", 0f)),
+                    Layer = GetInt(json, "Layer", 0),
+                    MaxParticles = GetInt(json, "MaxParticles", 200),
+                };
+
+                if (json.TryGetProperty("ColorStart", out var cs))
+                    emitter.ColorStart = Color.FromHex(cs.GetString()!);
+                if (json.TryGetProperty("ColorEnd", out var ce))
+                    emitter.ColorEnd = Color.FromHex(ce.GetString()!);
+
+                if (json.TryGetProperty("Texture", out var texture))
+                {
+                    string path = texture.GetString()!;
+                    emitter.Texture = context.Assets?.LoadTexture(path)
+                        ?? throw new InvalidOperationException(
+                            $"Cena referencia textura '{path}' mas o contexto não tem AssetManager.");
+                }
+
+                return emitter;
+            },
+            static (json, component, context) =>
+            {
+                var e = (ParticleEmitter)component;
+                if (e.Texture is not null && context.Assets?.GetTexturePath(e.Texture) is { } path)
+                    json.WriteString("Texture", path);
+                if (e.Rate != 10f) json.WriteNumber("Rate", e.Rate);
+                if (!e.Emitting) json.WriteBoolean("Emitting", false);
+                if (e.LifeMin != 0.6f) json.WriteNumber("LifeMin", e.LifeMin);
+                if (e.LifeMax != 1.2f) json.WriteNumber("LifeMax", e.LifeMax);
+                if (e.SpeedMin != 20f) json.WriteNumber("SpeedMin", e.SpeedMin);
+                if (e.SpeedMax != 60f) json.WriteNumber("SpeedMax", e.SpeedMax);
+                if (e.AngleMin != 0f) json.WriteNumber("AngleMin", e.AngleMin);
+                if (e.AngleMax != 360f) json.WriteNumber("AngleMax", e.AngleMax);
+                if (e.SizeStart != 8f) json.WriteNumber("SizeStart", e.SizeStart);
+                if (e.SizeEnd != 0f) json.WriteNumber("SizeEnd", e.SizeEnd);
+                if (e.ColorStart.ToHex() != "#FFFFFFFF") json.WriteString("ColorStart", e.ColorStart.ToHex());
+                if (e.ColorEnd.ToHex() != "#FFFFFF00") json.WriteString("ColorEnd", e.ColorEnd.ToHex());
+                if (e.Gravity.X != 0f) json.WriteNumber("GravityX", e.Gravity.X);
+                if (e.Gravity.Y != 0f) json.WriteNumber("GravityY", e.Gravity.Y);
+                if (e.Layer != 0) json.WriteNumber("Layer", e.Layer);
+                if (e.MaxParticles != 200) json.WriteNumber("MaxParticles", e.MaxParticles);
+            });
+    }
+
+    private void RegisterLight2D()
+    {
+        Register<Light2D>("Light2D",
+            static (json, _) => new Light2D
+            {
+                Radius = GetFloat(json, "Radius", 100f),
+                Intensity = GetFloat(json, "Intensity", 1f),
+                Enabled = GetBool(json, "Enabled", true),
+                Color = json.TryGetProperty("Color", out var c)
+                    ? Color.FromHex(c.GetString()!)
+                    : Color.FromBytes(255, 220, 150),
+            },
+            static (json, component, _) =>
+            {
+                var l = (Light2D)component;
+                if (l.Radius != 100f) json.WriteNumber("Radius", l.Radius);
+                if (l.Intensity != 1f) json.WriteNumber("Intensity", l.Intensity);
+                if (!l.Enabled) json.WriteBoolean("Enabled", false);
+                if (l.Color.ToHex() != "#FFDC96FF") json.WriteString("Color", l.Color.ToHex());
             });
     }
 

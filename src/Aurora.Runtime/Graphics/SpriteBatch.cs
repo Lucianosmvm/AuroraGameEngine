@@ -156,6 +156,7 @@ public sealed class SpriteBatch : IDisposable
         => Draw(texture, position, new Vector2(texture.Width, texture.Height), Vector2.Zero, 0f, Color.White);
 
     private Texture2D? _whitePixel;
+    private Texture2D? _glowTexture;
 
     /// <summary>Textura 1x1 branca — retângulos, barras e fundos de UI.</summary>
     public Texture2D WhitePixel => _whitePixel ??= Texture2D.FromPixels(_gl, 1, 1, [255, 255, 255, 255]);
@@ -163,6 +164,48 @@ public sealed class SpriteBatch : IDisposable
     /// <summary>Retângulo sólido (painéis de UI, caixas de diálogo).</summary>
     public void DrawRect(Vector2 position, Vector2 size, Color color)
         => Draw(WhitePixel, position, size, Vector2.Zero, 0f, color);
+
+    /// <summary>Textura radial branco→transparente gerada uma vez — base do brilho das Light2D.</summary>
+    private Texture2D GlowTexture => _glowTexture ??= BuildGlowTexture();
+
+    private unsafe Texture2D BuildGlowTexture()
+    {
+        const int size = 64;
+        var pixels = new byte[size * size * 4];
+        const float center = (size - 1) / 2f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center, dy = y - center;
+                float dist = MathF.Sqrt(dx * dx + dy * dy) / center;
+                float alpha = MathF.Pow(Math.Clamp(1f - dist, 0f, 1f), 2f);
+
+                int i = (y * size + x) * 4;
+                pixels[i + 0] = 255;
+                pixels[i + 1] = 255;
+                pixels[i + 2] = 255;
+                pixels[i + 3] = (byte)(alpha * 255);
+            }
+        }
+
+        return Texture2D.FromPixels(_gl, size, size, pixels);
+    }
+
+    /// <summary>
+    /// Desenha um brilho aditivo centrado em <paramref name="position"/> (fonte de luz 2D:
+    /// tocha, lanterna, brasa). Não é sombra/oclusão — só soma luz à cena. Faz flush do lote
+    /// atual, troca pra blend aditivo, desenha, restaura o blend normal (alpha).
+    /// </summary>
+    public void DrawGlow(Vector2 position, float radius, Color color)
+    {
+        Flush();
+        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.One);
+        Draw(GlowTexture, position, new Vector2(radius * 2f, radius * 2f), new Vector2(0.5f, 0.5f), 0f, color);
+        Flush();
+        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+    }
 
     public void End()
     {
@@ -202,6 +245,7 @@ public sealed class SpriteBatch : IDisposable
     public void Dispose()
     {
         _whitePixel?.Dispose();
+        _glowTexture?.Dispose();
         _gl.DeleteVertexArray(_vao);
         _gl.DeleteBuffer(_vbo);
         _gl.DeleteBuffer(_ebo);

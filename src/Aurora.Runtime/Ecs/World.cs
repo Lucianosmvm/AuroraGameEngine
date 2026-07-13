@@ -25,6 +25,7 @@ public sealed class World
 
     private int _nextId = 1;
     private bool _updating;
+    private readonly Random _random = new();
 
     public int EntityCount => _alive.Count;
 
@@ -182,6 +183,7 @@ public sealed class World
         }
 
         ProcessCollisions();
+        UpdateParticles(deltaTime);
 
         _updating = false;
 
@@ -192,6 +194,55 @@ public sealed class World
             _destroyQueue.Clear();
         }
     }
+
+    /// <summary>Nasce/envelhece/mata partículas de todo ParticleEmitter vivo.</summary>
+    private void UpdateParticles(float deltaTime)
+    {
+        foreach (var (_, transform, emitter) in Query<Transform, ParticleEmitter>())
+        {
+            if (emitter.Emitting && emitter.Particles.Count < emitter.MaxParticles)
+            {
+                emitter.SpawnAccumulator += emitter.Rate * deltaTime;
+                while (emitter.SpawnAccumulator >= 1f && emitter.Particles.Count < emitter.MaxParticles)
+                {
+                    emitter.SpawnAccumulator -= 1f;
+                    SpawnParticle(transform, emitter);
+                }
+            }
+
+            for (int i = emitter.Particles.Count - 1; i >= 0; i--)
+            {
+                var particle = emitter.Particles[i];
+                particle.Age += deltaTime;
+                if (particle.Age >= particle.LifeTime)
+                {
+                    emitter.Particles.RemoveAt(i);
+                    continue;
+                }
+
+                particle.Velocity += emitter.Gravity * deltaTime;
+                particle.Position += particle.Velocity * deltaTime;
+                emitter.Particles[i] = particle;
+            }
+        }
+    }
+
+    private void SpawnParticle(Transform transform, ParticleEmitter emitter)
+    {
+        float angleDeg = Lerp(emitter.AngleMin, emitter.AngleMax, (float)_random.NextDouble());
+        float speed = Lerp(emitter.SpeedMin, emitter.SpeedMax, (float)_random.NextDouble());
+        float angleRad = angleDeg * (MathF.PI / 180f);
+
+        emitter.Particles.Add(new Particle
+        {
+            Position = transform.Position,
+            Velocity = new Vector2(MathF.Cos(angleRad), MathF.Sin(angleRad)) * speed,
+            LifeTime = Lerp(emitter.LifeMin, emitter.LifeMax, (float)_random.NextDouble()),
+            Age = 0f,
+        });
+    }
+
+    private static float Lerp(float a, float b, float t) => a + (b - a) * t;
 
     private void ProcessCollisions()
     {
@@ -515,6 +566,49 @@ public sealed class World
             {
                 DrawTilemap(batch, camera, transform, tilemap);
             }
+        }
+
+        DrawParticles(batch);
+        DrawLights(batch);
+    }
+
+    /// <summary>Desenha as partículas de todo emissor, por camada (não interoperam com o
+    /// z-order de sprites individuais — desenhadas depois deles, cada emissor em bloco).</summary>
+    private void DrawParticles(SpriteBatch batch)
+    {
+        var emitters = Query<Transform, ParticleEmitter>()
+            .Select(e => e.Item3)
+            .Where(e => e.Particles.Count > 0)
+            .OrderBy(e => e.Layer);
+
+        foreach (var emitter in emitters)
+        {
+            var texture = emitter.Texture ?? batch.WhitePixel;
+            foreach (var particle in emitter.Particles)
+            {
+                float t = particle.LifeTime > 0f ? particle.Age / particle.LifeTime : 1f;
+                float size = Lerp(emitter.SizeStart, emitter.SizeEnd, t);
+                if (size <= 0f)
+                    continue;
+
+                var color = new Color(
+                    Lerp(emitter.ColorStart.R, emitter.ColorEnd.R, t),
+                    Lerp(emitter.ColorStart.G, emitter.ColorEnd.G, t),
+                    Lerp(emitter.ColorStart.B, emitter.ColorEnd.B, t),
+                    Lerp(emitter.ColorStart.A, emitter.ColorEnd.A, t));
+
+                batch.Draw(texture, particle.Position, new Vector2(size, size),
+                    new Vector2(0.5f, 0.5f), 0f, color);
+            }
+        }
+    }
+
+    private void DrawLights(SpriteBatch batch)
+    {
+        foreach (var (_, transform, light) in Query<Transform, Light2D>())
+        {
+            if (light.Enabled)
+                batch.DrawGlow(transform.Position, light.Radius, light.Color.WithAlpha(light.Intensity));
         }
     }
 

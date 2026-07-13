@@ -70,6 +70,23 @@ public class ComponentViewModel : ViewModelBase
         [
             ("X", 0f), ("Y", 0f), ("Width", 100f), ("Height", 100f), ("Color", "#000000AA"),
         ],
+        // Emissor de partículas (fumaça, faíscas, folhas) — sem Texture desenha quad colorido.
+        ["ParticleEmitter"] =
+        [
+            ("Texture", ""), ("Rate", 10f), ("Emitting", true),
+            ("LifeMin", 0.6f), ("LifeMax", 1.2f),
+            ("SpeedMin", 20f), ("SpeedMax", 60f),
+            ("AngleMin", 0f), ("AngleMax", 360f),
+            ("SizeStart", 8f), ("SizeEnd", 0f),
+            ("ColorStart", "#FFFFFFFF"), ("ColorEnd", "#FFFFFF00"),
+            ("GravityX", 0f), ("GravityY", 0f),
+            ("Layer", 0f), ("MaxParticles", 200f),
+        ],
+        // Luz 2D: brilho aditivo (glow), não é sombra/oclusão dinâmica.
+        ["Light2D"] =
+        [
+            ("Radius", 100f), ("Color", "#FFDC96FF"), ("Intensity", 1f), ("Enabled", true),
+        ],
     };
 
     public JsonObject Node { get; }
