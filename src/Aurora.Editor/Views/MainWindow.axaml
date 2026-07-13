@@ -71,23 +71,10 @@
       </Border>
     </DataTemplate>
 
-    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
-    <!-- IMPORTANTE: deve vir depois dos templates específicos (AnimatorViewModel, EventTriggerViewModel)
-         pois no Avalonia o primeiro DataTemplate que bate vence e esses herdam de ComponentViewModel. -->
-    <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
-      <Panel Margin="0,0,0,6">
-        <Expander Header="{Binding Type}" IsExpanded="True" HorizontalAlignment="Stretch">
-          <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
-        </Expander>
-        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
-                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
-                Command="{Binding RemoveCommand}"
-                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
-      </Panel>
-    </DataTemplate>
-
     <!-- EventTrigger: editor completo de gatilho + lista de ações -->
+    <!-- IMPORTANTE: precisa vir antes do template genérico de ComponentViewModel logo abaixo —
+         no Avalonia o primeiro DataTemplate que bate vence, e EventTriggerViewModel herda de
+         ComponentViewModel, então na ordem errada o genérico casa primeiro e essa view nunca aparece. -->
     <DataTemplate DataType="{x:Type vm:EventTriggerViewModel}">
       <Panel Margin="0,0,0,6">
       <Expander Header="EventTrigger" IsExpanded="True"
@@ -163,6 +150,20 @@
               Command="{Binding RemoveCommand}"
               IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
               Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
+    </DataTemplate>
+
+    <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
+    <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
+      <Panel Margin="0,0,0,6">
+        <Expander Header="{Binding Type}" IsExpanded="True" HorizontalAlignment="Stretch">
+          <ItemsControl ItemsSource="{Binding Properties}" Margin="4"/>
+        </Expander>
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+                Command="{Binding RemoveCommand}"
+                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
