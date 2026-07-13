@@ -118,9 +118,58 @@ public sealed class AndroidAssetSource : IAssetSource
   `Aurora.Runtime.GameState`. Se algum script seu declara `GameState State`,
   qualifica pra `Aurora.Runtime.GameState State` só nesse arquivo (só dá erro
   quando compilado pro alvo Android, desktop não sente).
-- **Sem teclado**: `PlayerController` precisa de um fallback de toque, senão o
-  jogo roda mas ninguém anda no celular. Padrão usado (mouse = toque no Android
-  via SDL, então `IsMouseDown`/`MousePosition` já funcionam sem código extra):
+- **Sem teclado, e o toque não vira mouse sozinho (testado em device real)**:
+  a suposição óbvia — "toque = evento de mouse via SDL, `IsMouseDown`/
+  `MousePosition` funcionam de graça" — **não funciona** nesse binding
+  Silk.NET/SDL Android (mouse sintético do toque é frágil/incompleto aqui).
+  O jogo roda, renderiza, HUD atualiza, mas nada anda e nenhum toque é
+  detectado. Solução que funciona: captura o toque direto na `MainActivity`
+  e empurra pro `InputManager` via `SetPointer(pos, down)`.
+
+  **Não use `OnTouchEvent`** — `SilkActivity` estende o `SDLActivity` (Java)
+  que já tem sua própria `SurfaceView` consumindo o toque antes;
+  `Activity.OnTouchEvent` só roda pra toque que ninguém consumiu (nunca,
+  nesse caso). Use `DispatchTouchEvent`, que roda ANTES de qualquer view
+  filha, sempre:
+
+  ```csharp
+  // MainActivity.cs
+  private volatile SeuJogoGame? _game;
+
+  protected override void OnRun()
+  {
+      ...
+      using var game = new SeuJogoGame();
+      _game = game;
+      game.AssetSource = new AndroidAssetSource();
+      game.Run(view);
+      _game = null;
+  }
+
+  public override bool DispatchTouchEvent(MotionEvent? e)
+  {
+      if (e is not null && _game is not null)
+      {
+          switch (e.Action)
+          {
+              case MotionEventActions.Down:
+              case MotionEventActions.Move:
+                  _game.Input.SetPointer(new Vector2(e.GetX(), e.GetY()), true);
+                  break;
+              case MotionEventActions.Up:
+              case MotionEventActions.Cancel:
+                  _game.Input.SetPointer(null, false);
+                  break;
+          }
+      }
+      return base.DispatchTouchEvent(e);
+  }
+  ```
+
+  `InputManager.SetPointer` (em `Aurora.Runtime`) já existe pra isso — é um
+  override manual que `IsMouseDown`/`MousePosition` preferem quando presente,
+  caindo pro `IMouse` real no desktop. No `PlayerController` do jogo, o
+  fallback de toque fica igual (não muda nada aqui, já usa `Input.IsMouseDown()`):
   ```csharp
   if (move == Vector2.Zero && Camera is not null && Input.IsMouseDown())
   {
