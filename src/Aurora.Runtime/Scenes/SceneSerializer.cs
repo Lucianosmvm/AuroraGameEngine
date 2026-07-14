@@ -676,6 +676,8 @@ public sealed class SceneSerializer
                     SizeStart = GetFloat(json, "SizeStart", 8f),
                     SizeEnd = GetFloat(json, "SizeEnd", 0f),
                     Gravity = new(GetFloat(json, "GravityX", 0f), GetFloat(json, "GravityY", 0f)),
+                    SpawnAreaWidth = GetFloat(json, "SpawnAreaWidth", 0f),
+                    SpawnAreaHeight = GetFloat(json, "SpawnAreaHeight", 0f),
                     Layer = GetInt(json, "Layer", 0),
                     MaxParticles = GetInt(json, "MaxParticles", 200),
                 };
@@ -714,6 +716,8 @@ public sealed class SceneSerializer
                 if (e.ColorEnd.ToHex() != "#FFFFFF00") json.WriteString("ColorEnd", e.ColorEnd.ToHex());
                 if (e.Gravity.X != 0f) json.WriteNumber("GravityX", e.Gravity.X);
                 if (e.Gravity.Y != 0f) json.WriteNumber("GravityY", e.Gravity.Y);
+                if (e.SpawnAreaWidth != 0f) json.WriteNumber("SpawnAreaWidth", e.SpawnAreaWidth);
+                if (e.SpawnAreaHeight != 0f) json.WriteNumber("SpawnAreaHeight", e.SpawnAreaHeight);
                 if (e.Layer != 0) json.WriteNumber("Layer", e.Layer);
                 if (e.MaxParticles != 200) json.WriteNumber("MaxParticles", e.MaxParticles);
             });

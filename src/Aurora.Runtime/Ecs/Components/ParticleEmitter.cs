@@ -46,6 +46,12 @@ public sealed class ParticleEmitter : IComponent
 
     public Vector2 Gravity;
 
+    /// <summary>Nasce em posição aleatória dentro de um retângulo Width x Height centrado no
+    /// Transform, em vez de sempre no mesmo ponto — 0,0 (padrão) é o comportamento antigo de
+    /// ponto único (tocha, faísca). Área grande = chuva/neve espalhada pela cena.</summary>
+    public float SpawnAreaWidth;
+    public float SpawnAreaHeight;
+
     public int Layer;
 
     /// <summary>Limite de partículas vivas ao mesmo tempo — protege contra emissor mal configurado.</summary>

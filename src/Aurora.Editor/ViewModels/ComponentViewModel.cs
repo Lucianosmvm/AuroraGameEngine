@@ -116,6 +116,7 @@ public class ComponentViewModel : ViewModelBase
             ("SizeStart", 8f), ("SizeEnd", 0f),
             ("ColorStart", "#FFFFFFFF"), ("ColorEnd", "#FFFFFF00"),
             ("GravityX", 0f), ("GravityY", 0f),
+            ("SpawnAreaWidth", 0f), ("SpawnAreaHeight", 0f),
             ("Layer", 0f), ("MaxParticles", 200f),
         ],
         // Luz 2D: brilho aditivo (glow), não é sombra/oclusão dinâmica.

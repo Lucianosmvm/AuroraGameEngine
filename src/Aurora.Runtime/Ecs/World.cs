@@ -316,9 +316,13 @@ public sealed class World
         float speed = Lerp(emitter.SpeedMin, emitter.SpeedMax, (float)_random.NextDouble());
         float angleRad = angleDeg * (MathF.PI / 180f);
 
+        var jitter = new Vector2(
+            ((float)_random.NextDouble() - 0.5f) * emitter.SpawnAreaWidth,
+            ((float)_random.NextDouble() - 0.5f) * emitter.SpawnAreaHeight);
+
         emitter.Particles.Add(new Particle
         {
-            Position = transform.Position,
+            Position = transform.Position + jitter,
             Velocity = new Vector2(MathF.Cos(angleRad), MathF.Sin(angleRad)) * speed,
             LifeTime = Lerp(emitter.LifeMin, emitter.LifeMax, (float)_random.NextDouble()),
             Age = 0f,
