@@ -271,6 +271,7 @@ public sealed class SceneSerializer
         RegisterCameraController();
         RegisterParticleEmitter();
         RegisterLight2D();
+        RegisterGlobalTint();
         RegisterNavAgent();
         Register<Transform>("Transform",
             static (json, _) => new Transform
@@ -737,6 +738,26 @@ public sealed class SceneSerializer
                 if (l.Intensity != 1f) json.WriteNumber("Intensity", l.Intensity);
                 if (!l.Enabled) json.WriteBoolean("Enabled", false);
                 if (l.Color.ToHex() != "#FFDC96FF") json.WriteString("Color", l.Color.ToHex());
+            });
+    }
+
+    private void RegisterGlobalTint()
+    {
+        Register<GlobalTint>("GlobalTint",
+            static (json, _) => new GlobalTint
+            {
+                Intensity = GetFloat(json, "Intensity", 0.3f),
+                Enabled = GetBool(json, "Enabled", true),
+                Color = json.TryGetProperty("Color", out var c)
+                    ? Color.FromHex(c.GetString()!)
+                    : Color.FromBytes(0, 0, 40),
+            },
+            static (json, component, _) =>
+            {
+                var t = (GlobalTint)component;
+                if (t.Intensity != 0.3f) json.WriteNumber("Intensity", t.Intensity);
+                if (!t.Enabled) json.WriteBoolean("Enabled", false);
+                if (t.Color.ToHex() != "#000028FF") json.WriteString("Color", t.Color.ToHex());
             });
     }
 

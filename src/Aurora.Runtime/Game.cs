@@ -256,6 +256,7 @@ public abstract class Game : IDisposable
 
         // Passe de UI em coordenadas de tela (HUD, diálogos) — não segue a câmera.
         SpriteBatch.Begin(GetScreenProjection());
+        World.DrawGlobalTint(SpriteBatch, ScreenSize.X, ScreenSize.Y);
         OnRenderUI((float)deltaTime);
         SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
         SpriteBatch.End();

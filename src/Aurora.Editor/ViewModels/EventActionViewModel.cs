@@ -27,6 +27,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "ChangeScene", "Save", "Quit",
         "AddItem", "RemoveItem",
         "SetQuestStage", "AdvanceQuest",
+        "SetActive",
     ];
 
     public string[] OpTypes { get; } = ["Set", "Add"];
@@ -67,7 +68,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string NameLabel => ActionType switch
     {
         "SetVariable" or "SetSwitch" => "Variável",
-        "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" => "Entidade",
+        "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" or "SetActive" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         "AddItem" or "RemoveItem" => "Item",
         "SetQuestStage" or "AdvanceQuest" => "Quest",
@@ -200,6 +201,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "RemoveItem"     => "Remove quantidade do item no inventário (nunca fica negativo)",
         "SetQuestStage"  => "Define o estágio atual da quest",
         "AdvanceQuest"   => "Avança o estágio da quest (padrão +1)",
+        "SetActive"      => "Liga/desliga ParticleEmitter, Light2D ou GlobalTint de uma entidade sem destruí-la",
         _                => "",
     };
 
@@ -207,11 +209,11 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
         or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
-        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest";
+        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive";
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal";
-    public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic";
+    public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive";
     public bool ShowXY => ActionType == "Teleport";
     public bool ShowSeconds => ActionType == "Wait";
     public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";

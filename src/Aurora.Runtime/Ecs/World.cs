@@ -757,6 +757,24 @@ public sealed class World
         }
     }
 
+    /// <summary>
+    /// Desenha o retângulo de tela inteira do primeiro <see cref="GlobalTint"/> habilitado
+    /// (dia/noite, tempestade, filtro subaquático). Chamar com o SpriteBatch em projeção de
+    /// tela (não de câmera) — mesmo padrão do overlay de fade do SceneManager.
+    /// </summary>
+    public void DrawGlobalTint(SpriteBatch batch, float screenWidth, float screenHeight)
+    {
+        foreach (var (_, tint) in Query<GlobalTint>())
+        {
+            if (!tint.Enabled || tint.Intensity <= 0f)
+                continue;
+
+            batch.DrawRect(Vector2.Zero, new Vector2(screenWidth, screenHeight),
+                tint.Color.WithAlpha(tint.Intensity));
+            break;
+        }
+    }
+
     private static void DrawTilemap(SpriteBatch batch, Camera2D? camera, Transform transform, Tilemap map)
     {
         map.EnsureSize();

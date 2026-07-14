@@ -318,6 +318,27 @@ public sealed class EventSystem
                 ResolveTarget(self, action.Name)?.Get<Animator>()?.Stop();
                 break;
 
+            case "SetActive":
+            {
+                // Liga/desliga efeitos sem remover o componente da cena (chuva, tocha, etc).
+                // Name = entidade alvo (null/"Self" = a própria), On = liga/desliga.
+                if (ResolveTarget(self, action.Name) is { } activeTarget)
+                {
+                    var particles = activeTarget.Get<ParticleEmitter>();
+                    if (particles is not null)
+                        particles.Emitting = action.On;
+
+                    var light = activeTarget.Get<Light2D>();
+                    if (light is not null)
+                        light.Enabled = action.On;
+
+                    var tint = activeTarget.Get<GlobalTint>();
+                    if (tint is not null)
+                        tint.Enabled = action.On;
+                }
+                break;
+            }
+
             case "ShowChoice" when Dialogue is not null && action.Options.Count > 0:
                 Dialogue.ShowChoice(action.Text ?? "",
                     action.Options.Select(o => o.Text).ToList(),
