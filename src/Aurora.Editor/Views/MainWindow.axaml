@@ -192,6 +192,34 @@
       </Panel>
     </DataTemplate>
 
+    <!-- UiButton: campos escalares genéricos + lista de ações OnClick -->
+    <!-- IMPORTANTE: precisa vir antes do template genérico de ComponentViewModel logo abaixo,
+         mesma razão do EventTriggerViewModel acima (UiButtonViewModel também herda dele). -->
+    <DataTemplate DataType="{x:Type vm:UiButtonViewModel}">
+      <Panel Margin="0,0,0,6">
+        <Expander Header="UiButton" IsExpanded="True" HorizontalAlignment="Stretch">
+          <StackPanel Margin="6,4" Spacing="4">
+            <ItemsControl ItemsSource="{Binding Properties}"/>
+
+            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+                    Margin="0,2,0,2" Padding="0,4,0,0">
+              <TextBlock Text="ONCLICK" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Actions}"/>
+
+            <Button Content="+ Adicionar Ação" Command="{Binding AddActionCommand}"
+                    FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
+          </StackPanel>
+        </Expander>
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
+                Command="{Binding RemoveCommand}"
+                IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+      </Panel>
+    </DataTemplate>
+
     <!-- Componente genérico (Transform, SpriteRenderer, Tilemap, Collider…) -->
     <DataTemplate DataType="{x:Type vm:ComponentViewModel}">
       <Panel Margin="0,0,0,6">

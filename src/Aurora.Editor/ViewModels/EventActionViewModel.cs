@@ -21,9 +21,10 @@ public sealed class EventActionViewModel : ViewModelBase
         "Wait", "SetVariable", "SetSwitch",
         "ShowMessage", "ShowChoice",
         "Teleport", "Destroy",
+        "Damage", "Heal",
         "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
-        "ChangeScene", "Save",
+        "ChangeScene", "Save", "Quit",
         "AddItem", "RemoveItem",
         "SetQuestStage", "AdvanceQuest",
     ];
@@ -66,7 +67,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string NameLabel => ActionType switch
     {
         "SetVariable" or "SetSwitch" => "Variável",
-        "Teleport" or "Destroy" or "PlayAnimation" or "StopAnimation" => "Entidade",
+        "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         "AddItem" or "RemoveItem" => "Item",
         "SetQuestStage" or "AdvanceQuest" => "Quest",
@@ -102,6 +103,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "AddItem" or "RemoveItem" => "Quantidade",
         "SetQuestStage" => "Estágio",
         "AdvanceQuest" => "Incremento",
+        "Damage" or "Heal" => "Quantidade",
         _ => "Valor",
     };
 
@@ -184,6 +186,9 @@ public sealed class EventActionViewModel : ViewModelBase
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
         "Teleport"       => "Move uma entidade pra posição X,Y",
         "Destroy"        => "Remove uma entidade da cena",
+        "Damage"         => "Aplica dano numa entidade com Health (ignora se invencível/i-frames)",
+        "Heal"           => "Cura uma entidade com Health, sem passar do Max",
+        "Quit"           => "Fecha o jogo",
         "PlayAnimation"  => "Troca o clipe ativo do Animator de uma entidade",
         "StopAnimation"  => "Para a animação ativa de uma entidade",
         "PlaySound"      => "Toca um efeito sonoro (arquivo em Assets)",
@@ -200,11 +205,12 @@ public sealed class EventActionViewModel : ViewModelBase
 
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
+        or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest";
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
-        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest";
+        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic";
     public bool ShowXY => ActionType == "Teleport";
     public bool ShowSeconds => ActionType == "Wait";

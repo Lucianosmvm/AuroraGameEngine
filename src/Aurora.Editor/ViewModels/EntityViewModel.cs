@@ -14,15 +14,23 @@ public sealed class EntityViewModel : ViewModelBase
     /// <summary>Tag identifica o gesto de edição (coalescência de undo).</summary>
     public event Action<string>? Edited;
 
-    private static readonly string[] BuiltInComponentTypes =
-        ["SpriteRenderer", "Animator", "Collider", "CameraController", "EventTrigger",
-         "UiText", "UiImage", "UiBar", "UiPanel", "ParticleEmitter", "Light2D", "NavAgent"];
+    private static readonly string[] GameplayComponentTypes =
+        ["SpriteRenderer", "Animator", "Collider", "Health", "CameraController", "EventTrigger",
+         "ParticleEmitter", "Light2D", "NavAgent"];
+
+    // UiText/UiImage/UiBar/UiPanel/UiButton só existem no sistema UIManager (telas de HUD/menu,
+    // coordenadas de pixel de tela, sem câmera) — não são IComponent do SceneSerializer normal.
+    // Numa entidade de cena comum eles travam o load do jogo (componente não registrado).
+    private static readonly string[] UiComponentTypes =
+        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiJoystick"];
 
     private readonly MainViewModel? _owner;
 
-    /// <summary>Nativos + scripts [SceneScript] descobertos no projeto do jogo (ver MainViewModel.CustomScripts).</summary>
+    /// <summary>Nativos (filtrados por tipo de documento — UI vs gameplay) + scripts
+    /// [SceneScript] descobertos no projeto do jogo (ver MainViewModel.CustomScripts).</summary>
     public IEnumerable<string> AvailableComponentTypes =>
-        BuiltInComponentTypes.Concat(_owner?.CustomScripts.Select(s => s.Name) ?? []);
+        (_owner?.IsUiScreenDocument == true ? UiComponentTypes : GameplayComponentTypes)
+        .Concat(_owner?.CustomScripts.Select(s => s.Name) ?? []);
 
     private string _newComponentType = "Collider";
     public string NewComponentType
@@ -201,6 +209,12 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Width"] = 16f,
                 ["Height"] = 16f,
             },
+            "Health" => new JsonObject
+            {
+                ["Type"] = "Health",
+                ["Max"] = 100f,
+                ["Current"] = 100f,
+            },
             "CameraController" => new JsonObject
             {
                 ["Type"] = "CameraController",
@@ -252,6 +266,25 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Width"] = 200f,
                 ["Height"] = 100f,
                 ["Color"] = "#000000A0",
+            },
+            "UiButton" => new JsonObject
+            {
+                ["Type"] = "UiButton",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Width"] = 120f,
+                ["Height"] = 32f,
+                ["Text"] = "Botão",
+                ["OnClick"] = new JsonArray(),
+            },
+            "UiJoystick" => new JsonObject
+            {
+                ["Type"] = "UiJoystick",
+                ["X"] = 140f,
+                ["Y"] = 140f,
+                ["AnchorX"] = "Left",
+                ["AnchorY"] = "Bottom",
+                ["Radius"] = 70f,
             },
             "ParticleEmitter" => new JsonObject
             {
@@ -375,6 +408,17 @@ public sealed class EntityViewModel : ViewModelBase
     public void SetRotation(float radians)
         => SetTransformFields($"rotate:{Node.GetHashCode()}", ("Rotation", radians));
 
+    /// <summary>Move um elemento de UI (arrasto no canvas) — X/Y de pixel de tela direto no
+    /// componente (UiButton/UiPanel/UiText/…), não no Transform da entidade.</summary>
+    public void SetUiPosition(ComponentViewModel component, float x, float y)
+    {
+        component.Node["X"] = x;
+        component.Node["Y"] = y;
+        component.Number("X")?.RefreshFromNode();
+        component.Number("Y")?.RefreshFromNode();
+        Edited?.Invoke($"moveui:{Node.GetHashCode()}/{component.Node.GetHashCode()}");
+    }
+
     private void SetTransformFields(string tag, params (string Name, float Value)[] fields)
     {
         var transform = Transform;
@@ -407,6 +451,7 @@ public sealed class EntityViewModel : ViewModelBase
         {
             "EventTrigger" => new EventTriggerViewModel(node),
             "Animator"     => new AnimatorViewModel(node),
+            "UiButton"     => new UiButtonViewModel(node),
             _              => new ComponentViewModel(node),
         };
 

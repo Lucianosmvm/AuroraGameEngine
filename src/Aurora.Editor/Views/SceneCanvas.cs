@@ -17,10 +17,14 @@ public sealed class SceneCanvas : Control
     private const double HandleSize = 8;
     private const double RotationHandleOffset = 26;
 
-    private enum DragMode { None, Pan, Move, Scale, Rotate, Paint }
+    private enum DragMode { None, Pan, Move, Scale, Rotate, Paint, MoveUi }
 
     /// <summary>Sprite pronto para desenhar/testar: matriz local→tela e retângulo local.</summary>
     private readonly record struct SpriteView(EntityViewModel Entity, Matrix LocalToScreen, Rect LocalRect, float Layer);
+
+    /// <summary>Elemento de UI (HUD/menu) pronto para desenhar: coordenadas de pixel de tela
+    /// diretas, sem passar pela câmera do mundo — mesma convenção do UIManager em runtime.</summary>
+    private readonly record struct UiElementView(EntityViewModel Entity, ComponentViewModel Component, string Kind, Rect Rect);
 
     /// <summary>Tilemap pronto para desenhar: célula em unidades do mundo, grade e tileset.</summary>
     private readonly record struct TilemapView(EntityViewModel Entity, Matrix LocalToScreen,
@@ -39,6 +43,9 @@ public sealed class SceneCanvas : Control
     private Point _lastPointer;
     private EntityViewModel? _target;
     private Point _dragOffset;
+
+    // Alvo do drag de elemento de UI (MoveUi) — X/Y em pixel de tela direto, sem ScreenToWorld.
+    private ComponentViewModel? _uiTarget;
 
     // Estado inicial do gesto de escala/rotação.
     private Point _gestureLocalStart;
@@ -180,6 +187,156 @@ public sealed class SceneCanvas : Control
         }
     }
 
+    private static readonly HashSet<string> UiTypesWithBounds = ["UiButton", "UiPanel", "UiBar", "UiImage"];
+
+    /// <summary>Elementos de UI (HUD/menu) de todas as entidades, em coordenadas de pixel de
+    /// tela — não passam pela câmera/pan/zoom do mundo, igual ao runtime (UIManager.Draw).</summary>
+    private IEnumerable<UiElementView> VisibleUiElements()
+    {
+        if (_viewModel is null)
+            yield break;
+
+        double screenWidth = Bounds.Width;
+        double screenHeight = Bounds.Height;
+
+        foreach (var entity in _viewModel.Entities)
+        {
+            foreach (var comp in entity.Components)
+            {
+                float x = comp.GetFloat("X", 0f);
+                float y = comp.GetFloat("Y", 0f);
+                string anchorX = comp.GetString("AnchorX") ?? "Left";
+                string anchorY = comp.GetString("AnchorY") ?? "Top";
+
+                if (UiTypesWithBounds.Contains(comp.Type))
+                {
+                    var (defaultWidth, defaultHeight) = comp.Type switch
+                    {
+                        "UiButton" => (120f, 32f),
+                        "UiBar"    => (100f, 12f),
+                        "UiImage"  => (32f, 32f),
+                        _          => (100f, 100f), // UiPanel
+                    };
+                    float width = comp.GetFloat("Width", defaultWidth);
+                    float height = comp.GetFloat("Height", defaultHeight);
+                    double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
+                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
+                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, width, height));
+                }
+                else if (comp.Type == "UiText")
+                {
+                    string text = comp.GetString("Text") ?? "";
+                    double width = Math.Max(20, text.Length * 7 + 6);
+                    double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
+                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, 18);
+                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, width, 18));
+                }
+                else if (comp.Type == "UiJoystick")
+                {
+                    // Mesma convenção de Aurora.Runtime.UI.UIManager.JoystickCenter: X/Y+Anchor
+                    // definem o canto de um quadrado de lado 2*Radius, círculo fica no meio.
+                    float radius = comp.GetFloat("Radius", 70f);
+                    double side = radius * 2.0;
+                    double left = ResolveAnchorAxis(anchorX, x, screenWidth, side);
+                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, side);
+                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, side, side));
+                }
+            }
+        }
+    }
+
+    /// <summary>Mesma lógica de Aurora.Runtime.UI.UIManager.ResolveAxis — precisa bater com o
+    /// runtime, senão o preview do editor mostra posição diferente do jogo de verdade.</summary>
+    private static double ResolveAnchorAxis(string anchor, float coordinate, double screenSize, double elementSize)
+        => anchor switch
+        {
+            "Center" => screenSize / 2.0 + coordinate - elementSize / 2.0,
+            "Right" or "Bottom" => screenSize - coordinate - elementSize,
+            _ => coordinate,
+        };
+
+    /// <summary>Converte hex "#RRGGBB"/"#RRGGBBAA" (convenção do engine, alpha por último) —
+    /// Avalonia.Media.Color.Parse espera alpha primeiro, não dá pra reusar direto.</summary>
+    private static Color ParseEngineColor(string? hex, Color fallback)
+    {
+        if (hex is null)
+            return fallback;
+
+        string value = hex.TrimStart('#');
+        if (value.Length != 6 && value.Length != 8)
+            return fallback;
+
+        try
+        {
+            byte r = Convert.ToByte(value[..2], 16);
+            byte g = Convert.ToByte(value[2..4], 16);
+            byte b = Convert.ToByte(value[4..6], 16);
+            byte a = value.Length == 8 ? Convert.ToByte(value[6..8], 16) : (byte)255;
+            return Color.FromArgb(a, r, g, b);
+        }
+        catch (FormatException)
+        {
+            return fallback;
+        }
+    }
+
+    private void DrawUiElements(DrawingContext context)
+    {
+        foreach (var element in VisibleUiElements())
+        {
+            var rect = element.Rect;
+
+            switch (element.Kind)
+            {
+                case "UiText":
+                {
+                    string text = element.Component.GetString("Text") ?? "";
+                    var textColor = ParseEngineColor(element.Component.GetString("Color"), Colors.White);
+                    context.DrawText(
+                        new Avalonia.Media.FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
+                            Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
+                            14, new SolidColorBrush(textColor)),
+                        rect.TopLeft);
+                    break;
+                }
+
+                case "UiJoystick":
+                {
+                    var bg = ParseEngineColor(element.Component.GetString("BaseColor"), Color.FromArgb(70, 255, 255, 255));
+                    var center = rect.Center;
+                    double radius = rect.Width / 2.0;
+                    context.DrawEllipse(new SolidColorBrush(bg), new Pen(new SolidColorBrush(Colors.White, 0.35), 1.5),
+                        center, radius, radius);
+                    context.DrawEllipse(new SolidColorBrush(Colors.White, 0.5), null, center, radius * 0.4, radius * 0.4);
+                    break;
+                }
+
+                default:
+                {
+                    var bg = ParseEngineColor(element.Component.GetString("Color"), Color.FromArgb(255, 58, 56, 96));
+                    context.FillRectangle(new SolidColorBrush(bg), rect);
+                    context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.25), 1), rect);
+
+                    if (element.Kind == "UiButton")
+                    {
+                        string text = element.Component.GetString("Text") ?? "";
+                        var textColor = ParseEngineColor(element.Component.GetString("TextColor"), Colors.White);
+                        var formatted = new Avalonia.Media.FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
+                            Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
+                            13, new SolidColorBrush(textColor));
+                        context.DrawText(formatted, new Point(
+                            rect.X + (rect.Width - formatted.Width) / 2,
+                            rect.Y + (rect.Height - formatted.Height) / 2));
+                    }
+                    break;
+                }
+            }
+
+            if (ReferenceEquals(element.Entity, _viewModel?.SelectedEntity))
+                context.DrawRectangle(new Pen(Brushes.Cyan, 1.5), rect);
+        }
+    }
+
     // ---- Renderização ----
 
     public override void Render(DrawingContext context)
@@ -231,6 +388,9 @@ public sealed class SceneCanvas : Control
         var selEntity = _viewModel.SelectedEntity;
         if (selEntity?.Camera is { } camComp && selEntity.Transform is { } camTransform)
             DrawCameraPreview(context, camTransform, camComp);
+
+        // Elementos de UI (HUD/menu) por cima de tudo — pixel de tela, sem câmera.
+        DrawUiElements(context);
     }
 
     private void DrawTilemap(DrawingContext context, TilemapView map)
@@ -421,6 +581,22 @@ public sealed class SceneCanvas : Control
         if (!point.Properties.IsLeftButtonPressed || _viewModel is null)
             return;
 
+        // 0-a) Elementos de UI ficam por cima de tudo (desenhados por último) — checa primeiro.
+        var hitUi = VisibleUiElements().LastOrDefault(u => u.Rect.Contains(point.Position));
+        if (hitUi.Entity is not null)
+        {
+            _viewModel.SelectedEntity = hitUi.Entity;
+            _drag = DragMode.MoveUi;
+            _target = hitUi.Entity;
+            _uiTarget = hitUi.Component;
+            _dragOffset = new Point(
+                hitUi.Component.GetFloat("X", 0f) - point.Position.X,
+                hitUi.Component.GetFloat("Y", 0f) - point.Position.Y);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         // 0) Pincel ativo + clique dentro do tilemap selecionado = pintar.
         if (_viewModel.SelectedTileIndex is not null
             && VisibleTilemaps().FirstOrDefault(t => ReferenceEquals(t.Entity, _viewModel.SelectedEntity))
@@ -545,6 +721,12 @@ public sealed class SceneCanvas : Control
                 InvalidateVisual();
                 break;
 
+            case DragMode.MoveUi when _target is not null && _uiTarget is not null:
+                _target.SetUiPosition(_uiTarget,
+                    (float)(position.X + _dragOffset.X),
+                    (float)(position.Y + _dragOffset.Y));
+                break;
+
             case DragMode.Move when _target is not null:
             {
                 var world = ScreenToWorld(position);
@@ -596,6 +778,7 @@ public sealed class SceneCanvas : Control
     {
         _drag = DragMode.None;
         _target = null;
+        _uiTarget = null;
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)

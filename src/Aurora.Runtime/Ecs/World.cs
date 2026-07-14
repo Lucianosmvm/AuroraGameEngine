@@ -188,6 +188,7 @@ public sealed class World
         UpdateNavAgents(deltaTime);
         ProcessCollisions();
         UpdateParticles(deltaTime);
+        UpdateHealth(deltaTime);
 
         _updating = false;
 
@@ -324,6 +325,48 @@ public sealed class World
     }
 
     private static float Lerp(float a, float b, float t) => a + (b - a) * t;
+
+    private void UpdateHealth(float deltaTime)
+    {
+        foreach (var (_, health) in Query<Health>())
+        {
+            if (health.InvulnerabilityTimer > 0f)
+                health.InvulnerabilityTimer = MathF.Max(0f, health.InvulnerabilityTimer - deltaTime);
+        }
+    }
+
+    /// <summary>Aplica dano a uma entidade com Health. Não faz nada se ela não tiver Health,
+    /// já estiver morta, ou estiver invencível (flag ou i-frames ativos). Retorna se o dano
+    /// foi aplicado de verdade. Ao zerar Current: notifica OnDeath e destrói (se DestroyOnDeath).</summary>
+    public bool Damage(Entity target, float amount, Entity? source = null)
+    {
+        var health = target.Get<Health>();
+        if (health is null || health.IsDead || health.Invulnerable || health.InvulnerabilityTimer > 0f || amount <= 0f)
+            return false;
+
+        health.Current = MathF.Max(0f, health.Current - amount);
+        health.InvulnerabilityTimer = health.InvulnerabilityAfterHit;
+        NotifyDamaged(target.Id, amount, source);
+
+        if (health.Current <= 0f)
+        {
+            NotifyDeath(target.Id);
+            if (health.DestroyOnDeath && _alive.Contains(target.Id))
+                Destroy(target.Id);
+        }
+
+        return true;
+    }
+
+    /// <summary>Cura sem passar de Max. Não faz nada se a entidade não tiver Health.</summary>
+    public void Heal(Entity target, float amount)
+    {
+        var health = target.Get<Health>();
+        if (health is null || amount <= 0f)
+            return;
+
+        health.Current = MathF.Min(health.Max, health.Current + amount);
+    }
 
     private void ProcessCollisions()
     {
@@ -605,6 +648,26 @@ public sealed class World
             var b = _behaviors[i];
             if (b.Entity.Id == entityId && b.Enabled)
                 b.OnTriggerExit(other);
+        }
+    }
+
+    private void NotifyDamaged(int entityId, float amount, Entity? source)
+    {
+        for (int i = 0; i < _behaviors.Count; i++)
+        {
+            var b = _behaviors[i];
+            if (b.Entity.Id == entityId && b.Enabled)
+                b.OnDamaged(amount, source);
+        }
+    }
+
+    private void NotifyDeath(int entityId)
+    {
+        for (int i = 0; i < _behaviors.Count; i++)
+        {
+            var b = _behaviors[i];
+            if (b.Entity.Id == entityId && b.Enabled)
+                b.OnDeath();
         }
     }
 

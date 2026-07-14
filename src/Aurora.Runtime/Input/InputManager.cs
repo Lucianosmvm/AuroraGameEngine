@@ -27,6 +27,12 @@ public sealed class InputManager
     private Vector2? _pointerOverride;
     private bool _pointerOverrideDown;
 
+    // Multi-toque de verdade (joystick + botões simultâneos) — separado do pointer único
+    // acima, que continua servindo cliques de UiButton (UIManager só olha um ponto).
+    // MainActivity chama SetTouch por dedo (id = MotionEvent.GetPointerId), no desktop
+    // fica sempre vazio (sem touchscreen real aqui).
+    private readonly Dictionary<int, Vector2> _touches = new();
+
     public InputManager(IInputContext context)
     {
         _context = context;
@@ -52,6 +58,41 @@ public sealed class InputManager
     {
         lock (_pointerLock)
             return (_pointerOverride, _pointerOverrideDown);
+    }
+
+    /// <summary>Chamado pela plataforma (MainActivity) por dedo — id = MotionEvent.GetPointerId,
+    /// down=false remove o toque. Independente de SetPointer (que continua sendo "o" clique
+    /// único usado pelo UIManager pra botão de menu/HUD).</summary>
+    public void SetTouch(int id, Vector2 position, bool down)
+    {
+        lock (_pointerLock)
+        {
+            if (down) _touches[id] = position;
+            else _touches.Remove(id);
+        }
+    }
+
+    /// <summary>Todos os toques ativos agora — ids reais de SetTouch (multi-toque de
+    /// verdade, Android). Sem multi-toque disponível (desktop, ou Android antes do primeiro
+    /// SetTouch), cai pro pointer único (mouse ou SetPointer) como um toque sintético id -1,
+    /// pra dar pra testar joystick/botões sem touchscreen real.</summary>
+    public IReadOnlyList<(int Id, Vector2 Position)> ActiveTouches
+    {
+        get
+        {
+            lock (_pointerLock)
+            {
+                if (_touches.Count > 0)
+                {
+                    var list = new List<(int, Vector2)>(_touches.Count);
+                    foreach (var (id, pos) in _touches)
+                        list.Add((id, pos));
+                    return list;
+                }
+            }
+
+            return IsMouseDown() ? [(-1, MousePosition)] : [];
+        }
     }
 
     public bool IsKeyDown(Key key) => Keyboard?.IsKeyPressed(key) ?? false;

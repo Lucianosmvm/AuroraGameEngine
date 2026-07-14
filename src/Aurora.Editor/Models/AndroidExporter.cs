@@ -170,9 +170,14 @@ public static class AndroidExporter
 
         namespace {{droidNamespace}};
 
+        // Landscape fixo (não Sensor) — SensorLandscape deixa o SO girar entre paisagem
+        // normal/invertida, e esse evento de rotação bem no boot derruba um bug real do
+        // Silk.NET/SDL no Android: "You cannot call Reset inside of the render loop!"
+        // (Silk.NET.Windowing.Internals.ViewImplementationBase.Reset/Dispose), crash fatal
+        // logo na abertura (testado em device real). Orientação travada não dispara o evento.
         [Activity(Label = "{{displayName}}", MainLauncher = true,
             ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden,
-            ScreenOrientation = ScreenOrientation.SensorLandscape)]
+            ScreenOrientation = ScreenOrientation.Landscape)]
         public class MainActivity : SilkActivity
         {
             private volatile {{gameNamespace}}.{{gameClassName}}? _game;
@@ -201,6 +206,8 @@ public static class AndroidExporter
             {
                 if (e is not null && _game is not null)
                 {
+                    // Caminho antigo (1 ponto só) - é o que UIManager usa pro clique de
+                    // UiButton (menu/HUD só olha um toque, não precisa de mais que isso).
                     switch (e.Action)
                     {
                         case MotionEventActions.Down:
@@ -211,6 +218,31 @@ public static class AndroidExporter
                         case MotionEventActions.Cancel:
                             _game.Input.SetPointer(null, false);
                             break;
+                    }
+
+                    // Multi-toque de verdade (joystick + botão ao mesmo tempo) - cada dedo
+                    // com seu id (MotionEvent.GetPointerId), independente do caminho acima.
+                    switch (e.ActionMasked)
+                    {
+                        case MotionEventActions.Down:
+                        case MotionEventActions.PointerDown:
+                        {
+                            int idx = e.ActionIndex;
+                            _game.Input.SetTouch(e.GetPointerId(idx), new Vector2(e.GetX(idx), e.GetY(idx)), true);
+                            break;
+                        }
+                        case MotionEventActions.Move:
+                            for (int i = 0; i < e.PointerCount; i++)
+                                _game.Input.SetTouch(e.GetPointerId(i), new Vector2(e.GetX(i), e.GetY(i)), true);
+                            break;
+                        case MotionEventActions.Up:
+                        case MotionEventActions.PointerUp:
+                        case MotionEventActions.Cancel:
+                        {
+                            int idx = e.ActionIndex;
+                            _game.Input.SetTouch(e.GetPointerId(idx), Vector2.Zero, false);
+                            break;
+                        }
                     }
                 }
 

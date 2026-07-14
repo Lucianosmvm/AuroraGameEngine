@@ -40,6 +40,13 @@ public class ComponentViewModel : ViewModelBase
             ("IsSolid", true), ("IsKinematic", false),
             ("Layer", 1f), ("Mask", -1f),
         ],
+        // Vida — dano/cura em código via World.Damage/Heal, ou sem código via EventAction
+        // "Damage"/"Heal" no EventTrigger.
+        ["Health"] =
+        [
+            ("Max", 100f), ("Current", 100f), ("InvulnerabilityAfterHit", 0f),
+            ("Invulnerable", false), ("DestroyOnDeath", true),
+        ],
         ["CameraController"] =
         [
             ("Follow", ""),
@@ -52,23 +59,46 @@ public class ComponentViewModel : ViewModelBase
         ],
         // Componentes de UI (HUD/menu): X/Y em pixel de tela, não seguem a câmera.
         // Texto suporta tokens {Var}, {Item:Nome}, {Quest:Nome} — ver Aurora.Runtime.UI.UIManager.
+        // AnchorX/Y: "Left"/"Top" (padrão, X/Y é canto absoluto — bom pra HUD grudado no canto)
+        // | "Center" (X/Y vira deslocamento a partir do centro da tela — bom pra menu, funciona
+        // igual em qualquer resolução) | "Right"/"Bottom" (a partir da borda oposta).
         ["UiText"] =
         [
-            ("X", 0f), ("Y", 0f), ("Text", ""), ("Color", "#FFFFFFFF"), ("Scale", 1f),
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Text", ""), ("Color", "#FFFFFFFF"), ("Scale", 1f),
         ],
         ["UiImage"] =
         [
-            ("X", 0f), ("Y", 0f), ("Texture", ""), ("Width", 0f), ("Height", 0f), ("Color", "#FFFFFFFF"),
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Texture", ""), ("Width", 0f), ("Height", 0f), ("Color", "#FFFFFFFF"),
         ],
         ["UiBar"] =
         [
-            ("X", 0f), ("Y", 0f), ("Width", 100f), ("Height", 12f),
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Width", 100f), ("Height", 12f),
             ("Variable", ""), ("Max", 100f),
             ("FillColor", "#40C040FF"), ("BackColor", "#303030FF"),
         ],
         ["UiPanel"] =
         [
-            ("X", 0f), ("Y", 0f), ("Width", 100f), ("Height", 100f), ("Color", "#000000AA"),
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Width", 100f), ("Height", 100f), ("Color", "#000000AA"),
+        ],
+        // Botão clicável (mouse/toque) — ações em "OnClick" (editor: UiButtonViewModel).
+        ["UiButton"] =
+        [
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Width", 120f), ("Height", 32f), ("Text", "Botão"),
+            ("Color", "#3A3860FF"), ("HoverColor", "#4A4880FF"), ("PressedColor", "#2A2850FF"),
+            ("TextColor", "#FFFFFFFF"),
+        ],
+        // Joystick virtual (toque multi-dedo) — X/Y+Anchor definem o canto de um quadrado de
+        // lado 2*Radius (mesma convenção de posição dos outros Ui*); centro fica no meio dele.
+        // Leia UIManager.Find<UiJoystick>(tela, nome).Value em código pra mover o player.
+        ["UiJoystick"] =
+        [
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Bottom"),
+            ("Radius", 70f), ("BaseColor", "#FFFFFF2E"), ("KnobColor", "#FFFFFF66"),
         ],
         // Emissor de partículas (fumaça, faíscas, folhas) — sem Texture desenha quad colorido.
         ["ParticleEmitter"] =

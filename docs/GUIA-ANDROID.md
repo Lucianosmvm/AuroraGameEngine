@@ -66,7 +66,7 @@ namespace SeuJogo.Droid;
 
 [Activity(Label = "Seu Jogo", MainLauncher = true,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden,
-    ScreenOrientation = ScreenOrientation.SensorLandscape)]
+    ScreenOrientation = ScreenOrientation.Landscape)] // fixo, não Sensor* — ver pegadinha abaixo
 public class MainActivity : SilkActivity
 {
     protected override void OnRun()
@@ -150,6 +150,8 @@ public sealed class AndroidAssetSource : IAssetSource
   {
       if (e is not null && _game is not null)
       {
+          // Caminho de 1 ponto só — o que UIManager usa pro clique de UiButton
+          // (menu/HUD só olha um toque, não precisa de mais que isso).
           switch (e.Action)
           {
               case MotionEventActions.Down:
@@ -161,25 +163,65 @@ public sealed class AndroidAssetSource : IAssetSource
                   _game.Input.SetPointer(null, false);
                   break;
           }
+
+          // Multi-toque de verdade — usado por UiJoystick/UiButton em gameplay
+          // (segurar joystick com um dedo e apertar botão com outro).
+          switch (e.ActionMasked)
+          {
+              case MotionEventActions.Down:
+              case MotionEventActions.PointerDown:
+              {
+                  int idx = e.ActionIndex;
+                  _game.Input.SetTouch(e.GetPointerId(idx), new Vector2(e.GetX(idx), e.GetY(idx)), true);
+                  break;
+              }
+              case MotionEventActions.Move:
+                  for (int i = 0; i < e.PointerCount; i++)
+                      _game.Input.SetTouch(e.GetPointerId(i), new Vector2(e.GetX(i), e.GetY(i)), true);
+                  break;
+              case MotionEventActions.Up:
+              case MotionEventActions.PointerUp:
+              case MotionEventActions.Cancel:
+              {
+                  int idx = e.ActionIndex;
+                  _game.Input.SetTouch(e.GetPointerId(idx), Vector2.Zero, false);
+                  break;
+              }
+          }
       }
       return base.DispatchTouchEvent(e);
   }
   ```
 
-  `InputManager.SetPointer` (em `Aurora.Runtime`) já existe pra isso — é um
-  override manual que `IsMouseDown`/`MousePosition` preferem quando presente,
-  caindo pro `IMouse` real no desktop. No `PlayerController` do jogo, o
-  fallback de toque fica igual (não muda nada aqui, já usa `Input.IsMouseDown()`):
-  ```csharp
-  if (move == Vector2.Zero && Camera is not null && Input.IsMouseDown())
-  {
-      var target = Camera.ScreenToWorld(Input.MousePosition);
-      var delta = target - transform.Position;
-      if (delta.Length() > 12f) move = delta;
-  }
+  Isso já sai pronto quando você exporta pelo editor (Arquivo → Exportar Android) —
+  o gerador (`AndroidExporter.cs`) escreve esse `MainActivity.cs` automático.
+
+  **Movimento/ataque em tela (recomendado): `UiJoystick`/`UiButton`, não drag-to-move
+  manual.** A engine tem um elemento `UiJoystick` (mesma família de `UiButton`,
+  autorável na tela de UI): base fixa (X/Y/Anchor/Radius), `Value` dá a direção+
+  intensidade (0..1) a cada frame, e convive com `UiButton` tocado por outro dedo
+  ao mesmo tempo (`UIManager.Update` dá dono por id de toque). Exemplo (`hud.json`):
+  ```json
+  { "Type": "UiJoystick", "X": 70, "Y": 70, "AnchorX": "Left", "AnchorY": "Bottom", "Radius": 70 }
   ```
-  `Camera` (tipo `Camera2D`) precisa ser injetado no Behavior igual `Input` —
-  não é um dos tipos escalares que `[SceneScript]` injeta sozinho via JSON.
+  No jogo, leia o vetor e o clique direto — sem precisar de `Camera`/drag manual:
+  ```csharp
+  var stick = UI.Find<UiJoystick>("hud", "MoveStick");
+  var atk = UI.Find<UiButton>("hud", "BotaoAtk");
+  controller.ExternalMove = stick?.Value ?? default;
+  if (atk?.Clicked == true) controller.TriggerMelee();
+  ```
+  `AnchorY: "Bottom"` com margem generosa (`Y` grande o bastante) é importante —
+  toque muito perto da borda inferior costuma ser engolido pelo gesto de
+  navegação do Android (voltar/home por swipe), mesmo em tela cheia.
+- **Crash na abertura, `FATAL UNHANDLED EXCEPTION: ... You cannot call 'Reset' inside of the
+  render loop!` (`Silk.NET.Windowing.Internals.ViewImplementationBase.Reset/Dispose`)**:
+  bug real do Silk.NET/SDL no Android — se o SO dispara evento de rotação de tela bem
+  durante o boot (ex: `ScreenOrientation.SensorLandscape` deixa girar entre paisagem
+  normal/invertida por sensor), a troca reentra no loop de render numa hora ruim e
+  derruba o app. Testado em device real (Xiaomi/MIUI). **Solução**: usa orientação
+  fixa (`ScreenOrientation.Landscape`, não `Sensor*`) — sem evento de rotação, sem
+  gatilho pro bug. Já é o padrão gerado pelo exportador do editor.
 - **HUD/diálogo sem fonte**: se o jogo usa `Dialogue.Draw`/texto na tela, o
   `.ttf` tem que estar em `Assets/fonts/` e entrar no `AndroidAsset` glob junto
   (reusa a mesma fonte do sample, `DejaVuSans.ttf`, ou qualquer outra).

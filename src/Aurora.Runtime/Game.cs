@@ -41,6 +41,14 @@ public abstract class Game : IDisposable
     /// </summary>
     public string GameName { get; set; } = "AuroraGame";
 
+    /// <summary>Tamanho do framebuffer em cache — atualizado só no load e no evento de resize
+    /// (View.FramebufferResize), NUNCA lido direto no meio do loop de update/render. No Android,
+    /// ler View.FramebufferSize repetidamente por frame (visto: 1x virou 3x quando UI.Update/Draw
+    /// passaram a precisar do tamanho de tela pro sistema de Anchor) parece interagir mal com o
+    /// resize handling interno do Silk.NET/SDL — crash real em device: "You cannot call `Reset`
+    /// inside of the render loop!" logo na abertura. Ler o cache em vez da propriedade evita isso.</summary>
+    public Vector2D<int> ScreenSize { get; private set; }
+
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
     public SceneSerializer Scenes { get; } = new();
@@ -117,9 +125,7 @@ public abstract class Game : IDisposable
     /// </summary>
     private void DescribeScriptsAndWrite(string outputPath)
     {
-        var scripts = System.Reflection.Assembly.GetEntryAssembly() is { } entry
-            ? Scenes.DescribeScripts(entry)
-            : [];
+        var scripts = Scenes.DescribeScripts(GetType().Assembly);
         File.WriteAllText(outputPath, System.Text.Json.JsonSerializer.Serialize(scripts));
     }
 
@@ -165,6 +171,7 @@ public abstract class Game : IDisposable
 
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
         Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
+        Events.QuitRequested += Exit;
 
         Save = new SaveManager(State, SceneManager, GameName, Inventory, Quests);
         Events.Save = Save;
@@ -172,7 +179,8 @@ public abstract class Game : IDisposable
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        Camera.SetViewport(View.FramebufferSize.X, View.FramebufferSize.Y);
+        ScreenSize = View.FramebufferSize;
+        Camera.SetViewport(ScreenSize.X, ScreenSize.Y);
 
         AutoRegisterScripts();
         OnLoad();
@@ -182,11 +190,13 @@ public abstract class Game : IDisposable
     /// Varre o assembly do jogo em busca de classes marcadas com <c>[SceneScript]</c> e
     /// registra cada uma automaticamente no serializador de cena — sem precisar chamar
     /// <c>Scenes.Register</c> na mão nem escrever leitura/escrita de JSON campo a campo.
+    /// GetType().Assembly (não Assembly.GetEntryAssembly()) — no Android a Activity não tem
+    /// entry point tradicional e GetEntryAssembly() pode voltar null, silenciando TODOS os
+    /// scripts custom sem erro nenhum (só os componentes nativos continuam funcionando).
     /// </summary>
     private void AutoRegisterScripts()
     {
-        if (System.Reflection.Assembly.GetEntryAssembly() is { } entry)
-            Scenes.RegisterScripts(entry);
+        Scenes.RegisterScripts(GetType().Assembly);
     }
 
     private void HandleUpdate(double deltaTime)
@@ -198,6 +208,7 @@ public abstract class Game : IDisposable
         OnUpdate(dt);
         World.Update(dt);
         Events.Update(dt);
+        UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
         UpdateCamera(dt);
     }
 
@@ -246,17 +257,18 @@ public abstract class Game : IDisposable
         // Passe de UI em coordenadas de tela (HUD, diálogos) — não segue a câmera.
         SpriteBatch.Begin(GetScreenProjection());
         OnRenderUI((float)deltaTime);
-        SceneManager.DrawOverlay(SpriteBatch, View.FramebufferSize.X, View.FramebufferSize.Y);
+        SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
         SpriteBatch.End();
     }
 
     /// <summary>Projeção em pixels de tela: (0,0) no canto superior esquerdo.</summary>
     public System.Numerics.Matrix4x4 GetScreenProjection()
         => System.Numerics.Matrix4x4.CreateOrthographicOffCenter(
-            0f, View.FramebufferSize.X, View.FramebufferSize.Y, 0f, -1f, 1f);
+            0f, ScreenSize.X, ScreenSize.Y, 0f, -1f, 1f);
 
     private void HandleResize(Vector2D<int> size)
     {
+        ScreenSize = size;
         Gl.Viewport(size);
         Camera.SetViewport(size.X, size.Y);
     }

@@ -209,9 +209,15 @@ public sealed class SceneSerializer
                     ?? throw new InvalidDataException($"Componente sem 'Type' na entidade '{name}'.");
 
                 if (!_readers.TryGetValue(typeName, out var reader))
-                    throw new InvalidDataException(
-                        $"Componente '{typeName}' (entidade '{name}') não registrado. " +
+                {
+                    // Não derruba o load da cena inteira por um componente não registrado
+                    // (ex: UiText/UiButton/UiPanel/UiBar/UiImage só existem em telas de UI,
+                    // carregadas via UIManager.Load — não são IComponent aqui) — loga e pula.
+                    Console.Error.WriteLine(
+                        $"[SceneSerializer] Componente '{typeName}' (entidade '{name}') não registrado — ignorado. " +
                         $"Registrados: {string.Join(", ", _readers.Keys)}");
+                    continue;
+                }
 
                 entity.Add(reader(componentElement, context));
             }
@@ -260,6 +266,7 @@ public sealed class SceneSerializer
     {
         RegisterAnimator();
         RegisterCollider();
+        RegisterHealth();
         RegisterCameraController();
         RegisterParticleEmitter();
         RegisterLight2D();
@@ -410,37 +417,7 @@ public sealed class SceneSerializer
                 };
 
                 if (json.TryGetProperty("Actions", out var actions))
-                {
-                    foreach (var element in actions.EnumerateArray())
-                    {
-                        var action = new EventAction
-                        {
-                            Type = GetString(element, "Action", ""),
-                            Name = element.TryGetProperty("Name", out var name) ? name.GetString() : null,
-                            Op = element.TryGetProperty("Op", out var op) ? op.GetString() : null,
-                            Value = GetFloat(element, "Value", 0f),
-                            On = GetBool(element, "On", true),
-                            X = GetFloat(element, "X", 0f),
-                            Y = GetFloat(element, "Y", 0f),
-                            Seconds = GetFloat(element, "Seconds", 0f),
-                            Text = element.TryGetProperty("Text", out var text) ? text.GetString() : null,
-                        };
-
-                        if (element.TryGetProperty("Options", out var options))
-                        {
-                            foreach (var optionElement in options.EnumerateArray())
-                            {
-                                action.Options.Add(new EventOption
-                                {
-                                    Text = GetString(optionElement, "Text", ""),
-                                    Switch = optionElement.TryGetProperty("Switch", out var sw2) ? sw2.GetString() : null,
-                                });
-                            }
-                        }
-
-                        trigger.Actions.Add(action);
-                    }
-                }
+                    trigger.Actions = EventAction.ParseList(actions);
 
                 return trigger;
             },
@@ -465,37 +442,33 @@ public sealed class SceneSerializer
                 if (!trigger.Once)
                     json.WriteBoolean("Once", false);
 
-                json.WriteStartArray("Actions");
-                foreach (var action in trigger.Actions)
+                EventAction.WriteList(json, "Actions", trigger.Actions);
+            });
+    }
+
+    private void RegisterHealth()
+    {
+        Register<Health>("Health",
+            static (json, _) =>
+            {
+                float max = GetFloat(json, "Max", 100f);
+                return new Health
                 {
-                    json.WriteStartObject();
-                    json.WriteString("Action", action.Type);
-                    if (action.Name is not null) json.WriteString("Name", action.Name);
-                    if (action.Op is not null) json.WriteString("Op", action.Op);
-                    if (action.Value != 0f) json.WriteNumber("Value", action.Value);
-                    if (!action.On) json.WriteBoolean("On", false);
-                    if (action.X != 0f) json.WriteNumber("X", action.X);
-                    if (action.Y != 0f) json.WriteNumber("Y", action.Y);
-                    if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
-                    if (action.Text is not null) json.WriteString("Text", action.Text);
-
-                    if (action.Options.Count > 0)
-                    {
-                        json.WriteStartArray("Options");
-                        foreach (var option in action.Options)
-                        {
-                            json.WriteStartObject();
-                            json.WriteString("Text", option.Text);
-                            if (option.Switch is not null)
-                                json.WriteString("Switch", option.Switch);
-                            json.WriteEndObject();
-                        }
-                        json.WriteEndArray();
-                    }
-
-                    json.WriteEndObject();
-                }
-                json.WriteEndArray();
+                    Max = max,
+                    Current = GetFloat(json, "Current", max),
+                    InvulnerabilityAfterHit = GetFloat(json, "InvulnerabilityAfterHit", 0f),
+                    Invulnerable = GetBool(json, "Invulnerable", false),
+                    DestroyOnDeath = GetBool(json, "DestroyOnDeath", true),
+                };
+            },
+            static (json, component, _) =>
+            {
+                var h = (Health)component;
+                json.WriteNumber("Max", h.Max);
+                if (h.Current != h.Max) json.WriteNumber("Current", h.Current);
+                if (h.InvulnerabilityAfterHit != 0f) json.WriteNumber("InvulnerabilityAfterHit", h.InvulnerabilityAfterHit);
+                if (h.Invulnerable) json.WriteBoolean("Invulnerable", true);
+                if (!h.DestroyOnDeath) json.WriteBoolean("DestroyOnDeath", false);
             });
     }
 

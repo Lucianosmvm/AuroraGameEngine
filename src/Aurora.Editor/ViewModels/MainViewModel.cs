@@ -57,6 +57,13 @@ public sealed class MainViewModel : ViewModelBase
 
     public SceneDocument? Document => _document;
 
+    /// <summary>True quando o documento aberto é uma tela de UI (marca "UI":true no JSON,
+    /// ver NewUiScreen) — filtra o "+Add Componente" pra não deixar misturar UiButton/UiText/…
+    /// numa entidade de gameplay comum (eles não têm sistema de render nesse contexto e
+    /// travam o jogo no load: SceneSerializer não conhece esses tipos fora de TELAS UI).</summary>
+    public bool IsUiScreenDocument =>
+        _document?.Root["UI"]?.GetValue<bool>() == true;
+
     /// <summary>Disparado em qualquer edição — o canvas usa para redesenhar.</summary>
     public event Action? SceneEdited;
 
@@ -273,6 +280,19 @@ public sealed class MainViewModel : ViewModelBase
             return null;
         }
 
+        // A pasta Android tem que ser separada da pasta do jogo: exportar em cima dela
+        // sobrescreveria o .csproj/Program.cs do desktop com o gerado pro Android.
+        string gameDirFull = Path.GetFullPath(Path.GetDirectoryName(gameCsproj)!)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string androidDirFull = Path.GetFullPath(androidProjectDir)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (string.Equals(gameDirFull, androidDirFull, StringComparison.OrdinalIgnoreCase)
+            || androidDirFull.StartsWith(gameDirFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+        {
+            Status = "A pasta do projeto Android não pode ser a mesma (ou dentro) da pasta do jogo desktop — escolha uma pasta separada (ex: ao lado, com sufixo .Android).";
+            return null;
+        }
+
         SaveScene();
         IsExportingAndroid = true;
         Status = "Gerando projeto Android...";
@@ -365,6 +385,7 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"Nova cena: {_document.SceneName} | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
+        Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
         Raise(nameof(CanBuild));
@@ -395,6 +416,7 @@ public sealed class MainViewModel : ViewModelBase
         Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
         Raise(nameof(HasDocument));
+        Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
         Raise(nameof(CanBuild));

@@ -31,5 +31,12 @@ public abstract class Behavior : IComponent
     /// <summary>Chamado no frame em que a sobreposição com o trigger termina.</summary>
     public virtual void OnTriggerExit(Entity other) { }
 
+    /// <summary>Chamado por World.Damage quando dano de verdade é aplicado (bloqueado por
+    /// Health.Invulnerable ou i-frames não chega aqui). Amount é positivo.</summary>
+    public virtual void OnDamaged(float amount, Entity? source) { }
+
+    /// <summary>Chamado uma vez por World.Damage quando Health.Current chega a 0.</summary>
+    public virtual void OnDeath() { }
+
     protected T? Get<T>() where T : class, IComponent => Entity.Get<T>();
 }

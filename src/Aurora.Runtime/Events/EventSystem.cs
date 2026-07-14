@@ -53,6 +53,9 @@ public sealed class EventSystem
     /// <summary>Disparado pela ação ChangeScene. O SceneManager assina e executa a transição.</summary>
     public event Action<string>? SceneChangeRequested;
 
+    /// <summary>Disparado pela ação Quit. O Game assina e chama Exit() (fecha a janela/app).</summary>
+    public event Action? QuitRequested;
+
     private bool _sceneStartFired;
 
     /// <summary>Reseta o estado de disparo — chamado ao carregar uma nova cena.</summary>
@@ -139,6 +142,27 @@ public sealed class EventSystem
         _    => MathF.Abs(actual - value) < 1e-6f,   // "==" default
     };
 
+    /// <summary>Executa ações imediatamente, sem entidade "dona" — usado por UiButton.OnClick.
+    /// Wait é ignorado (clique é síncrono) e "Self"/null não resolve a nenhuma entidade;
+    /// ações que miram entidade (Teleport, Destroy, PlayAnimation…) precisam de Name explícito.</summary>
+    public void RunActions(IEnumerable<EventAction> actions)
+    {
+        foreach (var action in actions)
+        {
+            if (action.Type == "Wait")
+                continue;
+
+            try
+            {
+                Execute(null, action);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[EventSystem] Falha na ação de UiButton '{action.Type}': {ex.Message}");
+            }
+        }
+    }
+
     private void Advance(Entity self, EventTrigger trigger, float deltaTime)
     {
         if (trigger.WaitTimer > 0f)
@@ -190,7 +214,7 @@ public sealed class EventSystem
         trigger.Running = false;
     }
 
-    private void Execute(Entity self, EventAction action)
+    private void Execute(Entity? self, EventAction action)
     {
         switch (action.Type)
         {
@@ -216,6 +240,16 @@ public sealed class EventSystem
 
             case "Destroy":
                 ResolveTarget(self, action.Name)?.Destroy();
+                break;
+
+            case "Damage":
+                if (ResolveTarget(self, action.Name) is { } damageTarget)
+                    _world.Damage(damageTarget, action.Value, self);
+                break;
+
+            case "Heal":
+                if (ResolveTarget(self, action.Name) is { } healTarget)
+                    _world.Heal(healTarget, action.Value);
                 break;
 
             case "ShowMessage" when action.Text is not null:
@@ -260,6 +294,10 @@ public sealed class EventSystem
                 SceneChangeRequested?.Invoke(action.Name);
                 break;
 
+            case "Quit":
+                QuitRequested?.Invoke();
+                break;
+
             case "PlaySound" when action.Name is not null:
                 Audio?.Play(action.Name, action.Value > 0f ? action.Value : 1f);
                 break;
@@ -296,7 +334,7 @@ public sealed class EventSystem
         }
     }
 
-    private Entity? ResolveTarget(Entity self, string? name)
+    private Entity? ResolveTarget(Entity? self, string? name)
     {
         if (name is null || name.Equals("Self", StringComparison.OrdinalIgnoreCase))
             return self;

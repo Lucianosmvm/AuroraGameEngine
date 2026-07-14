@@ -65,30 +65,48 @@ Crie `MainMenu` e `World` pelo botão **+** do painel CENAS; a tela de UI pelo *
 
 ## 3. Menu principal
 
-A engine **não tem botão de UI clicável ainda** (UiText/UiImage/UiBar/UiPanel são só visuais,
-sem input). O jeito zero-código: menu "aperte Enter".
+A engine tem um elemento `UiButton`: retângulo clicável (mouse no Windows, toque no Android)
+com texto centralizado e uma lista `OnClick` de ações — mesmo vocabulário do `EventTrigger`
+(`ChangeScene`, `SetVariable`, `PlaySound`, etc.). Editável pelo Inspector (painel TELAS UI → **+**
+→ `UiButton`), sem canvas visual ainda (X/Y pixel de tela, numérico).
 
-Na cena `MainMenu.json`, crie uma entidade com texto de instrução (`+ Nova` → adiciona
-`SpriteRenderer` com a arte do título, se tiver) e um `EventTrigger`:
+**AnchorX/AnchorY** (todo elemento de UI tem): `"Left"`/`"Top"` (padrão — X/Y é o canto absoluto,
+bom pra HUD grudado num canto) ou `"Center"`/`"Right"`/`"Bottom"` (X/Y vira deslocamento a partir
+do centro/borda oposta da tela). **Menu quase sempre quer `Center`** — coordenada fixa tipo
+`"X": 540` só cai no meio numa tela de exatamente 1080/1280px de largura; celular real costuma
+ser bem mais largo, e sem âncora o menu fica desalinhado pra esquerda.
+
+Na tela de UI `MainMenu.json`:
 
 ```json
 {
-  "Name": "MenuLogic",
-  "Components": [
-    { "Type": "Transform", "X": 0, "Y": 0 },
-    { "Type": "EventTrigger", "Trigger": "KeyPress", "Key": "Enter", "Once": true,
-      "Actions": [
-        { "Action": "ChangeScene", "Name": "scenes/World.json" }
+  "Scene": "MainMenu",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "PlayButton",
+      "Components": [
+        { "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 200, "Height": 48,
+          "Text": "Jogar",
+          "OnClick": [
+            { "Action": "ChangeScene", "Name": "scenes/World.json" }
+          ]
+        }
       ]
     }
   ]
 }
 ```
 
-> Menu com várias opções navegáveis (Novo Jogo / Continuar / Sair) dá pra fazer reaproveitando
-> `DialogueSystem.ShowChoice` (a mesma caixa de escolha do diálogo, ver seção 10) chamada no
-> `SceneStart`, ou com um script `[SceneScript]` próprio lendo `Input.WasKeyPressed(Key.Up/Down)`.
-> Fica de exercício — o "aperte Enter" já destrava jogo completo sem escrever isso.
+`UIManager.Update` (chamado automaticamente pelo `Game` a cada frame) faz o hit-test e dispara
+`OnClick` via `EventSystem.RunActions` — não precisa nenhum script pra isso. `Wait` dentro de
+`OnClick` é ignorado (clique é síncrono); `Teleport`/`Destroy`/`PlayAnimation` precisam de `Name`
+explícito (não há entidade "Self" dona do botão).
+
+> Menu com várias opções navegáveis (Novo Jogo / Continuar / Sair) também dá pra fazer com vários
+> `UiButton` empilhados, ou reaproveitando `DialogueSystem.ShowChoice` (seção 10) chamada no
+> `SceneStart` pra um menu estilo caixa de diálogo.
 
 ---
 
@@ -137,7 +155,9 @@ protected override void OnLoad()
 
 protected override void OnRenderUI(float dt)
 {
-    UI.Draw(SpriteBatch, _font, State, Inventory, Quests); // _font: Assets.LoadFont(...)
+    // _font: Assets.LoadFont(...). Largura/altura da tela são pra resolver AnchorX/Y
+    // (Center/Right/Bottom) — sem isso, X/Y fixo só bate numa resolução específica.
+    UI.Draw(SpriteBatch, _font, State, Inventory, Quests, View.FramebufferSize.X, View.FramebufferSize.Y);
 }
 ```
 
