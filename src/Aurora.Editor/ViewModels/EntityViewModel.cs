@@ -15,8 +15,8 @@ public sealed class EntityViewModel : ViewModelBase
     public event Action<string>? Edited;
 
     private static readonly string[] GameplayComponentTypes =
-        ["SpriteRenderer", "Animator", "Collider", "Health", "CameraController", "EventTrigger",
-         "ParticleEmitter", "Light2D", "NavAgent"];
+        ["SpriteRenderer", "Animator", "Collider", "Health", "Projectile", "CameraController",
+         "EventTrigger", "ParticleEmitter", "Light2D", "NavAgent"];
 
     // UiText/UiImage/UiBar/UiPanel/UiButton só existem no sistema UIManager (telas de HUD/menu,
     // coordenadas de pixel de tela, sem câmera) — não são IComponent do SceneSerializer normal.
@@ -214,6 +214,12 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Type"] = "Health",
                 ["Max"] = 100f,
                 ["Current"] = 100f,
+            },
+            "Projectile" => new JsonObject
+            {
+                ["Type"] = "Projectile",
+                ["Life"] = 2f,
+                ["Damage"] = 20f,
             },
             "CameraController" => new JsonObject
             {

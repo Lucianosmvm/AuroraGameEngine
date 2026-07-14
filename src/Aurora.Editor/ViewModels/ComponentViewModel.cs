@@ -47,6 +47,12 @@ public class ComponentViewModel : ViewModelBase
             ("Max", 100f), ("Current", 100f), ("InvulnerabilityAfterHit", 0f),
             ("Invulnerable", false), ("DestroyOnDeath", true),
         ],
+        // Ataque à distância — Velocity/Source são setados em código no spawn (não fazem
+        // sentido numa cena estática), só aparecem os campos abaixo pra editar/prefab.
+        ["Projectile"] =
+        [
+            ("Life", 2f), ("Damage", 20f), ("TargetPrefix", ""),
+        ],
         ["CameraController"] =
         [
             ("Follow", ""),

@@ -267,6 +267,7 @@ public sealed class SceneSerializer
         RegisterAnimator();
         RegisterCollider();
         RegisterHealth();
+        RegisterProjectile();
         RegisterCameraController();
         RegisterParticleEmitter();
         RegisterLight2D();
@@ -469,6 +470,26 @@ public sealed class SceneSerializer
                 if (h.InvulnerabilityAfterHit != 0f) json.WriteNumber("InvulnerabilityAfterHit", h.InvulnerabilityAfterHit);
                 if (h.Invulnerable) json.WriteBoolean("Invulnerable", true);
                 if (!h.DestroyOnDeath) json.WriteBoolean("DestroyOnDeath", false);
+            });
+    }
+
+    private void RegisterProjectile()
+    {
+        // Velocity/Source são runtime (setados no spawn em código) — só Life/Damage/TargetPrefix
+        // fazem sentido autorar numa cena estática (prefab de projétil, por exemplo).
+        Register<Projectile>("Projectile",
+            static (json, _) => new Projectile
+            {
+                Life = GetFloat(json, "Life", 2f),
+                Damage = GetFloat(json, "Damage", 20f),
+                TargetPrefix = GetString(json, "TargetPrefix", ""),
+            },
+            static (json, component, _) =>
+            {
+                var p = (Projectile)component;
+                if (p.Life != 2f) json.WriteNumber("Life", p.Life);
+                if (p.Damage != 20f) json.WriteNumber("Damage", p.Damage);
+                if (p.TargetPrefix.Length > 0) json.WriteString("TargetPrefix", p.TargetPrefix);
             });
     }
 

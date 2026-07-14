@@ -104,6 +104,7 @@ public sealed class World
         if (component is Behavior behavior)
         {
             behavior.Entity = new Entity(entityId, this);
+            behavior.World = this;
             _behaviors.Add(behavior);
         }
 

@@ -9,6 +9,12 @@ namespace Aurora.Runtime.Ecs;
 public abstract class Behavior : IComponent
 {
     public Entity Entity { get; internal set; }
+
+    /// <summary>Injetado automático por World.Add — todo Behavior sempre vive num World, então
+    /// não precisa o jogo injetar isso na mão a cada frame (diferente de Input/Assets/Inventory,
+    /// que são do Game, não do World, e continuam precisando de injeção manual).</summary>
+    public World? World { get; internal set; }
+
     public bool Enabled { get; set; } = true;
 
     internal bool Started;
