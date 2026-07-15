@@ -228,6 +228,13 @@ public sealed class AndroidAssetSource : IAssetSource
 - **HUD/diálogo sem fonte**: se o jogo usa `Dialogue.Draw`/texto na tela, o
   `.ttf` tem que estar em `Assets/fonts/` e entrar no `AndroidAsset` glob junto
   (reusa a mesma fonte do sample, `DejaVuSans.ttf`, ou qualquer outra).
+- **Gamepad Bluetooth/USB no Android — não testado em device real.** `InputManager`
+  (`IsGamepadButtonDown`, `LeftStick`, etc.) lê `IInputContext.Gamepads`, que no Android
+  vem do mesmo `Silk.NET.Input.Sdl` — teoricamente já funciona sem código extra, já que
+  controle físico usa a API `SDL_GameController` (caminho diferente do toque, que
+  teve bug real confirmado nesse binding, ver acima). Mas "teoricamente" não é
+  "testado": ninguém validou num device real ainda. Se você testar e não funcionar,
+  abra uma issue com o modelo do controle e o log (`adb logcat`).
 - **`obj`/`bin` sujo entre Debug e Release**: se o projeto desktop (`Aurora.Sandbox.Core`
   e similares) nunca buildou em Release antes, pode falhar com atributos de
   assembly duplicados (`CS0579`) se alguma pasta de assets acidentalmente
