@@ -39,10 +39,36 @@ public sealed class InputManager
     // fica sempre vazio (sem touchscreen real aqui).
     private readonly Dictionary<int, Vector2> _touches = new();
 
+    // Mapeia pixel bruto da janela pra "espaço de design" quando o jogo usa
+    // Game.DesignResolution (letterbox/pillarbox) — identidade (offset 0, escala 1) por
+    // padrão, ou seja, zero mudança de comportamento pra jogos que não configuram isso.
+    private Vector2 _viewportOffset = Vector2.Zero;
+    private Vector2 _viewportScale = Vector2.One;
+
     public InputManager(IInputContext context)
     {
         _context = context;
     }
+
+    /// <summary>Chamado pelo Game quando usa DesignResolution: converte clique/toque em pixel
+    /// físico da janela pra coordenada de design (a mesma que UI/Anchor e ScreenSize usam).</summary>
+    internal void SetViewportMapping(int viewportX, int viewportY, int viewportWidth, int viewportHeight,
+        int designWidth, int designHeight)
+    {
+        _viewportOffset = new Vector2(viewportX, viewportY);
+        _viewportScale = new Vector2(
+            designWidth / (float)Math.Max(1, viewportWidth),
+            designHeight / (float)Math.Max(1, viewportHeight));
+    }
+
+    /// <summary>Volta ao mapeamento identidade (sem DesignResolution).</summary>
+    internal void ClearViewportMapping()
+    {
+        _viewportOffset = Vector2.Zero;
+        _viewportScale = Vector2.One;
+    }
+
+    private Vector2 MapToDesignSpace(Vector2 rawWindowPosition) => (rawWindowPosition - _viewportOffset) * _viewportScale;
 
     // Sempre consultados de novo (não guardados em campo): um FirstOrDefault()
     // cacheado no construtor perderia dispositivo que conecta depois.
@@ -96,7 +122,7 @@ public sealed class InputManager
                 {
                     var list = new List<(int, Vector2)>(_touches.Count);
                     foreach (var (id, pos) in _touches)
-                        list.Add((id, pos));
+                        list.Add((id, MapToDesignSpace(pos)));
                     return list;
                 }
             }
@@ -108,7 +134,7 @@ public sealed class InputManager
     public bool IsKeyDown(Key key) => Keyboard?.IsKeyPressed(key) ?? false;
     public bool WasKeyPressed(Key key) => _keysPressedThisFrame.Contains(key);
 
-    public Vector2 MousePosition => ReadPointerOverride().Position ?? Mouse?.Position ?? Vector2.Zero;
+    public Vector2 MousePosition => MapToDesignSpace(ReadPointerOverride().Position ?? Mouse?.Position ?? Vector2.Zero);
 
     public bool IsMouseDown(MouseButton button = MouseButton.Left)
         => (button == MouseButton.Left && ReadPointerOverride().Down) || (Mouse?.IsButtonPressed(button) ?? false);

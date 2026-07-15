@@ -49,6 +49,16 @@ public abstract class Game : IDisposable
     /// inside of the render loop!" logo na abertura. Ler o cache em vez da propriedade evita isso.</summary>
     public Vector2D<int> ScreenSize { get; private set; }
 
+    /// <summary>
+    /// Resolução fixa de referência (ex.: 1280x720) pra manter enquadramento consistente em
+    /// qualquer tamanho de janela/aparelho — sem isso (padrão, null) a câmera/UI usam o
+    /// framebuffer real e a cena mostra mais ou menos mundo dependendo da tela (comportamento
+    /// de sempre, sem mudança). Setando isso antes de <see cref="Run(IView)"/>, o viewport de
+    /// GL vira uma barra centralizada com a proporção certa (letterbox/pillarbox) e
+    /// ScreenSize/Camera/toque passam a usar essa resolução fixa, não o tamanho físico.
+    /// </summary>
+    public Vector2D<int>? DesignResolution { get; set; }
+
     public Camera2D Camera { get; } = new();
     public World World { get; } = new();
     public SceneSerializer Scenes { get; } = new();
@@ -179,8 +189,7 @@ public abstract class Game : IDisposable
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
-        ScreenSize = View.FramebufferSize;
-        Camera.SetViewport(ScreenSize.X, ScreenSize.Y);
+        ApplyViewport(View.FramebufferSize);
 
         AutoRegisterScripts();
         OnLoad();
@@ -301,11 +310,48 @@ public abstract class Game : IDisposable
         => System.Numerics.Matrix4x4.CreateOrthographicOffCenter(
             0f, ScreenSize.X, ScreenSize.Y, 0f, -1f, 1f);
 
-    private void HandleResize(Vector2D<int> size)
+    private void HandleResize(Vector2D<int> size) => ApplyViewport(size);
+
+    /// <summary>Sem DesignResolution: viewport de GL = janela inteira, ScreenSize/Camera usam o
+    /// tamanho físico (comportamento de sempre). Com DesignResolution: calcula a maior área
+    /// centralizada dentro da janela que preserva a proporção do design — o resto vira barra
+    /// (pintada pelo ClearColor, já que glClear ignora o viewport) — e ScreenSize/Camera/toque
+    /// passam a usar a resolução fixa, não o tamanho físico da janela.</summary>
+    private void ApplyViewport(Vector2D<int> windowSize)
     {
-        ScreenSize = size;
-        Gl.Viewport(size);
-        Camera.SetViewport(size.X, size.Y);
+        if (DesignResolution is not { } design)
+        {
+            ScreenSize = windowSize;
+            Gl.Viewport(windowSize);
+            Camera.SetViewport(windowSize.X, windowSize.Y);
+            Input.ClearViewportMapping();
+            return;
+        }
+
+        float windowAspect = windowSize.X / (float)Math.Max(1, windowSize.Y);
+        float designAspect = design.X / (float)Math.Max(1, design.Y);
+
+        int vw, vh;
+        if (windowAspect > designAspect)
+        {
+            vh = windowSize.Y;
+            vw = Math.Max(1, (int)MathF.Round(vh * designAspect));
+        }
+        else
+        {
+            vw = windowSize.X;
+            vh = Math.Max(1, (int)MathF.Round(vw / designAspect));
+        }
+
+        int vx = (windowSize.X - vw) / 2;
+        int vy = (windowSize.Y - vh) / 2; // topo-esquerda (convenção de tela)
+
+        // GL.Viewport usa origem embaixo-esquerda — inverte o Y antes de mandar pra GPU.
+        Gl.Viewport(new Vector2D<int>(vx, windowSize.Y - vy - vh), new Vector2D<int>(vw, vh));
+
+        ScreenSize = design;
+        Camera.SetViewport(design.X, design.Y);
+        Input.SetViewportMapping(vx, vy, vw, vh, design.X, design.Y);
     }
 
     // Recursos GL precisam ser liberados com o contexto ainda vivo, por isso no Closing
