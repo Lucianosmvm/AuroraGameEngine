@@ -18,6 +18,11 @@ public sealed class World
     private readonly List<int> _destroyQueue = new();
     private readonly List<(int Layer, Transform Transform, IComponent Renderable)> _renderList = new();
 
+    /// <summary>Congela behaviors/colisão/partículas/vida (ex.: menu de pausa, inventário) sem
+    /// destruir o World — cena continua desenhada por trás, só para de simular. UI (própria) e
+    /// o resto do Game continuam rodando normalmente enquanto isso.</summary>
+    public bool Paused { get; set; }
+
     private readonly List<(Entity Entity, Transform Transform, Collider Collider)> _collisionBuffer = [];
     private readonly List<(Entity Entity, Transform Transform, Tilemap Tilemap)> _tilemapBuffer = [];
     private readonly Collider _tileCollider = new() { IsKinematic = true };
@@ -169,30 +174,35 @@ public sealed class World
     /// <summary>Executa todos os behaviors ativos, detecta colisões e processa destruições pendentes.</summary>
     public void Update(float deltaTime)
     {
-        _updating = true;
-
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!Paused)
         {
-            var behavior = _behaviors[i];
-            if (!behavior.Enabled || !_alive.Contains(behavior.Entity.Id))
-                continue;
+            _updating = true;
 
-            if (!behavior.Started)
+            for (int i = 0; i < _behaviors.Count; i++)
             {
-                behavior.Started = true;
-                behavior.Start();
+                var behavior = _behaviors[i];
+                if (!behavior.Enabled || !_alive.Contains(behavior.Entity.Id))
+                    continue;
+
+                if (!behavior.Started)
+                {
+                    behavior.Started = true;
+                    behavior.Start();
+                }
+
+                behavior.Update(deltaTime);
             }
 
-            behavior.Update(deltaTime);
+            UpdateNavAgents(deltaTime);
+            ProcessCollisions();
+            UpdateParticles(deltaTime);
+            UpdateHealth(deltaTime);
+
+            _updating = false;
         }
 
-        UpdateNavAgents(deltaTime);
-        ProcessCollisions();
-        UpdateParticles(deltaTime);
-        UpdateHealth(deltaTime);
-
-        _updating = false;
-
+        // Drenado mesmo pausado: uma ação Destroy disparada pela UI (ex.: botão do menu de
+        // pausa) não deve ficar presa até despausar.
         if (_destroyQueue.Count > 0)
         {
             foreach (int id in _destroyQueue)

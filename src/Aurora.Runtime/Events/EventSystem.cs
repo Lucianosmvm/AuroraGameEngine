@@ -294,6 +294,13 @@ public sealed class EventSystem
                 SceneChangeRequested?.Invoke(action.Name);
                 break;
 
+            // Congela World.Update (behaviors, colisão, partículas, vida) sem descarregar a
+            // cena — pra menu de pausa/inventário/configurações abrir por cima do jogo parado.
+            // UI continua respondendo a clique normalmente enquanto pausado.
+            case "SetPause":
+                _world.Paused = action.On;
+                break;
+
             case "Quit":
                 QuitRequested?.Invoke();
                 break;

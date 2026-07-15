@@ -30,6 +30,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetQuestStage", "AdvanceQuest",
         "SetActive",
         "ShowUI", "HideUI", "ToggleUI",
+        "SetPause",
     ];
 
     public string[] OpTypes { get; } = ["Set", "Add"];
@@ -130,7 +131,12 @@ public sealed class EventActionViewModel : ViewModelBase
         set { _node["On"] = value; Raise(); _onEdited(); }
     }
 
-    public string OnLabel => ActionType == "PlayMusic" ? "Loop" : "Ligar";
+    public string OnLabel => ActionType switch
+    {
+        "PlayMusic" => "Loop",
+        "SetPause" => "Pausar",
+        _ => "Ligar",
+    };
 
     public float X
     {
@@ -221,6 +227,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "ShowUI"         => "Mostra uma tela de UI já carregada (HUD, menu)",
         "HideUI"         => "Esconde uma tela de UI já carregada",
         "ToggleUI"       => "Alterna visível/escondido de uma tela de UI já carregada",
+        "SetPause"       => "Liga/desliga a simulação do World (behaviors, colisão, partículas, vida) — cena continua desenhada, só para de mexer",
         _                => "",
     };
 
@@ -233,7 +240,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal";
-    public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive";
+    public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause";
     public bool ShowXY => ActionType == "Teleport";
     public bool ShowSeconds => ActionType == "Wait";
     public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";
