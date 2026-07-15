@@ -4,8 +4,9 @@ using Silk.NET.Input;
 namespace Aurora.Runtime.Input;
 
 /// <summary>
-/// Estado de teclado e mouse. Consulte <see cref="IsKeyDown"/> para tecla segurada
-/// e <see cref="WasKeyPressed"/> para tecla pressionada neste frame.
+/// Estado de teclado, mouse e gamepad. Consulte <see cref="IsKeyDown"/> para tecla segurada,
+/// <see cref="WasKeyPressed"/> para tecla pressionada neste frame, e <see cref="AxisX"/>/
+/// <see cref="AxisY"/> pra movimento combinando teclado + analógico esquerdo automaticamente.
 /// </summary>
 public sealed class InputManager
 {
@@ -13,11 +14,16 @@ public sealed class InputManager
 
     private static readonly Key[] AllKeys = Enum.GetValues<Key>().Where(k => k != Key.Unknown).ToArray();
     private static readonly MouseButton[] AllButtons = Enum.GetValues<MouseButton>().Where(b => b != MouseButton.Unknown).ToArray();
+    private static readonly ButtonName[] AllGamepadButtons = Enum.GetValues<ButtonName>().Where(b => b != ButtonName.Unknown).ToArray();
+
+    private const float StickDeadzone = 0.2f;
 
     private readonly HashSet<Key> _keysDown = new();
     private readonly HashSet<Key> _keysPressedThisFrame = new();
     private readonly HashSet<MouseButton> _buttonsDown = new();
     private readonly HashSet<MouseButton> _buttonsPressedThisFrame = new();
+    private readonly HashSet<ButtonName> _gamepadButtonsDown = new();
+    private readonly HashSet<ButtonName> _gamepadButtonsPressedThisFrame = new();
 
     // O toque em Android não chega de forma confiável via IMouse do backend SDL do
     // Silk.NET (mouse sintético de toque é frágil/incompleto nesse binding - confirmado
@@ -42,6 +48,10 @@ public sealed class InputManager
     // cacheado no construtor perderia dispositivo que conecta depois.
     private IKeyboard? Keyboard => _context.Keyboards.FirstOrDefault();
     private IMouse? Mouse => _context.Mice.FirstOrDefault();
+    private IGamepad? Gamepad => _context.Gamepads.FirstOrDefault();
+
+    /// <summary>True se algum controle está plugado e reconhecido nesse frame.</summary>
+    public bool IsGamepadConnected => Gamepad is not null;
 
     /// <summary>Chamado pela plataforma (ex: MainActivity Android) com a posição em
     /// coordenadas de tela do toque/clique ativo, ou null quando solto.</summary>
@@ -105,13 +115,92 @@ public sealed class InputManager
 
     public bool WasMouseClicked(MouseButton button = MouseButton.Left) => _buttonsPressedThisFrame.Contains(button);
 
-    /// <summary>Eixo horizontal (-1..1) combinando A/D e setas.</summary>
-    public float AxisX => (IsKeyDown(Key.D) || IsKeyDown(Key.Right) ? 1f : 0f)
-                        - (IsKeyDown(Key.A) || IsKeyDown(Key.Left) ? 1f : 0f);
+    /// <summary>Eixo horizontal (-1..1) combinando A/D, setas e o analógico esquerdo do gamepad
+    /// (o que estiver mais "puxado" no frame vence) — scripts que já usam AxisX ganham suporte
+    /// a controle de graça, sem mudar nada.</summary>
+    public float AxisX
+    {
+        get
+        {
+            float keys = (IsKeyDown(Key.D) || IsKeyDown(Key.Right) ? 1f : 0f)
+                       - (IsKeyDown(Key.A) || IsKeyDown(Key.Left) ? 1f : 0f);
+            float stick = LeftStick.X;
+            return MathF.Abs(stick) > MathF.Abs(keys) ? stick : keys;
+        }
+    }
 
-    /// <summary>Eixo vertical (-1..1) combinando W/S e setas. Positivo = baixo (convenção de tela).</summary>
-    public float AxisY => (IsKeyDown(Key.S) || IsKeyDown(Key.Down) ? 1f : 0f)
-                        - (IsKeyDown(Key.W) || IsKeyDown(Key.Up) ? 1f : 0f);
+    /// <summary>Eixo vertical (-1..1) combinando W/S, setas e o analógico esquerdo do gamepad.
+    /// Positivo = baixo (convenção de tela).</summary>
+    public float AxisY
+    {
+        get
+        {
+            float keys = (IsKeyDown(Key.S) || IsKeyDown(Key.Down) ? 1f : 0f)
+                       - (IsKeyDown(Key.W) || IsKeyDown(Key.Up) ? 1f : 0f);
+            float stick = LeftStick.Y;
+            return MathF.Abs(stick) > MathF.Abs(keys) ? stick : keys;
+        }
+    }
+
+    /// <summary>Analógico esquerdo (-1..1 por eixo), com deadzone — Y positivo = baixo (mesma
+    /// convenção de tela usada em <see cref="AxisY"/>). Vetor zero sem gamepad conectado.</summary>
+    public Vector2 LeftStick => ReadStick(0);
+
+    /// <summary>Analógico direito (-1..1 por eixo, mesma convenção de <see cref="LeftStick"/>).</summary>
+    public Vector2 RightStick => ReadStick(1);
+
+    private Vector2 ReadStick(int index)
+    {
+        if (Gamepad is not { } pad)
+            return Vector2.Zero;
+
+        foreach (var stick in pad.Thumbsticks)
+        {
+            if (stick.Index != index)
+                continue;
+
+            var v = new Vector2(stick.X, stick.Y);
+            return v.LengthSquared() < StickDeadzone * StickDeadzone ? Vector2.Zero : v;
+        }
+
+        return Vector2.Zero;
+    }
+
+    /// <summary>Gatilho esquerdo (0..1, 0 sem gamepad).</summary>
+    public float LeftTrigger => ReadTrigger(0);
+
+    /// <summary>Gatilho direito (0..1, 0 sem gamepad).</summary>
+    public float RightTrigger => ReadTrigger(1);
+
+    private float ReadTrigger(int index)
+    {
+        if (Gamepad is not { } pad)
+            return 0f;
+
+        foreach (var trigger in pad.Triggers)
+        {
+            if (trigger.Index == index)
+                return trigger.Position;
+        }
+
+        return 0f;
+    }
+
+    public bool IsGamepadButtonDown(ButtonName button)
+    {
+        if (Gamepad is not { } pad)
+            return false;
+
+        foreach (var b in pad.Buttons)
+        {
+            if (b.Name == button)
+                return b.Pressed;
+        }
+
+        return false;
+    }
+
+    public bool WasGamepadButtonPressed(ButtonName button) => _gamepadButtonsPressedThisFrame.Contains(button);
 
     /// <summary>Chamado pela engine no início de cada frame, antes do OnUpdate do jogo -
     /// via polling (não evento), pra funcionar mesmo com dispositivo que aparece tarde.</summary>
@@ -140,6 +229,28 @@ public sealed class InputManager
                 _buttonsPressedThisFrame.Add(button);
             else if (!down)
                 _buttonsDown.Remove(button);
+        }
+
+        _gamepadButtonsPressedThisFrame.Clear();
+        var gamepad = Gamepad;
+        foreach (var buttonName in AllGamepadButtons)
+        {
+            bool down = false;
+            if (gamepad is not null)
+            {
+                foreach (var b in gamepad.Buttons)
+                {
+                    if (b.Name != buttonName)
+                        continue;
+                    down = b.Pressed;
+                    break;
+                }
+            }
+
+            if (down && _gamepadButtonsDown.Add(buttonName))
+                _gamepadButtonsPressedThisFrame.Add(buttonName);
+            else if (!down)
+                _gamepadButtonsDown.Remove(buttonName);
         }
     }
 }
