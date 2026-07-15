@@ -203,13 +203,24 @@ public abstract class Game : IDisposable
     {
         float dt = (float)deltaTime;
         Input.BeginFrame();
-        SceneManager.Update(dt);
-        Dialogue.Update();
-        OnUpdate(dt);
-        World.Update(dt);
-        Events.Update(dt);
-        UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
-        UpdateCamera(dt);
+
+        // World.Update já isola exceções por behavior; esse try/catch é a rede de segurança
+        // pro resto (OnUpdate do seu Game, SceneManager, Events, UI) — pior caso, um frame de
+        // lógica é ignorado e logado, o jogo não fecha sozinho.
+        try
+        {
+            SceneManager.Update(dt);
+            Dialogue.Update();
+            OnUpdate(dt);
+            World.Update(dt);
+            Events.Update(dt);
+            UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
+            UpdateCamera(dt);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleUpdate — frame ignorado: {ex}");
+        }
     }
 
     private void UpdateCamera(float dt)
@@ -249,17 +260,40 @@ public abstract class Game : IDisposable
         Gl.ClearColor(ClearColor.R, ClearColor.G, ClearColor.B, ClearColor.A);
         Gl.Clear(ClearBufferMask.ColorBufferBit);
 
+        // try/finally garante o End() mesmo se World.Render/OnRender explodir — sem isso o
+        // SpriteBatch fica com Begin() pendente e o PRÓXIMO frame também quebra (Begin()
+        // chamado duas vezes sem End()), transformando 1 exceção em crash permanente.
         SpriteBatch.Begin(Camera.GetViewProjection());
-        World.Render(SpriteBatch, Camera);
-        OnRender((float)deltaTime);
-        SpriteBatch.End();
+        try
+        {
+            World.Render(SpriteBatch, Camera);
+            OnRender((float)deltaTime);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleRender (mundo) — frame ignorado: {ex}");
+        }
+        finally
+        {
+            SpriteBatch.End();
+        }
 
         // Passe de UI em coordenadas de tela (HUD, diálogos) — não segue a câmera.
         SpriteBatch.Begin(GetScreenProjection());
-        World.DrawGlobalTint(SpriteBatch, ScreenSize.X, ScreenSize.Y);
-        OnRenderUI((float)deltaTime);
-        SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
-        SpriteBatch.End();
+        try
+        {
+            World.DrawGlobalTint(SpriteBatch, ScreenSize.X, ScreenSize.Y);
+            OnRenderUI((float)deltaTime);
+            SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleRender (UI) — frame ignorado: {ex}");
+        }
+        finally
+        {
+            SpriteBatch.End();
+        }
     }
 
     /// <summary>Projeção em pixels de tela: (0,0) no canto superior esquerdo.</summary>

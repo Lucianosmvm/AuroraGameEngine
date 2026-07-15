@@ -184,13 +184,25 @@ public sealed class World
                 if (!behavior.Enabled || !_alive.Contains(behavior.Entity.Id))
                     continue;
 
-                if (!behavior.Started)
+                try
                 {
-                    behavior.Started = true;
-                    behavior.Start();
-                }
+                    if (!behavior.Started)
+                    {
+                        behavior.Started = true;
+                        behavior.Start();
+                    }
 
-                behavior.Update(deltaTime);
+                    behavior.Update(deltaTime);
+                }
+                catch (Exception ex)
+                {
+                    // Um script com bug não pode derrubar o jogo inteiro: desativa só essa
+                    // instância (loga uma vez) e o resto do World continua rodando normalmente.
+                    Console.Error.WriteLine(
+                        $"[World] '{behavior.GetType().Name}' na entidade '{behavior.Entity.Name}' " +
+                        $"lançou exceção e foi desativado: {ex}");
+                    behavior.Enabled = false;
+                }
             }
 
             UpdateNavAgents(deltaTime);
