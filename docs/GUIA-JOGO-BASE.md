@@ -2,19 +2,14 @@
 
 Este guia monta um jogo 2D jogável do zero usando **só o Editor** (Assets → cenas → componentes),
 com script mínimo só onde o Editor genuinamente não alcança (movimento do jogador, lógica de
-ataque). Cobre: menu, player com collision e animação, ataques, partículas, diálogo com NPC,
-pontos/dinheiro, inimigo com pathfinding, e build final.
+ataque, boot da UI). Cobre: menu, troca de cena sem "UI grudada", HUD, pausa pra
+inventário/configurações, player com collision e animação, ataques, partículas, diálogo com NPC,
+pontos/dinheiro, inimigo com pathfinding, gamepad, save, resolução fixa, build final e export Android.
 
-Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais da engine
-(testados nesta sessão) — pode copiar os trechos de JSON direto.
-
-> **Testado ponta a ponta:** montei um jogo seguindo este guia (menu → mundo com tilemap,
-> player, 2 moedas, NPC com loja, inimigo perseguidor) e rodei com um roteiro automatizado
-> (`--smoke`, mesmo padrão do `samples/Aurora.Sandbox.Core`) que teleporta o jogador em cada
-> gatilho e confere o resultado. Os 6 sistemas bateram: troca de cena, coleta de moeda
-> (`AddItem`+`SetVariable`+`Destroy`), diálogo com escolha, transição `attack` do Animator,
-> e perseguição do inimigo via `NavAgent`. Achei e documentei 2 detalhes reais nesse teste
-> (ver avisos nas seções 6 e 9) — o resto funcionou exatamente como descrito abaixo.
+Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais da engine — pode
+copiar os trechos de JSON direto. Trechos marcados **testado** foram verificados nesta sessão
+(rodando o jogo de verdade, ou em device Android real via `adb`); o resto segue o comportamento
+já documentado no código-fonte.
 
 ---
 
@@ -23,12 +18,13 @@ Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais 
 - `dotnet build src/Aurora.Editor` — editor compilado.
 - `dotnet build src/Aurora.Runtime` — runtime compilado.
 - Abrir `src/Aurora.Editor/bin/Debug/net10.0/Aurora.Editor.exe`.
+- Editor fechado antes de rebuildar (`Aurora.Editor.exe` trava o build se estiver aberto).
 
 ---
 
 ## 1. Criar o projeto
 
-**Arquivo → Novo Projeto…** (`Ctrl+Shift+N`). Escolha nome, ex. `MeuJogo`.
+**Arquivo → Novo Projeto…** (`Ctrl+Shift+N`). Escolha pasta e nome, ex. `MeuJogo`.
 
 Gera automaticamente:
 
@@ -36,88 +32,129 @@ Gera automaticamente:
 MeuJogo/
   MeuJogo.csproj          (referencia Aurora.Runtime)
   Program.cs               (using var game = new MeuJogoGame(); game.Run(...))
-  MeuJogoGame.cs           (subclasse de Game, OnLoad() carrega a cena)
+  MeuJogoGame.cs           (subclasse de Game — já carrega o menu e desenha a UI, ver abaixo)
   Spin.cs                  (script de exemplo com [SceneScript] — pode apagar ou manter de referência)
   aurora.project.json      (campo PROJETO já preenchido, Play funciona de cara)
   Assets/
-    scenes/main.json       (cena inicial, já com um sprite placeholder girando)
+    scenes/main.json       (cena inicial, com um sprite placeholder girando)
+    scenes/MainMenu.json   (tela de UI: botão "Jogar" já ligado — ver seção 3)
     sprites/placeholder.png
+    fonts/DejaVuSans.ttf   (fonte padrão, pro texto de UI já sair funcionando)
 ```
 
-Aperte **▶ Play** uma vez pra confirmar que builda e roda antes de continuar.
+`MeuJogoGame.cs` já vem assim (não precisa escrever isso à mão):
+
+```csharp
+public sealed class MeuJogoGame : Game
+{
+    private Font _font = null!;
+
+    protected override void OnLoad()
+    {
+        _font = Assets.LoadFont("fonts/DejaVuSans.ttf", 22f);
+        UI.Load("scenes/MainMenu.json", Assets);
+        LoadScene(BootScene ?? "scenes/main.json");
+    }
+
+    protected override void OnRenderUI(float dt)
+    {
+        UI.Draw(SpriteBatch, _font, State, Inventory, Quests, View.FramebufferSize.X, View.FramebufferSize.Y);
+    }
+}
+```
+
+Aperte **▶ Play** uma vez pra confirmar que builda e roda: deve aparecer o botão "Jogar"
+centralizado. Clicar nele troca pra `scenes/main.json` (o placeholder girando).
+
+> **Reabrir o projeto depois:** `Arquivo → Abrir Projeto…` (`Ctrl+Shift+O`) — escolhe a pasta
+> do projeto (a que tem `aurora.project.json`) e reabre exatamente a última cena que você editou.
 
 ---
 
 ## 2. Estrutura de cenas do jogo
 
-Um jogo completo normalmente usa:
+Um jogo completo normalmente usa (tudo dentro de `Assets/scenes/`; o que separa "cena de gameplay"
+de "tela de UI" é só o campo `"UI": true` no JSON, não a pasta):
 
 | Arquivo | Tipo (painel) | Papel |
 |---|---|---|
-| `Assets/scenes/MainMenu.json` | CENAS | Tela de título, "aperte Enter" |
-| `Assets/scenes/World.json` | CENAS | Fase jogável (player, inimigos, moedas, NPC) |
-| `Assets/ui/hud.json` | TELAS UI | HUD persistente (ouro, pontos, vida) — sobrevive a troca de cena |
-| `Assets/prefabs/Coin.json`, `Enemy.json`, `HitEffect.json` | PREFABS | Reuso |
+| `scenes/MainMenu.json` | TELAS UI | Menu inicial — já vem pronto no scaffold (seção 1) |
+| `scenes/main.json` | CENAS | Fase jogável (player, inimigos, moedas, NPC) |
+| `scenes/GameplayUI.json` | TELAS UI | HUD/menu de pausa **durante** a fase (seções 5 e 6) |
+| `scenes/PauseMenu.json` | TELAS UI | Tela de inventário/configurações sobreposta (seção 6) |
+| `prefabs/Coin.json`, `Enemy.json`, `HitEffect.json` | PREFABS | Reuso |
 
-Crie `MainMenu` e `World` pelo botão **+** do painel CENAS; a tela de UI pelo **+** do painel TELAS UI.
+Cria cena nova pelo **+** do painel CENAS; tela de UI pelo **+** do painel TELAS UI (o editor já
+marca `"UI": true` sozinho).
 
 ---
 
 ## 3. Menu principal
 
 A engine tem um elemento `UiButton`: retângulo clicável (mouse no Windows, toque no Android)
-com texto centralizado e uma lista `OnClick` de ações — mesmo vocabulário do `EventTrigger`
-(`ChangeScene`, `SetVariable`, `PlaySound`, etc.). Editável pelo Inspector (painel TELAS UI → **+**
-→ `UiButton`), sem canvas visual ainda (X/Y pixel de tela, numérico).
+com texto centralizado e uma lista `OnClick` de ações — mesmo vocabulário do `EventTrigger`.
+Editável 100% pelo Inspector (painel TELAS UI → abre a cena → seleciona o botão):
 
-**AnchorX/AnchorY** (todo elemento de UI tem): `"Left"`/`"Top"` (padrão — X/Y é o canto absoluto,
-bom pra HUD grudado num canto) ou `"Center"`/`"Right"`/`"Bottom"` (X/Y vira deslocamento a partir
-do centro/borda oposta da tela). **Menu quase sempre quer `Center`** — coordenada fixa tipo
-`"X": 540` só cai no meio numa tela de exatamente 1080/1280px de largura; celular real costuma
-ser bem mais largo, e sem âncora o menu fica desalinhado pra esquerda.
+- **AnchorX/AnchorY** — agora é ComboBox no Inspector (`Left`/`Center`/`Right` e
+  `Left`/`Center`/`Bottom`... na prática `Top`/`Center`/`Bottom` pro eixo Y). **Menu quase sempre
+  quer `Center`/`Center`** — coordenada fixa tipo `"X": 540` só cai no meio numa tela de exatamente
+  1080px de largura; celular real costuma ser bem mais largo, e sem âncora o menu fica desalinhado.
+- **OnClick** — painel ONCLICK → **+ Adicionar Ação**. O dropdown de ação já lista `ChangeScene`,
+  `ShowUI`, `HideUI`, `ToggleUI`, `SetPause` (entre outras) — e quando a ação é uma dessas 4
+  primeiras, o campo "Nome"/"Arquivo"/"Tela UI" também vira ComboBox listando as cenas/telas reais
+  do projeto (nada de digitar caminho + `.json` na mão, nem acertar o nome de cor).
 
-Na tela de UI `MainMenu.json`:
+O botão "Jogar" do scaffold já sai assim (pode editar texto/posição à vontade):
 
 ```json
 {
-  "Scene": "MainMenu",
-  "UI": true,
-  "Objects": [
-    {
-      "Name": "PlayButton",
-      "Components": [
-        { "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
-          "Width": 200, "Height": 48,
-          "Text": "Jogar",
-          "OnClick": [
-            { "Action": "ChangeScene", "Name": "scenes/World.json" }
-          ]
-        }
-      ]
-    }
+  "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
+  "Width": 200, "Height": 48, "Text": "Jogar",
+  "OnClick": [
+    { "Action": "HideUI", "Name": "MainMenu" },
+    { "Action": "ChangeScene", "Name": "scenes/main.json" }
   ]
 }
 ```
 
 `UIManager.Update` (chamado automaticamente pelo `Game` a cada frame) faz o hit-test e dispara
-`OnClick` via `EventSystem.RunActions` — não precisa nenhum script pra isso. `Wait` dentro de
-`OnClick` é ignorado (clique é síncrono); `Teleport`/`Destroy`/`PlayAnimation` precisam de `Name`
-explícito (não há entidade "Self" dona do botão).
-
-> Menu com várias opções navegáveis (Novo Jogo / Continuar / Sair) também dá pra fazer com vários
-> `UiButton` empilhados, ou reaproveitando `DialogueSystem.ShowChoice` (seção 10) chamada no
-> `SceneStart` pra um menu estilo caixa de diálogo.
+`OnClick` — não precisa nenhum script pra isso. `Wait` dentro de `OnClick` é ignorado (clique é
+síncrono); `Teleport`/`Destroy`/`PlayAnimation` precisam de `Name` explícito (não há entidade
+"Self" dona do botão).
 
 ---
 
-## 4. HUD persistente
+## 4. Trocar de cena sem deixar UI "grudada" (leitura obrigatória)
 
-Tela de UI `hud.json` (painel TELAS UI → **+**). Edite os componentes pelo Inspector (sem
-canvas visual ainda — X/Y são pixel de tela, campo numérico mesmo):
+Isso pegou nesta sessão e vale a pena entender antes de continuar: **tela de UI (`ShowUI`/
+`HideUI`) e cena de gameplay (`ChangeScene`) são dois sistemas independentes.** `ChangeScene` troca
+só o `World` (entidades da fase); a tela de UI carregada via `UI.Load` **continua desenhada por
+cima pra sempre**, mesmo depois de `ChangeScene`, até você mandar `HideUI` nela.
+
+Erro clássico: botão "Jogar" só com `ChangeScene` (sem `HideUI`) — a fase carrega por trás, mas o
+menu continua na tela por cima, parecendo que "não fez nada". A regra de ouro:
+
+> **Todo botão que troca de "modo" (menu → jogo, jogo → menu, jogo → pausa) precisa de um
+> `HideUI` (esconde a tela atual) + `ShowUI` (mostra a próxima), além do `ChangeScene` se for
+> o caso.** `Name` do `HideUI`/`ShowUI` é o nome do arquivo **sem** `.json`.
+
+Uma armadilha de teste: o botão **Play do editor sempre roda a cena que está aberta no momento**
+(estilo Unity — ver `MainViewModel.Play()`). Se você testar com `MainMenu.json` aberto, o
+`BootScene` vira essa tela, e `LoadScene(BootScene)` tenta carregar a tela de UI como se fosse
+gameplay — funciona sem crashar (`UiButton` não registrado vira log e é ignorado), mas o mundo
+fica vazio, o que pode confundir. Pra testar o boot de verdade, deixa `scenes/main.json` (ou a
+cena que faz sentido) aberta antes de dar Play.
+
+---
+
+## 5. HUD / menu durante a gameplay
+
+Cria `scenes/GameplayUI.json` (painel TELAS UI → **+**) com o que precisa ficar visível **durante**
+a fase — Ouro/Pontos/HP, e/ou um botão "Menu" que leva pra pausa (seção 6):
 
 ```json
 {
-  "Scene": "hud",
+  "Scene": "GameplayUI",
   "UI": true,
   "Objects": [
     { "Name": "Backdrop", "Components": [
@@ -126,46 +163,101 @@ canvas visual ainda — X/Y são pixel de tela, campo numérico mesmo):
     { "Name": "GoldLabel", "Components": [
       { "Type": "UiText", "X": 16, "Y": 14, "Text": "Ouro: {Gold}", "Color": "#FFD24DFF" }
     ]},
-    { "Name": "PointsLabel", "Components": [
-      { "Type": "UiText", "X": 16, "Y": 34, "Text": "Pontos: {Points}", "Color": "#FFFFFFFF" }
-    ]},
-    { "Name": "HpBar", "Components": [
-      { "Type": "UiBar", "X": 16, "Y": 52, "Width": 150, "Height": 10,
-        "Variable": "HP", "Max": 100, "FillColor": "#40C040FF", "BackColor": "#303030FF" }
+    { "Name": "MenuButton", "Components": [
+      { "Type": "UiButton", "X": -16, "Y": 16, "AnchorX": "Right", "AnchorY": "Top",
+        "Width": 100, "Height": 32, "Text": "Menu",
+        "OnClick": [
+          { "Action": "SetPause", "On": true },
+          { "Action": "ShowUI", "Name": "PauseMenu" }
+        ]
+      }
     ]}
   ]
 }
 ```
 
-`{Gold}` e `{Points}` puxam variáveis do `GameState` (seção 11); `{Item:Nome}` puxaria
-quantidade de inventário; `{Quest:Nome}` puxaria estágio de quest.
+`{Gold}` puxa variável do `GameState`; `{Item:Nome}` puxaria quantidade de inventário;
+`{Quest:Nome}` puxaria estágio de quest.
 
-Pra a HUD aparecer e persistir entre cenas, carregue ela uma vez em `OnLoad()` do seu
-`MeuJogoGame.cs` e desenhe em `OnRenderUI`:
+**Código obrigatório** (`GameplayUI` precisa carregar no boot e começar escondida — senão o botão
+"Menu" aparece junto com o "Jogar" do `MainMenu`, ou não aparece nunca se você esquecer o
+`UI.Load`). Em `MeuJogoGame.cs`, `OnLoad()`:
 
 ```csharp
 protected override void OnLoad()
 {
-    UI.Load("Assets/ui/hud.json", Assets);
+    _font = Assets.LoadFont("fonts/DejaVuSans.ttf", 22f);
+    UI.Load("scenes/MainMenu.json", Assets);
+    UI.Load("scenes/GameplayUI.json", Assets);
+    UI.Hide("GameplayUI");
     State.SetVariable("Gold", 0);
-    State.SetVariable("Points", 0);
-    State.SetVariable("HP", 100);
-    LoadScene(BootScene ?? "scenes/MainMenu.json");
+    LoadScene(BootScene ?? "scenes/main.json");
 }
+```
 
-protected override void OnRenderUI(float dt)
-{
-    // _font: Assets.LoadFont(...). Largura/altura da tela são pra resolver AnchorX/Y
-    // (Center/Right/Bottom) — sem isso, X/Y fixo só bate numa resolução específica.
-    UI.Draw(SpriteBatch, _font, State, Inventory, Quests, View.FramebufferSize.X, View.FramebufferSize.Y);
-}
+E o botão "Jogar" do `MainMenu` precisa **mostrar** a `GameplayUI` ao entrar (seção 4):
+
+```json
+"OnClick": [
+  { "Action": "HideUI", "Name": "MainMenu" },
+  { "Action": "ShowUI", "Name": "GameplayUI" },
+  { "Action": "ChangeScene", "Name": "scenes/main.json" }
+]
 ```
 
 ---
 
-## 5. Player: Transform, Collider, Animator
+## 6. Menu de pausa (inventário, configurações)
 
-Na cena `World.json`, crie a entidade `Player` (**+ Nova**), depois **+ Add** estes componentes:
+Diferente de "voltar ao menu principal" (que troca de cena e descarta o `World`), abrir um
+inventário/tela de configurações **no meio da fase** precisa congelar o jogo sem descartar nada —
+pra isso existe a ação `SetPause`.
+
+`SetPause` (`On: true/false`) liga/desliga `World.Paused`: com pausa ligada, `World.Update` para
+de rodar Behaviors, colisão, partículas e vida — a cena continua desenhada atrás, só parada. UI
+continua respondendo a clique normalmente (pausa não afeta `UIManager`).
+
+Cria `scenes/PauseMenu.json` (carregada e escondida no boot, igual `GameplayUI` — mais uma linha
+de `UI.Load`/`UI.Hide` em `OnLoad`):
+
+```json
+{
+  "Scene": "PauseMenu",
+  "UI": true,
+  "Objects": [
+    { "Name": "CloseButton", "Components": [
+      { "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
+        "Width": 200, "Height": 48, "Text": "Continuar",
+        "OnClick": [
+          { "Action": "SetPause", "On": false },
+          { "Action": "HideUI", "Name": "PauseMenu" }
+        ]
+      }
+    ]}
+  ]
+}
+```
+
+Pra também dar a opção de sair de vez pro menu principal a partir da pausa (sem deixar o `World`
+"vivo" escondido atrás), aponte outro botão pra uma cena de gameplay **vazia de verdade** (não
+pra `MainMenu.json` — ela é tela de UI, não cena; ver seção 4), por exemplo `scenes/Boot.json`
+(`{"Scene": "Boot", "Objects": []}`):
+
+```json
+"OnClick": [
+  { "Action": "SetPause", "On": false },
+  { "Action": "HideUI", "Name": "PauseMenu" },
+  { "Action": "HideUI", "Name": "GameplayUI" },
+  { "Action": "ShowUI", "Name": "MainMenu" },
+  { "Action": "ChangeScene", "Name": "scenes/Boot.json" }
+]
+```
+
+---
+
+## 7. Player: Transform, Collider, Animator
+
+Na cena `main.json`, crie a entidade `Player` (**+ Nova**), depois **+ Add** estes componentes:
 
 - **SpriteRenderer** — arraste o spritesheet do player.
 - **Collider** — `Shape: Box`, ajuste Width/Height pro hitbox; `IsSolid: true`.
@@ -201,16 +293,16 @@ Quem alimenta `Speed`/`Attack` é o script do player (próxima seção) chamando
 
 ---
 
-## 6. Script do player (movimento + ataque)
+## 8. Script do player (movimento + ataque)
 
-Esse é o único código realmente necessário. Crie `PlayerController.cs` no projeto:
+Esse é o único código realmente necessário pro movimento. Crie `PlayerController.cs` no projeto:
 
-> **Ordem de execução (testada):** `Game.OnUpdate` roda **antes** de `World.Update` a cada
-> frame — é lá que `Behavior.Update` de cada entidade (Animator incluso) realmente executa.
-> Se seu `Game` chama `anim.SetBool("Attack", true)` direto no `OnUpdate` e no mesmo instante
-> lê `anim.CurrentClip`, ainda vai ver o clipe antigo — a transição só é avaliada no
-> `Update` do Animator, que roda *depois*, e só fica visível no frame seguinte. Isso é normal,
-> não trava nem perde o estado, só não é instantâneo dentro do mesmo tick.
+> **Ordem de execução:** `Game.OnUpdate` roda **antes** de `World.Update` a cada frame — é lá
+> que `Behavior.Update` de cada entidade (Animator incluso) realmente executa. Se seu `Game`
+> chama `anim.SetBool("Attack", true)` direto no `OnUpdate` e no mesmo instante lê
+> `anim.CurrentClip`, ainda vai ver o clipe antigo — a transição só é avaliada no `Update` do
+> Animator, que roda *depois*, e só fica visível no frame seguinte. Normal, não trava nem perde
+> estado, só não é instantâneo dentro do mesmo tick.
 
 ```csharp
 using System.Numerics;
@@ -240,11 +332,9 @@ public sealed class PlayerController : Behavior
         var transform = Get<Transform>()!;
         var anim = Get<Animator>();
 
-        var move = Vector2.Zero;
-        if (Input.IsKeyDown(Key.D) || Input.IsKeyDown(Key.Right)) move.X += 1;
-        if (Input.IsKeyDown(Key.A) || Input.IsKeyDown(Key.Left))  move.X -= 1;
-        if (Input.IsKeyDown(Key.S) || Input.IsKeyDown(Key.Down))  move.Y += 1;
-        if (Input.IsKeyDown(Key.W) || Input.IsKeyDown(Key.Up))    move.Y -= 1;
+        // AxisX/AxisY já combinam teclado (WASD/setas) + analógico esquerdo do gamepad
+        // sozinhos — suporte a controle sem nenhum código extra aqui.
+        var move = new Vector2(Input.AxisX, Input.AxisY);
 
         if (move.LengthSquared() > 0f)
         {
@@ -264,14 +354,16 @@ public sealed class PlayerController : Behavior
             }
         }
 
-        if (Input.WasKeyPressed(Key.Space) && _attackTimer <= 0f)
+        // Espaço no teclado OU botão A do gamepad atacam.
+        bool attackPressed = Input.WasKeyPressed(Key.Space) || Input.WasGamepadButtonPressed(ButtonName.A);
+        if (attackPressed && _attackTimer <= 0f)
         {
             _attacking = true;
             _attackTimer = AttackCooldown;
             anim?.SetBool("Attack", true);
             // Dano em inimigos próximos: exponha World pro script (mesmo esquema do Input
             // abaixo) e filtre Query<Transform, Collider>() por distância, ou marque inimigos
-            // com uma tag própria. Efeito visual: instancie o prefab HitEffect (seção 8).
+            // com uma tag própria. Efeito visual: instancie o prefab HitEffect (seção 10).
         }
     }
 }
@@ -280,7 +372,7 @@ public sealed class PlayerController : Behavior
 `Behavior` só acessa componentes da própria entidade via `Get<T>()` — sem `Input`/`World`
 diretos. O `Game` injeta a dependência por propriedade pública assim que a cena carrega
 (scripts `[SceneScript]` exigem construtor sem parâmetro, então não dá pra injetar no
-construtor como o sample antigo faz):
+construtor):
 
 ```csharp
 protected override void OnUpdate(float dt)
@@ -296,19 +388,19 @@ protected override void OnUpdate(float dt)
 
 ---
 
-## 7. Collision
+## 9. Collision
 
 - **Chão/paredes**: `Tilemap` com `SolidTiles` (ex.: `"1, 2"` = índices de tile sólidos). O
   `Player`/inimigos com `Collider` são empurrados pra fora automaticamente — zero código.
-- **Pickups (moeda)**: `Collider` com `IsSolid: false` (vira trigger, não bloqueia). Detecte
-  com `OnTriggerEnter` num Behavior, **ou** mais simples: `EventTrigger` `PlayerTouch` na
-  própria moeda (seção 11) — sem precisar de `Collider` nenhum nela.
+- **Pickups (moeda)**: `Collider` com `IsSolid: false` (vira trigger, não bloqueia), **ou** mais
+  simples: `EventTrigger` `PlayerTouch` na própria moeda (seção 12) — sem precisar de `Collider`
+  nenhum nela.
 - **Paredes soltas** (objeto avulso, não tile): entidade com `Transform` + `Collider`
   (`IsSolid: true`, `IsKinematic: true`).
 
 ---
 
-## 8. Partículas (impacto de ataque, brilho de moeda)
+## 10. Partículas (impacto de ataque, brilho de moeda)
 
 `ParticleEmitter` não tem "modo rajada" dedicado — simula rajada com `MaxParticles` baixo +
 desligando `Emitting` logo depois de nascer. Prefab `HitEffect.json`:
@@ -327,14 +419,14 @@ desligando `Emitting` logo depois de nascer. Prefab `HitEffect.json`:
 ```
 
 Salve como prefab (selecione a entidade → **Salvar como Prefab…**), depois instancie via
-`MainViewModel.CreatePrefabInstance` no editor (duplo-clique no painel PREFABS) ou, em
-runtime, carregue o JSON do prefab e adicione via `Scenes.Load`/`World.CreateEntity` manual
-no ponto de impacto. Depois de ~0.5s, destrua a entidade do efeito (`Entity.Destroy()` num
-Behavior com timer, ou reaproveite `EventTrigger` `Timer` + Action `Destroy`).
+duplo-clique no painel PREFABS ou, em runtime, carregue o JSON do prefab e adicione via
+`Scenes.Load`/`World.CreateEntity` manual no ponto de impacto. Depois de ~0.5s, destrua a
+entidade do efeito (`Entity.Destroy()` num Behavior com timer, ou reaproveite `EventTrigger`
+`Timer` + Action `Destroy`).
 
 ---
 
-## 9. Diálogo com NPC
+## 11. Diálogo com NPC
 
 Zero código. `PlayerTouch` funciona só por distância entre Transforms — não precisa de
 `Collider` nenhum (só use `Collider` se também quiser que o NPC bloqueie passagem física,
@@ -357,8 +449,8 @@ caso em que ele fica `IsSolid: true` separado do trigger de diálogo). Entidade 
 **Não** encadeie um `EventTrigger` `SwitchOn` puro pra cobrar o ouro: `RemoveItem` nunca deixa a
 quantidade negativa (trava em 0), e `EventTrigger` não combina duas condições (AND) num só
 componente — não dá pra checar "`HasItem` Gold≥10 **e** switch ligado" de uma vez, então o
-jogador ganharia a espada de graça sem ouro suficiente (testado, reproduzido). Pra uma loja de
-verdade use um script pequeno como gate, injetado igual `Input` no `PlayerController`:
+jogador ganharia a espada de graça sem ouro suficiente. Pra uma loja de verdade use um script
+pequeno como gate, injetado igual `Input` no `PlayerController`:
 
 ```csharp
 [SceneScript]
@@ -409,18 +501,18 @@ foreach (var (_, shop) in World.Query<ShopKeeper>())
 }
 ```
 
-Seu jogo precisa chamar `Dialogue.Draw(...)` e `Input` (Espaço/Enter avança, W/S ou setas
+Seu jogo precisa chamar `Dialogue.Draw(...)` e ler `Input` (Espaço/Enter avança, W/S ou setas
 navegam escolha) em `OnRenderUI`/`OnUpdate` — ver `samples/Aurora.Sandbox.Core/SandboxGame.cs`
 pro padrão pronto.
 
 ---
 
-## 10. Pontos e dinheiro
+## 12. Pontos e dinheiro
 
 Duas opções, ambas sem código:
 
-- **Variável simples** (`GameState`, via `SetVariable`/`AddVariable`) — mais direto pra
-  "Ouro"/"Pontos" como número solto:
+- **Variável simples** (`GameState`, via `SetVariable`) — mais direto pra "Ouro"/"Pontos" como
+  número solto:
   ```json
   { "Action": "SetVariable", "Name": "Points", "Op": "Add", "Value": 10 }
   ```
@@ -450,11 +542,11 @@ Moeda coletável, sem `Collider`, só `EventTrigger`:
 }
 ```
 
-HUD (seção 4) já mostra `{Item:Gold}` ou `{Gold}` conforme a opção escolhida.
+`GameplayUI` (seção 5) já mostra `{Item:Gold}` ou `{Gold}` conforme a opção escolhida.
 
 ---
 
-## 11. Inimigo com pathfinding
+## 13. Inimigo com pathfinding
 
 `Enemy` com `Transform`, `SpriteRenderer`, `Collider` (`IsSolid: true`), `NavAgent`:
 
@@ -501,8 +593,8 @@ public sealed class EnemyAI : Behavior
 
 ```csharp
 // No Game, junto da injeção de Input. NÃO faça World.TryFind("Enemy1", ...) —
-// só liga UM inimigo com esse nome exato e todo o resto do bicho fica parado
-// (bug testado). Use Query pra pegar TODOS os EnemyAI da cena de uma vez:
+// só liga UM inimigo com esse nome exato e todo o resto do bicho fica parado.
+// Use Query pra pegar TODOS os EnemyAI da cena de uma vez:
 bool hasPlayer = World.TryFind("Player", out var player);
 foreach (var (_, enemy) in World.Query<EnemyAI>())
 {
@@ -511,16 +603,33 @@ foreach (var (_, enemy) in World.Query<EnemyAI>())
 }
 ```
 
-Salve `Enemy` como prefab pra espalhar várias cópias pela fase. **Testado:** o inimigo se
-move de verdade em direção ao player (confirmado medindo a posição antes/depois num
-roteiro automatizado) sem atravessar as paredes do tilemap.
+Salve `Enemy` como prefab pra espalhar várias cópias pela fase.
 
 ---
 
-## 12. Salvar progresso
+## 14. Gamepad
+
+Suporte a controle (analógico + botões) já existe em `InputManager`, backend-agnóstico (mesmo
+código no desktop e — em teoria, não validado em device real ainda — no Android via SDL):
+
+- `Input.AxisX` / `Input.AxisY` já combinam teclado+analógico esquerdo automaticamente — se seu
+  `PlayerController` já usa essas duas props (seção 8), suporte a controle é de graça.
+- `Input.IsGamepadButtonDown(ButtonName.A)` / `Input.WasGamepadButtonPressed(ButtonName.A)` —
+  A/B/X/Y, `LeftBumper`/`RightBumper`, `DPadUp/Down/Left/Right`, `Start`/`Back`, etc.
+  (`using Silk.NET.Input;` pro `ButtonName`).
+- `Input.LeftStick`/`Input.RightStick` (`Vector2`, com deadzone) e
+  `Input.LeftTrigger`/`Input.RightTrigger` (`float`, 0..1) pra controle fino além do `AxisX/Y`.
+- `Input.IsGamepadConnected` — útil pra só mostrar dica de botão de controle na tela se tiver um plugado.
+
+Tudo isso é código (`Input.*`), não tem equivalente no editor — não faz sentido pra Trigger/Action
+de cena, já que controle é por script do jogador, não por entidade da cena.
+
+---
+
+## 15. Salvar progresso
 
 `Save` já persiste `GameState` (variáveis/switches) + `Inventory` + `Quests` + a posição
-(Transform) da entidade `Player` juntos — carregar um save volta o jogador exatamente onde
+(`Transform`) da entidade `Player` juntos — carregar um save volta o jogador exatamente onde
 salvou, não onde o JSON da cena originalmente colocou. Gatilho comum: item/alavanca de save,
 ou tecla dedicada.
 
@@ -532,7 +641,26 @@ ou tecla dedicada.
 
 ---
 
-## 13. Build final
+## 16. Resolução fixa / letterbox (opcional)
+
+Por padrão a câmera/UI se ajustam ao tamanho real da janela/tela — o jogo mostra mais ou menos
+mundo dependendo do aparelho. Pra travar numa proporção fixa (barra preta centralizada no resto,
+em vez de esticar/cortar — importante em mobile, onde a proporção de tela varia muito),
+defina `DesignResolution` **antes** de `Run(...)`, em `Program.cs`:
+
+```csharp
+using var game = new MeuJogoGame();
+game.DesignResolution = new(1280, 720); // ou 720x1280 pra jogo vertical (seção 17)
+game.ParseArgs(args);
+game.Run("MeuJogo");
+```
+
+Isso também corrige mouse/toque automaticamente (sem essa correção o clique ficaria visualmente
+certo mas fisicamente errado) — não precisa mexer em mais nada.
+
+---
+
+## 17. Build final (desktop)
 
 **Arquivo → Build Jogo (Release)…** — escolhe pasta, publica self-contained pra plataforma
 atual, abre a pasta no Explorer ao terminar. `PROJETO` no Inspector precisa apontar pro
@@ -540,12 +668,40 @@ atual, abre a pasta no Explorer ao terminar. `PROJETO` no Inspector precisa apon
 
 ---
 
+## 18. Exportar Android (vertical, paisagem, rotação)
+
+**Arquivo → Exportar Android (APK)…** gera um segundo projeto Android a partir do jogo desktop
+e builda em Release automaticamente.
+
+No Inspector, campo **"Orientação Android"** (novo — persiste em `aurora.project.json`):
+
+| Opção | Comportamento |
+|---|---|
+| `Landscape` (padrão) | Paisagem fixa, nunca gira |
+| `Portrait` | **Retrato fixo, nunca gira — é assim que se faz jogo vertical.** |
+| `SensorLandscape` | Gira entre paisagem normal/invertida com o sensor |
+| `SensorPortrait` | Gira entre retrato normal/invertido com o sensor |
+| `Sensor` | Gira livre nas 4 orientações (retrato + paisagem) com o sensor |
+
+Um bug antigo do Silk.NET/SDL no Android (crash ao rotacionar durante o boot) é por isso que o
+padrão sempre foi paisagem fixa. **Retestado manualmente nesta sessão** num device Android 14
+real (Xiaomi/MIUI): `Sensor` completo, incluindo troca pra retrato, rodou sem crashar. Isso pode
+variar por aparelho/versão de Android/driver — se o seu device crashar ao girar, volta pra
+`Landscape`/`Portrait` fixo.
+
+Pra jogo vertical: `Portrait` (fixo) é o caminho seguro; combine com `DesignResolution` na
+vertical (ex. `new(720, 1280)`, seção 16) pra travar a câmera/UI na proporção certa também.
+
+---
+
 ## Checklist
 
-- [ ] Novo Projeto criado, Play funcionando no scaffold padrão
-- [ ] Cena `MainMenu` com EventTrigger KeyPress → ChangeScene
-- [ ] Tela de UI `hud.json` com Gold/Points/HP, carregada em `OnLoad`
+- [ ] Novo Projeto criado, Play funcionando no scaffold padrão (botão "Jogar" já aparece)
+- [ ] Botão "Jogar": `HideUI(MainMenu)` + `ShowUI(GameplayUI)` + `ChangeScene` — não só o `ChangeScene`
+- [ ] `GameplayUI` carregada e escondida no boot (`UI.Load`/`UI.Hide` em `OnLoad`)
+- [ ] Menu de pausa: `SetPause(On:true)` ao abrir, `SetPause(On:false)` ao fechar
 - [ ] `Player`: SpriteRenderer + Collider + Animator (clips + transitions) + PlayerController
+- [ ] `PlayerController` usa `Input.AxisX`/`AxisY` (gamepad de graça)
 - [ ] Tilemap com SolidTiles definindo o chão/paredes da fase
 - [ ] Ao menos uma moeda com EventTrigger PlayerTouch (AddItem/SetVariable + Destroy)
 - [ ] NPC com EventTrigger PlayerTouch → ShowMessage/ShowChoice
@@ -553,7 +709,9 @@ atual, abre a pasta no Explorer ao terminar. `PROJETO` no Inspector precisa apon
 - [ ] Ao menos um `Enemy` com NavAgent perseguindo o player
 - [ ] Ação Save amarrada a algum gatilho
 - [ ] Build Jogo (Release) gerando executável standalone
+- [ ] (Mobile) Orientação Android escolhida de propósito (Portrait fixo pra vertical, Sensor* só se testado no seu device)
 
-Com isso: menu, player, collision, ataque, partícula, animação, diálogo, pontos/dinheiro,
-inimigo com IA de movimento e save — tudo no editor, com só ~2 scripts pequenos
-(`PlayerController`, `EnemyAI`) de código real.
+Com isso: menu, HUD, pausa, player, collision, ataque, partícula, animação, diálogo,
+pontos/dinheiro, inimigo com IA de movimento, gamepad, save e export Android — tudo no editor,
+com só ~2-3 scripts pequenos (`PlayerController`, `EnemyAI`, opcionalmente `ShopKeeper`) de
+código real.
