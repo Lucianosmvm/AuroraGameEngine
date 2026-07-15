@@ -519,8 +519,10 @@ roteiro automatizado) sem atravessar as paredes do tilemap.
 
 ## 12. Salvar progresso
 
-`Save` já persiste `GameState` (variáveis/switches) + `Inventory` + `Quests` juntos.
-Gatilho comum: item/alavanca de save, ou tecla dedicada.
+`Save` já persiste `GameState` (variáveis/switches) + `Inventory` + `Quests` + a posição
+(Transform) da entidade `Player` juntos — carregar um save volta o jogador exatamente onde
+salvou, não onde o JSON da cena originalmente colocou. Gatilho comum: item/alavanca de save,
+ou tecla dedicada.
 
 ```json
 { "Action": "Save", "Value": 0 }

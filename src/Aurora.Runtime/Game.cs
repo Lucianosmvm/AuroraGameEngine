@@ -173,7 +173,7 @@ public abstract class Game : IDisposable
         Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
         Events.QuitRequested += Exit;
 
-        Save = new SaveManager(State, SceneManager, GameName, Inventory, Quests);
+        Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests);
         Events.Save = Save;
 
         Gl.Enable(EnableCap.Blend);

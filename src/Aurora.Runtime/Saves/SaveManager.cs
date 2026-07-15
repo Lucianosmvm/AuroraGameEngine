@@ -1,4 +1,7 @@
+using System.Numerics;
 using System.Text.Json;
+using Aurora.Runtime.Ecs;
+using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Scenes;
 
 namespace Aurora.Runtime.Saves;
@@ -19,6 +22,7 @@ public sealed class SaveManager
 {
     private readonly GameState _state;
     private readonly SceneManager _sceneManager;
+    private readonly World _world;
     private readonly InventoryManager? _inventory;
     private readonly QuestManager? _quests;
     private readonly string _saveDir;
@@ -27,11 +31,17 @@ public sealed class SaveManager
 
     public string SaveDirectory => _saveDir;
 
-    public SaveManager(GameState state, SceneManager sceneManager, string gameName = "AuroraGame",
+    /// <summary>Nome da entidade cuja posição (Transform) é salva/restaurada junto do resto —
+    /// sem isso, carregar um save sempre nasce o jogador onde o JSON da cena colocou, não onde
+    /// ele estava quando salvou. Mesma convenção de <see cref="Events.EventSystem.PlayerEntityName"/>.</summary>
+    public string PlayerEntityName { get; set; } = "Player";
+
+    public SaveManager(GameState state, SceneManager sceneManager, World world, string gameName = "AuroraGame",
         InventoryManager? inventory = null, QuestManager? quests = null)
     {
         _state = state;
         _sceneManager = sceneManager;
+        _world = world;
         _inventory = inventory;
         _quests = quests;
         _saveDir = Path.Combine(
@@ -73,6 +83,13 @@ public sealed class SaveManager
     {
         Directory.CreateDirectory(_saveDir);
 
+        float? playerX = null, playerY = null;
+        if (_world.TryFind(PlayerEntityName, out var player) && player.Get<Transform>() is { } transform)
+        {
+            playerX = transform.Position.X;
+            playerY = transform.Position.Y;
+        }
+
         var dto = new SaveDto(
             Slot: slot,
             Scene: _sceneManager.CurrentScene,
@@ -80,7 +97,9 @@ public sealed class SaveManager
             Variables: new Dictionary<string, float>(_state.Variables),
             Switches: new Dictionary<string, bool>(_state.Switches),
             Items: _inventory is null ? [] : new Dictionary<string, int>(_inventory.Items),
-            QuestStages: _quests is null ? [] : new Dictionary<string, int>(_quests.Stages));
+            QuestStages: _quests is null ? [] : new Dictionary<string, int>(_quests.Stages),
+            PlayerX: playerX,
+            PlayerY: playerY);
 
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
     }
@@ -103,7 +122,18 @@ public sealed class SaveManager
         if (dto.QuestStages is not null) _quests?.LoadFromDictionary(dto.QuestStages);
 
         if (dto.Scene is not null)
-            _sceneManager.LoadWithFade(dto.Scene);
+        {
+            // Load (não LoadWithFade): precisamos que a entidade Player já exista pra aplicar
+            // a posição salva no mesmo instante — LoadWithFade só carrega de fato alguns
+            // frames depois (após o fade pro preto), quando este método já teria retornado.
+            _sceneManager.Load(dto.Scene);
+
+            if (dto.PlayerX is { } px && dto.PlayerY is { } py
+                && _world.TryFind(PlayerEntityName, out var player) && player.Get<Transform>() is { } transform)
+            {
+                transform.Position = new Vector2(px, py);
+            }
+        }
 
         return true;
     }
@@ -133,5 +163,7 @@ public sealed class SaveManager
         Dictionary<string, float> Variables,
         Dictionary<string, bool> Switches,
         Dictionary<string, int>? Items = null,
-        Dictionary<string, int>? QuestStages = null);
+        Dictionary<string, int>? QuestStages = null,
+        float? PlayerX = null,
+        float? PlayerY = null);
 }
