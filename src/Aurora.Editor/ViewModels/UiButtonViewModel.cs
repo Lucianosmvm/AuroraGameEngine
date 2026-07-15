@@ -9,14 +9,16 @@ namespace Aurora.Editor.ViewModels;
 public sealed class UiButtonViewModel : ComponentViewModel
 {
     private readonly JsonObject _node;
+    private readonly MainViewModel? _owner;
 
     public ICommand AddActionCommand { get; }
 
     public ObservableCollection<EventActionViewModel> Actions { get; } = [];
 
-    public UiButtonViewModel(JsonObject node) : base(node)
+    public UiButtonViewModel(JsonObject node, MainViewModel? owner = null) : base(node)
     {
         _node = node;
+        _owner = owner;
         AddActionCommand = new RelayCommand(AddAction);
         RebuildActions();
     }
@@ -27,7 +29,7 @@ public sealed class UiButtonViewModel : ComponentViewModel
         if (_node["OnClick"] is not JsonArray arr)
             _node["OnClick"] = arr = [];
         arr.Add(actionNode);
-        Actions.Add(new EventActionViewModel(actionNode, OnActionEdited, RemoveAction));
+        Actions.Add(new EventActionViewModel(actionNode, OnActionEdited, RemoveAction, _owner));
         RaiseEdited("add-action");
     }
 
@@ -48,7 +50,7 @@ public sealed class UiButtonViewModel : ComponentViewModel
         if (_node["OnClick"] is JsonArray arr)
         {
             foreach (var item in arr.OfType<JsonObject>())
-                Actions.Add(new EventActionViewModel(item, OnActionEdited, RemoveAction));
+                Actions.Add(new EventActionViewModel(item, OnActionEdited, RemoveAction, _owner));
         }
     }
 }

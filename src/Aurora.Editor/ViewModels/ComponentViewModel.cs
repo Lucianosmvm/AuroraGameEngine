@@ -137,6 +137,13 @@ public class ComponentViewModel : ViewModelBase
         ],
     };
 
+    /// <summary>Campos string com valores fixos, editados por ComboBox em vez de texto livre.</summary>
+    private static readonly Dictionary<string, string[]> EnumFields = new()
+    {
+        ["AnchorX"] = ["Left", "Center", "Right"],
+        ["AnchorY"] = ["Top", "Center", "Bottom"],
+    };
+
     public JsonObject Node { get; }
     public string Type { get; }
     public List<PropertyViewModel> Properties { get; } = [];
@@ -191,6 +198,7 @@ public class ComponentViewModel : ViewModelBase
         {
             float number => new NumberPropertyViewModel(Node, name, number),
             bool flag => new BoolPropertyViewModel(Node, name, flag),
+            string text when EnumFields.TryGetValue(name, out var options) => new EnumPropertyViewModel(Node, name, text, options),
             _ => new TextPropertyViewModel(Node, name, (string)fallback),
         };
         property.Edited += tag => Edited?.Invoke($"{Type}.{tag}");

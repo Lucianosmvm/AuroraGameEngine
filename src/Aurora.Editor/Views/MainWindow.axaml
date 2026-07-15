@@ -24,6 +24,13 @@
     <DataTemplate DataType="{x:Type vm:BoolPropertyViewModel}">
       <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:EnumPropertyViewModel}">
+      <Grid ColumnDefinitions="90,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Options}"
+                  SelectedItem="{Binding Value}" FontSize="12"/>
+      </Grid>
+    </DataTemplate>
 
     <!-- Animator: campos básicos + lista de clipes -->
     <DataTemplate DataType="{x:Type vm:AnimatorViewModel}">
@@ -250,11 +257,19 @@
           <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
                      Opacity="0.5" Margin="0,-1,0,2"/>
 
-          <!-- Nome (variável, entidade, arquivo, falante) -->
-          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowName}">
+          <!-- Nome (variável, entidade, falante) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNameText}">
             <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
                        Opacity="0.6" FontSize="11"/>
             <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Nome via seletor (ChangeScene: cenas do projeto; ShowUI/HideUI/ToggleUI: telas de UI) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNamePicker}">
+            <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding NamePickerOptions}"
+                      SelectedItem="{Binding Name}" FontSize="11"/>
           </Grid>
 
           <!-- Op: Set / Add (SetVariable) -->

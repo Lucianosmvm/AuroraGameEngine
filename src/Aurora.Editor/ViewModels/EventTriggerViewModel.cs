@@ -8,6 +8,7 @@ namespace Aurora.Editor.ViewModels;
 public sealed class EventTriggerViewModel : ComponentViewModel
 {
     private readonly JsonObject _triggerNode;
+    private readonly MainViewModel? _owner;
 
     public string[] TriggerTypes { get; } =
         ["SceneStart", "PlayerTouch", "SwitchOn", "KeyPress", "Timer", "VariableCompare",
@@ -19,9 +20,10 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 
     public ObservableCollection<EventActionViewModel> Actions { get; } = [];
 
-    public EventTriggerViewModel(JsonObject node) : base(node)
+    public EventTriggerViewModel(JsonObject node, MainViewModel? owner = null) : base(node)
     {
         _triggerNode = node;
+        _owner = owner;
         AddActionCommand = new RelayCommand(AddAction);
         RebuildActions();
     }
@@ -169,7 +171,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
         if (_triggerNode["Actions"] is not JsonArray arr)
             _triggerNode["Actions"] = arr = [];
         arr.Add(actionNode);
-        Actions.Add(new EventActionViewModel(actionNode, OnActionEdited, RemoveAction));
+        Actions.Add(new EventActionViewModel(actionNode, OnActionEdited, RemoveAction, _owner));
         RaiseEdited("add-action");
     }
 
@@ -190,7 +192,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
         if (_triggerNode["Actions"] is JsonArray arr)
         {
             foreach (var item in arr.OfType<JsonObject>())
-                Actions.Add(new EventActionViewModel(item, OnActionEdited, RemoveAction));
+                Actions.Add(new EventActionViewModel(item, OnActionEdited, RemoveAction, _owner));
         }
     }
 }

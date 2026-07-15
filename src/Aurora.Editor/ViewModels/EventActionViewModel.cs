@@ -9,6 +9,7 @@ public sealed class EventActionViewModel : ViewModelBase
 {
     private readonly JsonObject _node;
     private readonly Action _onEdited;
+    private readonly MainViewModel? _owner;
 
     public ICommand RemoveCommand { get; }
     public ICommand AddOptionCommand { get; }
@@ -28,18 +29,32 @@ public sealed class EventActionViewModel : ViewModelBase
         "AddItem", "RemoveItem",
         "SetQuestStage", "AdvanceQuest",
         "SetActive",
+        "ShowUI", "HideUI", "ToggleUI",
     ];
 
     public string[] OpTypes { get; } = ["Set", "Add"];
 
-    public EventActionViewModel(JsonObject node, Action onEdited, Action<EventActionViewModel> onRemove)
+    public EventActionViewModel(JsonObject node, Action onEdited, Action<EventActionViewModel> onRemove, MainViewModel? owner = null)
     {
         _node = node;
         _onEdited = onEdited;
+        _owner = owner;
         RemoveCommand = new RelayCommand(() => onRemove(this));
         AddOptionCommand = new RelayCommand(AddOption);
         RebuildOptions();
     }
+
+    /// <summary>ChangeScene lista as cenas de gameplay; ShowUI/HideUI/ToggleUI listam as telas de
+    /// UI pelo id (nome do arquivo sem .json) — evita digitar caminho/extensão na mão.</summary>
+    public IEnumerable<string> NamePickerOptions => ActionType switch
+    {
+        "ChangeScene" => _owner?.SceneFiles.Select(s => s.Name) ?? [],
+        "ShowUI" or "HideUI" or "ToggleUI" => _owner?.UiScreens.Select(s => System.IO.Path.GetFileNameWithoutExtension(s.Name)) ?? [],
+        _ => [],
+    };
+
+    public bool ShowNamePicker => ActionType is "ChangeScene" or "ShowUI" or "HideUI" or "ToggleUI";
+    public bool ShowNameText => ShowName && !ShowNamePicker;
 
     public string ActionType
     {
@@ -72,6 +87,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         "AddItem" or "RemoveItem" => "Item",
         "SetQuestStage" or "AdvanceQuest" => "Quest",
+        "ShowUI" or "HideUI" or "ToggleUI" => "Tela UI",
         _ => "Falante",
     };
 
@@ -202,6 +218,9 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetQuestStage"  => "Define o estágio atual da quest",
         "AdvanceQuest"   => "Avança o estágio da quest (padrão +1)",
         "SetActive"      => "Liga/desliga ParticleEmitter, Light2D ou GlobalTint de uma entidade sem destruí-la",
+        "ShowUI"         => "Mostra uma tela de UI já carregada (HUD, menu)",
+        "HideUI"         => "Esconde uma tela de UI já carregada",
+        "ToggleUI"       => "Alterna visível/escondido de uma tela de UI já carregada",
         _                => "",
     };
 
@@ -209,7 +228,8 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
         or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
-        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive";
+        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
+        or "ShowUI" or "HideUI" or "ToggleUI";
     public bool ShowOp => ActionType == "SetVariable";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal";
@@ -229,6 +249,9 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(ShowSeconds));
         Raise(nameof(ShowText));
         Raise(nameof(ShowOptions));
+        Raise(nameof(ShowNamePicker));
+        Raise(nameof(ShowNameText));
+        Raise(nameof(NamePickerOptions));
         Raise(nameof(NameLabel));
         Raise(nameof(ValueLabel));
         Raise(nameof(OnLabel));

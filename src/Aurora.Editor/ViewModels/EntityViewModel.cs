@@ -452,12 +452,12 @@ public sealed class EntityViewModel : ViewModelBase
         }
     }
 
-    private static ComponentViewModel BuildVm(JsonObject node) =>
+    private ComponentViewModel BuildVm(JsonObject node) =>
         node["Type"]?.GetValue<string>() switch
         {
-            "EventTrigger" => new EventTriggerViewModel(node),
+            "EventTrigger" => new EventTriggerViewModel(node, _owner),
             "Animator"     => new AnimatorViewModel(node),
-            "UiButton"     => new UiButtonViewModel(node),
+            "UiButton"     => new UiButtonViewModel(node, _owner),
             _              => new ComponentViewModel(node),
         };
 

@@ -112,6 +112,34 @@ public sealed class TextPropertyViewModel : PropertyViewModel
     }
 }
 
+/// <summary>Propriedade string com valores fixos (ex.: AnchorX/Y) — ComboBox em vez de TextBox.</summary>
+public sealed class EnumPropertyViewModel : PropertyViewModel
+{
+    private readonly string _fallback;
+
+    public string[] Options { get; }
+
+    public EnumPropertyViewModel(JsonObject component, string name, string fallback, string[] options)
+        : base(component, name)
+    {
+        _fallback = fallback;
+        Options = options;
+    }
+
+    public string Value
+    {
+        get => Component[Name]?.GetValue<string>() ?? _fallback;
+        set
+        {
+            if (Value == value)
+                return;
+            Component[Name] = value;
+            Raise();
+            NotifyEdited();
+        }
+    }
+}
+
 public sealed class BoolPropertyViewModel : PropertyViewModel
 {
     private readonly bool _fallback;
