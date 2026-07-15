@@ -121,6 +121,28 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Opções de orientação pro APK gerado por "Exportar Android…" — as duas primeiras
+    /// (fixas) não giram nunca; as três últimas (Sensor*) giram com o aparelho.</summary>
+    public string[] AndroidOrientations { get; } =
+        ["Landscape", "Portrait", "SensorLandscape", "SensorPortrait", "Sensor"];
+
+    /// <summary>Orientação salva em aurora.project.json. Landscape (fixo) é o padrão histórico
+    /// mais seguro; Sensor* já foi validado sem crash em teste manual de device real (Android 14),
+    /// mas o bug antigo documentado no AndroidExporter pode variar por aparelho/versão — escolha
+    /// consciente do dev, não padrão automático.</summary>
+    public string AndroidOrientation
+    {
+        get => _settings?.AndroidOrientation ?? "Landscape";
+        set
+        {
+            if (_settings is null)
+                return;
+            _settings.AndroidOrientation = value;
+            try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
+            Raise();
+        }
+    }
+
     /// <summary>Salva a cena e lança o executável ou dotnet run com --scene.</summary>
     public void Play()
     {
@@ -302,7 +324,7 @@ public sealed class MainViewModel : ViewModelBase
             Models.AndroidExporter.Result result;
             try
             {
-                result = Models.AndroidExporter.Export(gameCsproj, androidProjectDir, applicationId, displayName);
+                result = Models.AndroidExporter.Export(gameCsproj, androidProjectDir, applicationId, displayName, AndroidOrientation);
             }
             catch (Exception ex)
             {

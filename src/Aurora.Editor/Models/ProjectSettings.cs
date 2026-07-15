@@ -21,6 +21,12 @@ public sealed class ProjectSettings
     [JsonPropertyName("lastScene")]
     public string? LastScene { get; set; }
 
+    /// <summary>Orientação de tela do APK gerado por "Exportar Android…": Landscape/Portrait
+    /// (fixo, sem girar) ou SensorLandscape/SensorPortrait/Sensor (gira com o aparelho — ver
+    /// AndroidExporter pro histórico de compatibilidade). Null = Landscape (padrão de sempre).</summary>
+    [JsonPropertyName("androidOrientation")]
+    public string? AndroidOrientation { get; set; }
+
     /// <summary>Caminho absoluto do arquivo aurora.project.json em disco.</summary>
     [JsonIgnore]
     public string FilePath { get; private set; } = "";

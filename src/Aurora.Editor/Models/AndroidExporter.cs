@@ -14,8 +14,15 @@ public static class AndroidExporter
     /// <summary>Resultado da exportação: caminho do .csproj Android gerado e avisos não-fatais.</summary>
     public sealed record Result(string CsprojPath, IReadOnlyList<string> Warnings);
 
-    public static Result Export(string gameCsprojPath, string androidProjectDir, string applicationId, string displayName)
+    private static readonly HashSet<string> ValidOrientations =
+        ["Landscape", "Portrait", "SensorLandscape", "SensorPortrait", "Sensor"];
+
+    public static Result Export(string gameCsprojPath, string androidProjectDir, string applicationId, string displayName,
+        string orientation = "Landscape")
     {
+        if (!ValidOrientations.Contains(orientation))
+            orientation = "Landscape";
+
         string gameDir = Path.GetDirectoryName(Path.GetFullPath(gameCsprojPath))
             ?? throw new InvalidOperationException("Caminho de projeto inválido.");
 
@@ -41,7 +48,7 @@ public static class AndroidExporter
         File.WriteAllText(Path.Combine(androidProjectDir, $"{androidProjectName}.csproj"),
             BuildCsproj(relativeRuntimePath, relativeGameDir, relativeProgramFile, applicationId, droidNamespace));
         File.WriteAllText(Path.Combine(androidProjectDir, "MainActivity.cs"),
-            BuildMainActivity(droidNamespace, gameNamespace, gameClassName, displayName));
+            BuildMainActivity(droidNamespace, gameNamespace, gameClassName, displayName, orientation));
         File.WriteAllText(Path.Combine(androidProjectDir, "AndroidAssetSource.cs"),
             BuildAssetSource(droidNamespace));
 
@@ -160,7 +167,8 @@ public static class AndroidExporter
         </Project>
         """;
 
-    private static string BuildMainActivity(string droidNamespace, string gameNamespace, string gameClassName, string displayName) => $$"""
+    private static string BuildMainActivity(string droidNamespace, string gameNamespace, string gameClassName,
+        string displayName, string orientation) => $$"""
         using System.Numerics;
         using Android.App;
         using Android.Content.PM;
@@ -170,14 +178,16 @@ public static class AndroidExporter
 
         namespace {{droidNamespace}};
 
-        // Landscape fixo (não Sensor) — SensorLandscape deixa o SO girar entre paisagem
-        // normal/invertida, e esse evento de rotação bem no boot derruba um bug real do
-        // Silk.NET/SDL no Android: "You cannot call Reset inside of the render loop!"
-        // (Silk.NET.Windowing.Internals.ViewImplementationBase.Reset/Dispose), crash fatal
-        // logo na abertura (testado em device real). Orientação travada não dispara o evento.
+        // Orientação escolhida no export (Inspector → Orientação Android). Landscape/Portrait
+        // são fixos (nunca giram). SensorLandscape/SensorPortrait/Sensor giram com o aparelho —
+        // um bug antigo do Silk.NET/SDL no Android ("You cannot call Reset inside of the render
+        // loop!", Silk.NET.Windowing.Internals.ViewImplementationBase.Reset/Dispose) já causou
+        // crash real ao girar; testado de novo manualmente em device Android 14 real (rotação
+        // completa incluindo retrato) sem reproduzir o crash, mas isso pode variar por
+        // aparelho/versão de Android/driver — se crashar no seu device, volte pra Landscape fixo.
         [Activity(Label = "{{displayName}}", MainLauncher = true,
             ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden,
-            ScreenOrientation = ScreenOrientation.Landscape)]
+            ScreenOrientation = ScreenOrientation.{{orientation}})]
         public class MainActivity : SilkActivity
         {
             private volatile {{gameNamespace}}.{{gameClassName}}? _game;

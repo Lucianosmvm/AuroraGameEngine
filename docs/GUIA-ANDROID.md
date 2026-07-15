@@ -66,7 +66,7 @@ namespace SeuJogo.Droid;
 
 [Activity(Label = "Seu Jogo", MainLauncher = true,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.KeyboardHidden,
-    ScreenOrientation = ScreenOrientation.Landscape)] // fixo, não Sensor* — ver pegadinha abaixo
+    ScreenOrientation = ScreenOrientation.Landscape)] // Portrait pra vertical, Sensor* pra girar — ver pegadinha abaixo
 public class MainActivity : SilkActivity
 {
     protected override void OnRun()
@@ -216,12 +216,15 @@ public sealed class AndroidAssetSource : IAssetSource
   navegação do Android (voltar/home por swipe), mesmo em tela cheia.
 - **Crash na abertura, `FATAL UNHANDLED EXCEPTION: ... You cannot call 'Reset' inside of the
   render loop!` (`Silk.NET.Windowing.Internals.ViewImplementationBase.Reset/Dispose`)**:
-  bug real do Silk.NET/SDL no Android — se o SO dispara evento de rotação de tela bem
-  durante o boot (ex: `ScreenOrientation.SensorLandscape` deixa girar entre paisagem
-  normal/invertida por sensor), a troca reentra no loop de render numa hora ruim e
-  derruba o app. Testado em device real (Xiaomi/MIUI). **Solução**: usa orientação
-  fixa (`ScreenOrientation.Landscape`, não `Sensor*`) — sem evento de rotação, sem
-  gatilho pro bug. Já é o padrão gerado pelo exportador do editor.
+  bug antigo relatado no Silk.NET/SDL no Android — evento de rotação de tela bem durante
+  o boot reentrando no loop de render numa hora ruim. Por causa disso o exportador gerava
+  só orientação fixa (`Landscape`), sem opção de girar. **Retestado manualmente** (device
+  Android 14 real, Xiaomi/MIUI) com `Sensor` completo — incluindo troca pra retrato —
+  sem reproduzir o crash. O exportador agora deixa escolher orientação (Inspector →
+  "Orientação Android": `Landscape`/`Portrait` fixos, ou `SensorLandscape`/`SensorPortrait`/
+  `Sensor` girando com o aparelho — esse é o jeito de fazer jogo vertical). Se seu device
+  crashar ao girar mesmo assim, volta pra `Landscape`/`Portrait` fixo — o bug pode variar
+  por aparelho/versão de Android/driver, o reteste cobriu só um device.
 - **HUD/diálogo sem fonte**: se o jogo usa `Dialogue.Draw`/texto na tela, o
   `.ttf` tem que estar em `Assets/fonts/` e entrar no `AndroidAsset` glob junto
   (reusa a mesma fonte do sample, `DejaVuSans.ttf`, ou qualquer outra).

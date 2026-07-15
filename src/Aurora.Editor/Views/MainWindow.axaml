@@ -607,6 +607,14 @@
             <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
               No Main() do jogo: game.ParseArgs(args); e em OnLoad(): LoadScene(BootScene ?? "default.json");
             </TextBlock>
+            <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5" Margin="0,4,0,0"/>
+            <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"
+                      FontSize="11" HorizontalAlignment="Stretch"/>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              Landscape/Portrait não giram nunca. Sensor* giram com o aparelho — testado sem crash
+              num device Android 14 real, mas pode variar por aparelho; se crashar ao girar, volte
+              pra Landscape. Usado por "Exportar Android…".
+            </TextBlock>
           </StackPanel>
         </Border>
         <ScrollViewer>
