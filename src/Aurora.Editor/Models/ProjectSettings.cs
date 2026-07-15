@@ -16,6 +16,11 @@ public sealed class ProjectSettings
     [JsonPropertyName("gameProject")]
     public string? GameProject { get; set; }
 
+    /// <summary>Caminho da última cena aberta, relativo à pasta do projeto — usado por
+    /// "Abrir Projeto…" pra reabrir de onde parou, estilo Unity.</summary>
+    [JsonPropertyName("lastScene")]
+    public string? LastScene { get; set; }
+
     /// <summary>Caminho absoluto do arquivo aurora.project.json em disco.</summary>
     [JsonIgnore]
     public string FilePath { get; private set; } = "";

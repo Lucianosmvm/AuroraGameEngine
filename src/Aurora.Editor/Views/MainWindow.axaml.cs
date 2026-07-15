@@ -233,6 +233,29 @@ public partial class MainWindow : Window
 
     private void OnNewProject(object? sender, RoutedEventArgs e) => _ = PickAndNewProjectAsync();
 
+    private void OnOpenProject(object? sender, RoutedEventArgs e) => _ = PickAndOpenProjectAsync();
+
+    private async Task PickAndOpenProjectAsync()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Abrir projeto Aurora (pasta com aurora.project.json)",
+            AllowMultiple = false,
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
+        {
+            try
+            {
+                ViewModel.OpenProject(path);
+            }
+            catch (Exception ex)
+            {
+                ViewModel.Status = $"Erro ao abrir projeto: {ex.Message}";
+            }
+        }
+    }
+
     private void OnNewScene(object? sender, RoutedEventArgs e) => _ = PickAndNewSceneAsync();
 
     private void OnOpenScene(object? sender, RoutedEventArgs e) => _ = PickAndOpenSceneAsync();

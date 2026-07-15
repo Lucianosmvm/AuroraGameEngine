@@ -33,6 +33,8 @@ public static class GameProjectScaffolder
         Directory.CreateDirectory(scenesDir);
         string spritesDir = Path.Combine(projectDir, "Assets", "sprites");
         Directory.CreateDirectory(spritesDir);
+        string fontsDir = Path.Combine(projectDir, "Assets", "fonts");
+        Directory.CreateDirectory(fontsDir);
 
         string relativeRuntimePath = Path.GetRelativePath(projectDir, runtimeCsproj);
         File.WriteAllText(Path.Combine(projectDir, $"{projectName}.csproj"), BuildCsproj(relativeRuntimePath));
@@ -40,6 +42,40 @@ public static class GameProjectScaffolder
         File.WriteAllText(Path.Combine(projectDir, $"{identifier}Game.cs"), BuildGameClass(identifier));
         File.WriteAllText(Path.Combine(projectDir, "Spin.cs"), BuildExampleScript(identifier));
         File.WriteAllBytes(Path.Combine(spritesDir, "placeholder.png"), Convert.FromBase64String(PlaceholderPngBase64));
+
+        string? fontSource = FindDefaultFont();
+        if (fontSource is not null)
+            File.Copy(fontSource, Path.Combine(fontsDir, "DejaVuSans.ttf"), overwrite: true);
+
+        // Tela de UI carregada e desenhada automaticamente pelo template do Game (ver
+        // BuildGameClass) — "Novo Projeto" já sai com um menu clicável funcionando no Play,
+        // sem precisar escrever UI.Load/UI.Draw na mão.
+        string menuScenePath = Path.Combine(scenesDir, "MainMenu.json");
+        var menuRoot = new JsonObject
+        {
+            ["Scene"] = "MainMenu",
+            ["UI"] = true,
+            ["Objects"] = new JsonArray(
+                new JsonObject
+                {
+                    ["Name"] = "PlayButton",
+                    ["Components"] = new JsonArray(
+                        new JsonObject
+                        {
+                            ["Type"] = "UiButton",
+                            ["X"] = 0f,
+                            ["Y"] = 0f,
+                            ["AnchorX"] = "Center",
+                            ["AnchorY"] = "Center",
+                            ["Width"] = 200f,
+                            ["Height"] = 48f,
+                            ["Text"] = "Jogar",
+                            ["OnClick"] = new JsonArray(
+                                new JsonObject { ["Action"] = "ChangeScene", ["Name"] = "scenes/main.json" }),
+                        }),
+                }),
+        };
+        File.WriteAllText(menuScenePath, menuRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
         // Cena não vem vazia: uma entidade já com o sprite placeholder + o script de exemplo
         // (Spin), pra Play mostrar algo visível E rodando de cara — inclusive provando que
@@ -79,6 +115,19 @@ public static class GameProjectScaffolder
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             string candidate = Path.Combine(dir.FullName, "src", "Aurora.Runtime", "Aurora.Runtime.csproj");
+            if (File.Exists(candidate))
+                return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>Sobe a partir da pasta do executável até achar a fonte padrão usada pelos samples,
+    /// pra todo projeto novo já sair com texto de UI (botão do menu, HUD) desenhando de cara.</summary>
+    private static string? FindDefaultFont()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+        {
+            string candidate = Path.Combine(dir.FullName, "samples", "Aurora.Sandbox.Core", "Assets", "fonts", "DejaVuSans.ttf");
             if (File.Exists(candidate))
                 return candidate;
         }
@@ -126,14 +175,24 @@ public static class GameProjectScaffolder
 
     private static string BuildGameClass(string identifier) => $$"""
         using Aurora.Runtime;
+        using Aurora.Runtime.Graphics;
 
         namespace {{identifier}};
 
         public sealed class {{identifier}}Game : Game
         {
+            private Font _font = null!;
+
             protected override void OnLoad()
             {
+                _font = Assets.LoadFont("fonts/DejaVuSans.ttf", 22f);
+                UI.Load("scenes/MainMenu.json", Assets);
                 LoadScene(BootScene ?? "scenes/main.json");
+            }
+
+            protected override void OnRenderUI(float dt)
+            {
+                UI.Draw(SpriteBatch, _font, State, Inventory, Quests, View.FramebufferSize.X, View.FramebufferSize.Y);
             }
         }
         """;

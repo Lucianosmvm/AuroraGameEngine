@@ -372,6 +372,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         _document = SceneDocument.New(filePath);
         _settings = ProjectSettings.Find(filePath);
+        RememberLastScene(filePath);
 
         RebuildEntities();
         SelectedEntity = null;
@@ -403,6 +404,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         _document = SceneDocument.Load(path);
         _settings = ProjectSettings.Find(path);
+        RememberLastScene(path);
 
         RebuildEntities();
         SelectedEntity = Entities.FirstOrDefault();
@@ -428,6 +430,53 @@ public sealed class MainViewModel : ViewModelBase
         ReloadUiScreens();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
+    }
+
+    /// <summary>Grava a cena atual em aurora.project.json (só se o arquivo já existir de
+    /// verdade — evita criar aurora.project.json solto ao abrir uma cena avulsa fora de
+    /// projeto nenhum). "Abrir Projeto…" usa isso pra reabrir de onde parou.</summary>
+    private void RememberLastScene(string scenePath)
+    {
+        if (_settings is null || !File.Exists(_settings.FilePath))
+            return;
+
+        string projectDir = Path.GetDirectoryName(_settings.FilePath)!;
+        _settings.LastScene = Path.GetRelativePath(projectDir, scenePath).Replace('\\', '/');
+        try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
+    }
+
+    /// <summary>Abre um projeto pela pasta raiz (a que contém aurora.project.json): reabre a
+    /// última cena editada, ou cai para Assets/scenes/main.json, ou a primeira cena que achar.</summary>
+    public void OpenProject(string projectDir)
+    {
+        string settingsPath = Path.Combine(projectDir, "aurora.project.json");
+        if (!File.Exists(settingsPath))
+            throw new InvalidOperationException($"'{projectDir}' não tem aurora.project.json — não é uma pasta de projeto Aurora.");
+
+        var settings = ProjectSettings.Find(settingsPath);
+
+        string? scenePath = null;
+        if (settings.LastScene is { Length: > 0 } last)
+        {
+            string candidate = Path.GetFullPath(Path.Combine(projectDir, last));
+            if (File.Exists(candidate))
+                scenePath = candidate;
+        }
+
+        if (scenePath is null)
+        {
+            string scenesDir = Path.Combine(projectDir, "Assets", "scenes");
+            string mainCandidate = Path.Combine(scenesDir, "main.json");
+            scenePath = File.Exists(mainCandidate) ? mainCandidate
+                : Directory.Exists(scenesDir)
+                    ? Directory.EnumerateFiles(scenesDir, "*.json").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault()
+                    : null;
+        }
+
+        if (scenePath is null)
+            throw new InvalidOperationException($"Nenhuma cena encontrada em '{projectDir}\\Assets\\scenes'.");
+
+        OpenScene(scenePath);
     }
 
     private void RebuildEntities()
