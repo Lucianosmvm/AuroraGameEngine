@@ -71,6 +71,9 @@ public static class GameProjectScaffolder
                             ["Height"] = 48f,
                             ["Text"] = "Jogar",
                             ["OnClick"] = new JsonArray(
+                                // HideUI primeiro: sem isso o botão do menu fica desenhado por
+                                // cima pra sempre (UiScreen persiste entre ChangeScene).
+                                new JsonObject { ["Action"] = "HideUI", ["Name"] = "MainMenu" },
                                 new JsonObject { ["Action"] = "ChangeScene", ["Name"] = "scenes/main.json" }),
                         }),
                 }),
