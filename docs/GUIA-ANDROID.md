@@ -200,9 +200,14 @@ public sealed class AndroidAssetSource : IAssetSource
   manual.** A engine tem um elemento `UiJoystick` (mesma família de `UiButton`,
   autorável na tela de UI): base fixa (X/Y/Anchor/Radius), `Value` dá a direção+
   intensidade (0..1) a cada frame, e convive com `UiButton` tocado por outro dedo
-  ao mesmo tempo (`UIManager.Update` dá dono por id de toque). Exemplo (`hud.json`):
-  ```json
-  { "Type": "UiJoystick", "X": 70, "Y": 70, "AnchorX": "Left", "AnchorY": "Bottom", "Radius": 70 }
+  ao mesmo tempo (`UIManager.Update` dá dono por id de toque). Na tela `hud`
+  (painel TELAS UI): **"+ Nova"** entidade `MoveStick` → **"+Add Componente" →
+  UiJoystick** — X:`70`, Y:`70`, AnchorX:`Left`, AnchorY:`Bottom`, Radius:`70`.
+  ```
+  UiJoystick
+    X  70            Y  70
+    AnchorX  [ Left ▾ ]   AnchorY  [ Bottom ▾ ]
+    Radius  70
   ```
   No jogo, leia o vetor e o clique direto — sem precisar de `Camera`/drag manual:
   ```csharp

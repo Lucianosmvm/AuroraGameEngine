@@ -6,10 +6,10 @@ ataque, boot da UI). Cobre: menu, troca de cena sem "UI grudada", HUD, pausa pra
 inventário/configurações, player com collision e animação, ataques, partículas, diálogo com NPC,
 pontos/dinheiro, inimigo com pathfinding, gamepad, save, resolução fixa, build final e export Android.
 
-Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais da engine — pode
-copiar os trechos de JSON direto. Trechos marcados **testado** foram verificados nesta sessão
-(rodando o jogo de verdade, ou em device Android real via `adb`); o resto segue o comportamento
-já documentado no código-fonte.
+Todos os nomes de componente, campo e Action/Trigger citados aqui são os reais da engine — os
+passos abaixo mostram exatamente onde clicar no Inspector pra chegar no mesmo resultado.
+Trechos marcados **testado** foram verificados nesta sessão (rodando o jogo de verdade, ou em
+device Android real via `adb`); o resto segue o comportamento já documentado no código-fonte.
 
 ---
 
@@ -74,7 +74,7 @@ centralizado. Clicar nele troca pra `scenes/main.json` (o placeholder girando).
 ## 2. Estrutura de cenas do jogo
 
 Um jogo completo normalmente usa (tudo dentro de `Assets/scenes/`; o que separa "cena de gameplay"
-de "tela de UI" é só o campo `"UI": true` no JSON, não a pasta):
+de "tela de UI" é uma flag interna que o editor liga sozinho, não a pasta):
 
 | Arquivo | Tipo (painel) | Papel |
 |---|---|---|
@@ -104,17 +104,25 @@ Editável 100% pelo Inspector (painel TELAS UI → abre a cena → seleciona o b
   primeiras, o campo "Nome"/"Arquivo"/"Tela UI" também vira ComboBox listando as cenas/telas reais
   do projeto (nada de digitar caminho + `.json` na mão, nem acertar o nome de cor).
 
-O botão "Jogar" do scaffold já sai assim (pode editar texto/posição à vontade):
+O botão "Jogar" do scaffold já sai assim no Inspector (painel TELAS UI → abre `MainMenu.json` →
+seleciona o botão) — pode editar texto/posição à vontade:
 
-```json
-{
-  "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
-  "Width": 200, "Height": 48, "Text": "Jogar",
-  "OnClick": [
-    { "Action": "HideUI", "Name": "MainMenu" },
-    { "Action": "ChangeScene", "Name": "scenes/main.json" }
-  ]
-}
+```
+UiButton
+  X  0            Y  0
+  AnchorX  [ Center ▾ ]   AnchorY  [ Center ▾ ]
+  Width  200       Height  48
+  Text   Jogar
+
+  ONCLICK
+  ┌────────────────────────────────┐
+  │ [ HideUI ▾ ]                ✕  │
+  │ Nome     MainMenu              │
+  ├────────────────────────────────┤
+  │ [ ChangeScene ▾ ]            ✕ │
+  │ Arquivo  scenes/main.json      │
+  └────────────────────────────────┘
+  [ + Adicionar Ação ]
 ```
 
 `UIManager.Update` (chamado automaticamente pelo `Game` a cada frame) faz o hit-test e dispara
@@ -149,31 +157,40 @@ cena que faz sentido) aberta antes de dar Play.
 
 ## 5. HUD / menu durante a gameplay
 
-Cria `scenes/GameplayUI.json` (painel TELAS UI → **+**) com o que precisa ficar visível **durante**
-a fase — Ouro/Pontos/HP, e/ou um botão "Menu" que leva pra pausa (seção 6):
+Cria `scenes/GameplayUI.json` (painel TELAS UI → **+**, nomeia `GameplayUI`) com o que precisa
+ficar visível **durante** a fase — Ouro/Pontos/HP, e/ou um botão "Menu" que leva pra pausa
+(seção 6). Passo a passo no Inspector:
 
-```json
-{
-  "Scene": "GameplayUI",
-  "UI": true,
-  "Objects": [
-    { "Name": "Backdrop", "Components": [
-      { "Type": "UiPanel", "X": 8, "Y": 8, "Width": 220, "Height": 60, "Color": "#000000A0" }
-    ]},
-    { "Name": "GoldLabel", "Components": [
-      { "Type": "UiText", "X": 16, "Y": 14, "Text": "Ouro: {Gold}", "Color": "#FFD24DFF" }
-    ]},
-    { "Name": "MenuButton", "Components": [
-      { "Type": "UiButton", "X": -16, "Y": 16, "AnchorX": "Right", "AnchorY": "Top",
-        "Width": 100, "Height": 32, "Text": "Menu",
-        "OnClick": [
-          { "Action": "SetPause", "On": true },
-          { "Action": "ShowUI", "Name": "PauseMenu" }
-        ]
-      }
-    ]}
-  ]
-}
+1. **"+ Nova"** entidade `Backdrop` → **"+Add Componente" → UiPanel** — X:`8`, Y:`8`,
+   Width:`220`, Height:`60`, Color:`#000000A0`.
+2. **"+ Nova"** entidade `GoldLabel` → **"+Add Componente" → UiText** — X:`16`, Y:`14`,
+   Text:`Ouro: {Gold}`, Color:`#FFD24DFF`.
+3. **"+ Nova"** entidade `MenuButton` → **"+Add Componente" → UiButton** — X:`-16`, Y:`16`,
+   AnchorX:`Right`, AnchorY:`Top`, Width:`100`, Height:`32`, Text:`Menu`.
+4. No `MenuButton`, painel ONCLICK → **"+ Adicionar Ação"** duas vezes: `SetPause` (On: `true`)
+   e `ShowUI` (Nome: `PauseMenu`).
+
+```
+Backdrop → UiPanel
+  X  8   Y  8   Width  220   Height  60   Color  #000000A0
+
+GoldLabel → UiText
+  X  16   Y  14   Text  Ouro: {Gold}   Color  #FFD24DFF
+
+MenuButton → UiButton
+  X  -16          Y  16
+  AnchorX  [ Right ▾ ]   AnchorY  [ Top ▾ ]
+  Width  100       Height  32
+  Text   Menu
+
+  ONCLICK
+  ┌────────────────────────────────┐
+  │ [ SetPause ▾ ]                ✕ │
+  │ ☑ On                           │
+  ├────────────────────────────────┤
+  │ [ ShowUI ▾ ]                  ✕ │
+  │ Nome    PauseMenu              │
+  └────────────────────────────────┘
 ```
 
 `{Gold}` puxa variável do `GameState`; `{Item:Nome}` puxaria quantidade de inventário;
@@ -195,14 +212,22 @@ protected override void OnLoad()
 }
 ```
 
-E o botão "Jogar" do `MainMenu` precisa **mostrar** a `GameplayUI` ao entrar (seção 4):
+E o botão "Jogar" do `MainMenu` precisa **mostrar** a `GameplayUI` ao entrar (seção 4) — volta no
+painel ONCLICK do botão e adiciona uma terceira ação `ShowUI` **entre** o `HideUI` e o
+`ChangeScene` que já estavam lá (seção 3):
 
-```json
-"OnClick": [
-  { "Action": "HideUI", "Name": "MainMenu" },
-  { "Action": "ShowUI", "Name": "GameplayUI" },
-  { "Action": "ChangeScene", "Name": "scenes/main.json" }
-]
+```
+ONCLICK
+┌────────────────────────────────┐
+│ [ HideUI ▾ ]                 ✕ │
+│ Nome     MainMenu              │
+├────────────────────────────────┤
+│ [ ShowUI ▾ ]                  ✕ │
+│ Nome     GameplayUI            │
+├────────────────────────────────┤
+│ [ ChangeScene ▾ ]             ✕ │
+│ Arquivo  scenes/main.json      │
+└────────────────────────────────┘
 ```
 
 ---
@@ -217,40 +242,55 @@ pra isso existe a ação `SetPause`.
 de rodar Behaviors, colisão, partículas e vida — a cena continua desenhada atrás, só parada. UI
 continua respondendo a clique normalmente (pausa não afeta `UIManager`).
 
-Cria `scenes/PauseMenu.json` (carregada e escondida no boot, igual `GameplayUI` — mais uma linha
-de `UI.Load`/`UI.Hide` em `OnLoad`):
+Cria `scenes/PauseMenu.json` (painel TELAS UI → **+**, nomeia `PauseMenu`; carregada e escondida
+no boot, igual `GameplayUI` — mais uma linha de `UI.Load`/`UI.Hide` em `OnLoad`):
 
-```json
-{
-  "Scene": "PauseMenu",
-  "UI": true,
-  "Objects": [
-    { "Name": "CloseButton", "Components": [
-      { "Type": "UiButton", "X": 0, "Y": 0, "AnchorX": "Center", "AnchorY": "Center",
-        "Width": 200, "Height": 48, "Text": "Continuar",
-        "OnClick": [
-          { "Action": "SetPause", "On": false },
-          { "Action": "HideUI", "Name": "PauseMenu" }
-        ]
-      }
-    ]}
-  ]
-}
+1. **"+ Nova"** entidade `CloseButton` → **"+Add Componente" → UiButton** — X:`0`, Y:`0`,
+   AnchorX:`Center`, AnchorY:`Center`, Width:`200`, Height:`48`, Text:`Continuar`.
+2. Painel ONCLICK → **"+ Adicionar Ação"** duas vezes: `SetPause` (On: `false`) e `HideUI`
+   (Nome: `PauseMenu`).
+
+```
+CloseButton → UiButton
+  X  0            Y  0
+  AnchorX  [ Center ▾ ]   AnchorY  [ Center ▾ ]
+  Width  200       Height  48
+  Text   Continuar
+
+  ONCLICK
+  ┌────────────────────────────────┐
+  │ [ SetPause ▾ ]                ✕ │
+  │ ☐ On                           │
+  ├────────────────────────────────┤
+  │ [ HideUI ▾ ]                  ✕ │
+  │ Nome    PauseMenu              │
+  └────────────────────────────────┘
 ```
 
 Pra também dar a opção de sair de vez pro menu principal a partir da pausa (sem deixar o `World`
 "vivo" escondido atrás), aponte outro botão pra uma cena de gameplay **vazia de verdade** (não
 pra `MainMenu.json` — ela é tela de UI, não cena; ver seção 4), por exemplo `scenes/Boot.json`
-(`{"Scene": "Boot", "Objects": []}`):
+(cena nova pelo **+** do painel CENAS, sem objeto nenhum dentro). Num segundo botão da
+`PauseMenu`, painel ONCLICK → **"+ Adicionar Ação"** cinco vezes, nesta ordem:
 
-```json
-"OnClick": [
-  { "Action": "SetPause", "On": false },
-  { "Action": "HideUI", "Name": "PauseMenu" },
-  { "Action": "HideUI", "Name": "GameplayUI" },
-  { "Action": "ShowUI", "Name": "MainMenu" },
-  { "Action": "ChangeScene", "Name": "scenes/Boot.json" }
-]
+```
+ONCLICK
+┌────────────────────────────────┐
+│ [ SetPause ▾ ]                ✕ │
+│ ☐ On                           │
+├────────────────────────────────┤
+│ [ HideUI ▾ ]                  ✕ │
+│ Nome     PauseMenu             │
+├────────────────────────────────┤
+│ [ HideUI ▾ ]                  ✕ │
+│ Nome     GameplayUI            │
+├────────────────────────────────┤
+│ [ ShowUI ▾ ]                  ✕ │
+│ Nome     MainMenu              │
+├────────────────────────────────┤
+│ [ ChangeScene ▾ ]             ✕ │
+│ Arquivo  scenes/Boot.json      │
+└────────────────────────────────┘
 ```
 
 ---
@@ -263,25 +303,34 @@ Na cena `main.json`, crie a entidade `Player` (**+ Nova**), depois **+ Add** est
 - **Collider** — `Shape: Box`, ajuste Width/Height pro hitbox; `IsSolid: true`.
 - **Animator** — `FrameWidth`/`FrameHeight` do spritesheet, `SheetColumns`.
 
-Clipes (botão **+ Clipe** no Animator):
+Clipes (botão **+ Clipe** no Animator, um clique por linha, preenche Nome/Duração/Frames/Loop):
 
-```json
-"Clips": [
-  { "Name": "idle",   "Duration": 0.2,  "Frames": [0,1,2,3], "Loop": true },
-  { "Name": "walk",   "Duration": 0.1,  "Frames": [4,5,6,7], "Loop": true },
-  { "Name": "attack", "Duration": 0.06, "Frames": [8,9,10],  "Loop": false }
-]
+```
+CLIPES
+┌───────────────────────────────────────────────────┐
+│ Nome  idle     Duração 0.2   Frames 0,1,2,3  ☑ Loop │
+├───────────────────────────────────────────────────┤
+│ Nome  walk     Duração 0.1   Frames 4,5,6,7  ☑ Loop │
+├───────────────────────────────────────────────────┤
+│ Nome  attack   Duração 0.06  Frames 8,9,10   ☐ Loop │
+└───────────────────────────────────────────────────┘
+[ + Clipe ]
 ```
 
 Transições (botão **+ Transição**) — troca de clipe sozinha, sem código:
 
-```json
-"Transitions": [
-  { "From": "idle",   "To": "walk",  "Parameter": "Speed",  "CompareOp": ">=", "CompareValue": 1 },
-  { "From": "walk",   "To": "idle",  "Parameter": "Speed",  "CompareOp": "<",  "CompareValue": 1 },
-  { "From": "Any",    "To": "attack","Parameter": "Attack", "IsBool": true,    "BoolValue": true },
-  { "From": "attack", "To": "idle",  "Parameter": "Attack", "IsBool": true,    "BoolValue": false }
-]
+```
+TRANSIÇÕES
+┌─────────────────────────────────────────────────────────────┐
+│ De  idle    Para  walk    Parâmetro Speed   [ >= ▾ ]  1     │
+├─────────────────────────────────────────────────────────────┤
+│ De  walk    Para  idle    Parâmetro Speed   [ <  ▾ ]  1     │
+├─────────────────────────────────────────────────────────────┤
+│ De  Any     Para  attack  Parâmetro Attack  ☑ IsBool  Valor ☑  │
+├─────────────────────────────────────────────────────────────┤
+│ De  attack  Para  idle    Parâmetro Attack  ☑ IsBool  Valor ☐  │
+└─────────────────────────────────────────────────────────────┘
+[ + Transição ]
 ```
 
 A última regra é o que tira do `attack` — sem ela o Animator fica preso no último frame pra
@@ -391,19 +440,24 @@ resolve.
 ## 10. Partículas (impacto de ataque, brilho de moeda)
 
 `ParticleEmitter` não tem "modo rajada" dedicado — simula rajada com `MaxParticles` baixo +
-desligando `Emitting` logo depois de nascer. Prefab `HitEffect.json`:
+desligando `Emitting` logo depois de nascer. Entidade `HitEffect` (depois vira prefab):
 
-```json
-{
-  "Name": "HitEffect",
-  "Components": [
-    { "Type": "Transform", "X": 0, "Y": 0 },
-    { "Type": "ParticleEmitter", "Rate": 40, "MaxParticles": 10,
-      "LifeMin": 0.2, "LifeMax": 0.4, "SpeedMin": 40, "SpeedMax": 90,
-      "SizeStart": 6, "SizeEnd": 0,
-      "ColorStart": "#FFCC44FF", "ColorEnd": "#FF000000" }
-  ]
-}
+1. **"+ Nova"**, renomeia pra `HitEffect`.
+2. **"+Add Componente" → Transform** — X:`0`, Y:`0`.
+3. **"+Add Componente" → ParticleEmitter** — Rate:`40`, MaxParticles:`10`, LifeMin:`0.2`,
+   LifeMax:`0.4`, SpeedMin:`40`, SpeedMax:`90`, SizeStart:`6`, SizeEnd:`0`,
+   ColorStart:`#FFCC44FF`, ColorEnd:`#FF000000`.
+
+```
+Transform
+  X  0   Y  0
+
+ParticleEmitter
+  Rate  40           MaxParticles  10
+  LifeMin  0.2        LifeMax  0.4
+  SpeedMin  40         SpeedMax  90
+  SizeStart  6          SizeEnd  0
+  ColorStart  #FFCC44FF  ColorEnd  #FF000000
 ```
 
 Salve como prefab (selecione a entidade → **Salvar como Prefab…**), depois instancie via
@@ -420,18 +474,33 @@ Zero código. `PlayerTouch` funciona só por distância entre Transforms — nã
 `Collider` nenhum (só use `Collider` se também quiser que o NPC bloqueie passagem física,
 caso em que ele fica `IsSolid: true` separado do trigger de diálogo). Entidade `NPC`:
 
-```json
-{ "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 20, "Once": true,
-  "Actions": [
-    { "Action": "ShowMessage", "Name": "Ferreiro", "Text": "Bem-vindo à forja!" },
-    { "Action": "ShowChoice", "Text": "Quer comprar uma espada por 10 de ouro?",
-      "Options": [
-        { "Text": "Sim", "Switch": "comprou_espada" },
-        { "Text": "Não" }
-      ]
-    }
-  ]
-}
+1. **"+ Nova"**, renomeia pra `NPC`.
+2. **"+Add Componente" → EventTrigger** — Trigger:`PlayerTouch`, Radius:`20`, marca `Once`.
+3. **"+ Adicionar Ação"**: `ShowMessage` (Nome:`Ferreiro`, Texto:`Bem-vindo à forja!`), depois
+   outra ação `ShowChoice` (Texto:`Quer comprar uma espada por 10 de ouro?`, Opções: `Sim`
+   com Switch `comprou_espada`, e `Não` sem switch).
+
+```
+EventTrigger
+  Trigger   [ PlayerTouch ▾ ]
+  Radius    20
+  ☑ Once
+
+  AÇÕES
+  ┌───────────────────────────────────────────┐
+  │ [ ShowMessage ▾ ]                       ✕ │
+  │ Nome    Ferreiro                          │
+  │ Texto   Bem-vindo à forja!                │
+  ├───────────────────────────────────────────┤
+  │ [ ShowChoice ▾ ]                        ✕ │
+  │ Texto   Quer comprar uma espada por 10 de │
+  │         ouro?                             │
+  │ Opções:                                   │
+  │   Sim   [Switch: comprou_espada]      ✕   │
+  │   Não   [Switch: ______]              ✕   │
+  │   [ + Opção ]                             │
+  └───────────────────────────────────────────┘
+  [ + Adicionar Ação ]
 ```
 
 **Não** encadeie um `EventTrigger` `SwitchOn` puro pra cobrar o ouro: `RemoveItem` nunca deixa a
@@ -471,11 +540,20 @@ public sealed class ShopKeeper : Behavior
 }
 ```
 
-```json
-{ "Name": "Shop", "Components": [
-  { "Type": "Transform", "X": -60, "Y": 0 },
-  { "Type": "ShopKeeper", "Switch": "comprou_espada", "Currency": "Gold", "Price": 10, "ItemToBuy": "Espada" }
-] }
+Entidade `Shop` no Inspector: **"+ Nova"** → renomeia `Shop` → **"+Add Componente" →
+Transform** (X:`-60`, Y:`0`) → **"+Add Componente" → ShopKeeper** (o script aparece na lista
+igual componente nativo, campos públicos viram os quatro campos abaixo, editáveis por
+entidade):
+
+```
+Transform
+  X  -60   Y  0
+
+ShopKeeper
+  Switch      comprou_espada
+  Currency    Gold
+  Price       10
+  ItemToBuy   Espada
 ```
 
 Seu jogo precisa chamar `Dialogue.Draw(...)` e ler `Input` (Espaço/Enter avança, W/S ou setas
@@ -488,35 +566,52 @@ pro padrão pronto.
 
 Duas opções, ambas sem código:
 
-- **Variável simples** (`GameState`, via `SetVariable`) — mais direto pra "Ouro"/"Pontos" como
-  número solto:
-  ```json
-  { "Action": "SetVariable", "Name": "Points", "Op": "Add", "Value": 10 }
-  ```
-- **Inventário** (`InventoryManager`, via `AddItem`/`RemoveItem`) — melhor se "ouro" convive
-  com outros itens (poções, chaves) que também têm quantidade:
-  ```json
-  { "Action": "AddItem", "Name": "Gold", "Value": 5 }
-  ```
+- **Variável simples** (`GameState`, via ação `SetVariable`) — mais direto pra "Ouro"/"Pontos"
+  como número solto. No painel de Ações de qualquer `EventTrigger`/`OnClick`, **"+ Adicionar
+  Ação" → SetVariable** — Nome:`Points`, Operação:`Add`, Valor:`10`.
+- **Inventário** (`InventoryManager`, via ação `AddItem`/`RemoveItem`) — melhor se "ouro"
+  convive com outros itens (poções, chaves) que também têm quantidade. **"+ Adicionar Ação" →
+  AddItem** — Item:`Gold`, Quantidade:`5`.
 
 Moeda coletável, sem `Collider`, só `EventTrigger`:
 
-```json
-{
-  "Name": "Coin1",
-  "Components": [
-    { "Type": "Transform", "X": 120, "Y": 80 },
-    { "Type": "SpriteRenderer", "Texture": "sprites/coin.png" },
-    { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 12, "Once": true,
-      "Actions": [
-        { "Action": "AddItem", "Name": "Gold", "Value": 1 },
-        { "Action": "SetVariable", "Name": "Points", "Op": "Add", "Value": 10 },
-        { "Action": "PlaySound", "Name": "sounds/coin.wav" },
-        { "Action": "Destroy" }
-      ]
-    }
-  ]
-}
+1. **"+ Nova"**, renomeia pra `Coin1`.
+2. **"+Add Componente" → Transform** — X:`120`, Y:`80`.
+3. **"+Add Componente" → SpriteRenderer** — Texture:`sprites/coin.png`.
+4. **"+Add Componente" → EventTrigger** — Trigger:`PlayerTouch`, Radius:`12`, marca `Once`.
+5. **"+ Adicionar Ação"** quatro vezes: `AddItem` (Item:`Gold`, Quantidade:`1`), `SetVariable`
+   (Nome:`Points`, Operação:`Add`, Valor:`10`), `PlaySound` (Nome:`sounds/coin.wav`), `Destroy`
+   (sem campo extra).
+
+```
+Transform
+  X  120   Y  80
+
+SpriteRenderer
+  Texture   sprites/coin.png
+
+EventTrigger
+  Trigger   [ PlayerTouch ▾ ]
+  Radius    12
+  ☑ Once
+
+  AÇÕES
+  ┌─────────────────────────────────┐
+  │ [ AddItem ▾ ]                 ✕ │
+  │ Item          Gold              │
+  │ Quantidade    1                 │
+  ├─────────────────────────────────┤
+  │ [ SetVariable ▾ ]             ✕ │
+  │ Nome          Points            │
+  │ Operação      [ Add ▾ ]         │
+  │ Valor         10                │
+  ├─────────────────────────────────┤
+  │ [ PlaySound ▾ ]                ✕ │
+  │ Nome          sounds/coin.wav   │
+  ├─────────────────────────────────┤
+  │ [ Destroy ▾ ]                  ✕ │
+  └─────────────────────────────────┘
+  [ + Adicionar Ação ]
 ```
 
 `GameplayUI` (seção 5) já mostra `{Item:Gold}` ou `{Gold}` conforme a opção escolhida.
@@ -525,10 +620,12 @@ Moeda coletável, sem `Collider`, só `EventTrigger`:
 
 ## 13. Inimigo com pathfinding
 
-`Enemy` com `Transform`, `SpriteRenderer`, `Collider` (`IsSolid: true`), `NavAgent`:
+`Enemy` com `Transform`, `SpriteRenderer`, `Collider` (`IsSolid` marcado), e mais **"+Add
+Componente" → NavAgent** — Speed:`60`, ArriveThreshold:`4`:
 
-```json
-{ "Type": "NavAgent", "Speed": 60, "ArriveThreshold": 4 }
+```
+NavAgent
+  Speed  60   ArriveThreshold  4
 ```
 
 A grade de navegação nasce sozinha do primeiro `Tilemap` com `SolidTiles` da cena — não
@@ -596,14 +693,17 @@ de cena, já que controle é por script do jogador, não por entidade da cena.
 
 `Save` já persiste `GameState` (variáveis/switches) + `Inventory` + `Quests` + a posição
 (`Transform`) da entidade `Player` juntos — carregar um save volta o jogador exatamente onde
-salvou, não onde o JSON da cena originalmente colocou. Gatilho comum: item/alavanca de save,
-ou tecla dedicada.
+salvou, não onde a cena originalmente colocou. Gatilho comum: item/alavanca de save, ou tecla
+dedicada — num `EventTrigger` (ex. `KeyPress`), **"+ Adicionar Ação" → Save**, campo
+Valor:`0` (número do slot).
 
-```json
-{ "Action": "Save", "Value": 0 }
 ```
-
-(`Value` = número do slot.)
+AÇÕES
+┌─────────────────────────┐
+│ [ Save ▾ ]            ✕ │
+│ Valor    0              │
+└─────────────────────────┘
+```
 
 ---
 
