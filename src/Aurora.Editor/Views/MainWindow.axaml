@@ -5,7 +5,8 @@
         x:Class="Aurora.Editor.Views.MainWindow"
         Title="{Binding Title}"
         Width="1400" Height="850"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="#F2F4F7">
 
   <Window.DataTemplates>
     <!-- Editores de propriedades escalares -->
@@ -38,7 +39,7 @@
         <Expander Header="Animator" IsExpanded="True" HorizontalAlignment="Stretch">
           <StackPanel Margin="6,4" Spacing="4">
             <ItemsControl ItemsSource="{Binding Properties}" Margin="0,0,0,4"/>
-            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
                     Margin="0,2,0,2" Padding="0,4,0,0">
               <TextBlock Text="CLIPES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -46,7 +47,7 @@
             <Button Content="+ Clipe" Command="{Binding AddClipCommand}"
                     FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
 
-            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
                     Margin="0,4,0,2" Padding="0,4,0,0">
               <TextBlock Text="TRANSIÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -61,18 +62,18 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
     <!-- AnimationClip: uma linha por clipe -->
     <DataTemplate DataType="{x:Type vm:AnimationClipViewModel}">
-      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
           <Grid ColumnDefinitions="*,Auto">
             <TextBox Text="{Binding ClipName}" FontSize="12" Padding="4,3" Watermark="Nome…"/>
             <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Command="{Binding RemoveCommand}" Foreground="#D64545"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <Grid ColumnDefinitions="60,*,8,35,*">
@@ -90,14 +91,14 @@
 
     <!-- AnimatorTransition: De -> Para, condição sobre um parâmetro local -->
     <DataTemplate DataType="{x:Type vm:AnimatorTransitionViewModel}">
-      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
           <Grid ColumnDefinitions="*,20,*,Auto">
             <TextBox Text="{Binding From}" FontSize="11" Padding="4,3" Watermark="Any"/>
             <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.6"/>
             <TextBox Grid.Column="2" Text="{Binding To}" FontSize="11" Padding="4,3" Watermark="clipe…"/>
             <Button Grid.Column="3" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Command="{Binding RemoveCommand}" Foreground="#D64545"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <Grid ColumnDefinitions="60,*">
@@ -180,7 +181,7 @@
           </StackPanel>
 
           <!-- Separador de ações -->
-          <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+          <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
                   Margin="0,4,0,2" Padding="0,4,0,0">
             <TextBlock Text="AÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
           </Border>
@@ -195,7 +196,7 @@
               Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
               Command="{Binding RemoveCommand}"
               IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-              Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+              Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
@@ -208,7 +209,7 @@
           <StackPanel Margin="6,4" Spacing="4">
             <ItemsControl ItemsSource="{Binding Properties}"/>
 
-            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860"
+            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
                     Margin="0,2,0,2" Padding="0,4,0,0">
               <TextBlock Text="ONCLICK" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -223,7 +224,7 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
@@ -237,13 +238,13 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#FF6B6B" BorderThickness="0"/>
+                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
     <!-- Uma ação dentro de EventTrigger -->
     <DataTemplate DataType="{x:Type vm:EventActionViewModel}">
-      <Border Background="#1A1830" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
 
           <!-- Tipo + botão remover -->
@@ -251,7 +252,7 @@
             <ComboBox ItemsSource="{Binding ActionTypes}"
                       SelectedItem="{Binding ActionType}" FontSize="12"/>
             <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                    Command="{Binding RemoveCommand}" Foreground="#D64545"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
@@ -324,7 +325,7 @@
                     <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="11"
                              Padding="4,2" Watermark="Switch"/>
                     <Button Grid.Column="2" Content="✕" FontSize="10" Padding="4,2"
-                            Command="{Binding RemoveCommand}" Foreground="#FF6B6B"
+                            Command="{Binding RemoveCommand}" Foreground="#D64545"
                             Background="Transparent" BorderThickness="0"/>
                   </Grid>
                 </DataTemplate>
@@ -361,20 +362,20 @@
     </Menu>
 
     <!-- Toolbar de execução -->
-    <Border DockPanel.Dock="Top" Background="#16142A" Padding="8,5"
-            BorderBrush="#2A2740" BorderThickness="0,0,0,1">
+    <Border DockPanel.Dock="Top" Background="#E7EEF7" Padding="8,5"
+            BorderBrush="#D7DEE8" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="▶  Play" Click="OnPlay"
                 IsEnabled="{Binding CanPlay}"
                 FontSize="13" FontWeight="SemiBold" Padding="14,5"
-                Background="#1B5E20" Foreground="White"/>
+                Background="#2E9E44" Foreground="White"/>
         <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
                    VerticalAlignment="Center" FontSize="11" Opacity="0.5"
                    IsVisible="{Binding !CanPlay}"/>
       </StackPanel>
     </Border>
 
-    <Border DockPanel.Dock="Bottom" Background="#1E1C30" Padding="8,4">
+    <Border DockPanel.Dock="Bottom" Background="#E7EEF7" Padding="8,4">
       <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"/>
     </Border>
 
@@ -404,7 +405,7 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="1" Background="#2A2740"/>
+        <GridSplitter Grid.Row="1" Background="#D7DEE8"/>
 
         <DockPanel Grid.Row="2" MaxHeight="110">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
@@ -428,7 +429,7 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="3" Background="#2A2740"/>
+        <GridSplitter Grid.Row="3" Background="#D7DEE8"/>
 
         <DockPanel Grid.Row="4" MaxHeight="110">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
@@ -448,7 +449,7 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="5" Background="#2A2740"/>
+        <GridSplitter Grid.Row="5" Background="#D7DEE8"/>
 
         <DockPanel Grid.Row="6">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
@@ -466,7 +467,7 @@
             <ListBox.ItemTemplate>
               <DataTemplate>
                 <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
-                  <Border Width="32" Height="32" Background="#141220" CornerRadius="3">
+                  <Border Width="32" Height="32" Background="#E7EEF7" CornerRadius="3">
                     <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="2"
                            RenderOptions.BitmapInterpolationMode="None"/>
                   </Border>
@@ -478,7 +479,7 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="7" Background="#2A2740"/>
+        <GridSplitter Grid.Row="7" Background="#D7DEE8"/>
 
         <DockPanel Grid.Row="8">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
@@ -498,22 +499,22 @@
                 <DataTemplate>
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"/>
-                    <Border Grid.Column="1" Background="#2D1E50" CornerRadius="3" Padding="5,2"
+                    <Border Grid.Column="1" Background="#4A90D9" CornerRadius="3" Padding="5,2"
                             Margin="6,0,0,0" VerticalAlignment="Center"
                             IsVisible="{Binding HasEventTrigger}">
                       <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
-                                 Foreground="#B89FFF" FontWeight="SemiBold"/>
+                                 Foreground="#FFFFFF" FontWeight="SemiBold"/>
                     </Border>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
 
-            <GridSplitter Grid.Row="1" Background="#2A2740"
+            <GridSplitter Grid.Row="1" Background="#D7DEE8"
                           IsVisible="{Binding HasEventEntities}"/>
 
             <!-- Painel EVENTOS: lista rápida de entidades com EventTrigger -->
-            <Border Grid.Row="2" Background="#100D1A"
+            <Border Grid.Row="2" Background="#EDF2FA"
                     IsVisible="{Binding HasEventEntities}">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="EVENTOS" FontSize="10" FontWeight="Bold"
@@ -525,10 +526,10 @@
                     <DataTemplate>
                       <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"/>
-                        <Border Grid.Column="1" Background="#2D1E50" CornerRadius="3" Padding="4,1"
+                        <Border Grid.Column="1" Background="#4A90D9" CornerRadius="3" Padding="4,1"
                                 Margin="4,0,0,0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
-                                     Foreground="#B89FFF"/>
+                                     Foreground="#FFFFFF"/>
                         </Border>
                       </Grid>
                     </DataTemplate>
@@ -540,12 +541,12 @@
         </DockPanel>
       </Grid>
 
-      <GridSplitter Grid.Column="1" Background="#2A2740"/>
+      <GridSplitter Grid.Column="1" Background="#D7DEE8"/>
 
       <!-- Cena + paleta de tiles -->
       <Grid Grid.Column="2" RowDefinitions="*,Auto">
         <views:SceneCanvas x:Name="Scene" Grid.Row="0" DataContext="{Binding}"/>
-        <Border Grid.Row="1" Background="#1E1C30" Padding="8,6"
+        <Border Grid.Row="1" Background="#E7EEF7" Padding="8,6"
                 IsVisible="{Binding HasTilePalette}">
           <ListBox ItemsSource="{Binding PaletteTiles}"
                    SelectedItem="{Binding SelectedTileBrush}"
@@ -557,7 +558,7 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate>
-                <Border Width="36" Height="36" Background="#141220" CornerRadius="3"
+                <Border Width="36" Height="36" Background="#E7EEF7" CornerRadius="3"
                         ToolTip.Tip="{Binding Index}">
                   <Panel>
                     <Image Source="{Binding Image}" Stretch="Uniform" Margin="2"
@@ -572,7 +573,7 @@
         </Border>
       </Grid>
 
-      <GridSplitter Grid.Column="3" Background="#2A2740"/>
+      <GridSplitter Grid.Column="3" Background="#D7DEE8"/>
 
       <!-- Inspector -->
       <DockPanel Grid.Column="4">
@@ -580,7 +581,7 @@
                    FontWeight="Bold" Opacity="0.5"/>
 
         <!-- Assets Root — visível quando há uma cena aberta -->
-        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,2"
+        <Border DockPanel.Dock="Top" Background="#EDF2FA" Padding="8,6" Margin="0,0,0,2"
                 IsVisible="{Binding HasDocument}">
           <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
             <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"
@@ -594,7 +595,7 @@
         </Border>
 
         <!-- Projeto: caminho do executável/csproj para o botão Play -->
-        <Border DockPanel.Dock="Top" Background="#1A1830" Padding="8,6" Margin="0,0,0,4"
+        <Border DockPanel.Dock="Top" Background="#EDF2FA" Padding="8,6" Margin="0,0,0,4"
                 IsVisible="{Binding HasDocument}">
           <StackPanel Spacing="4">
             <TextBlock Text="PROJETO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
@@ -629,7 +630,7 @@
             <Button Content="Salvar como Prefab…" Click="OnSaveAsPrefab" FontSize="12"
                     HorizontalAlignment="Stretch" Margin="0,0,0,8"
                     IsVisible="{Binding !HasPrefab}"/>
-            <Border Background="#1A1830" CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
+            <Border Background="#EDF2FA" CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
                     IsVisible="{Binding HasPrefab}">
               <StackPanel Spacing="4">
                 <TextBlock Text="{Binding PrefabPath}" FontSize="11" Opacity="0.6"
@@ -648,7 +649,7 @@
             <ItemsControl ItemsSource="{Binding Components}"/>
 
             <!-- Adicionar Componente -->
-            <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860" Margin="0,8,0,4"/>
+            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Margin="0,8,0,4"/>
             <Grid ColumnDefinitions="*,Auto,Auto">
               <ComboBox ItemsSource="{Binding AvailableComponentTypes}"
                         SelectedItem="{Binding NewComponentType}" FontSize="12"/>
