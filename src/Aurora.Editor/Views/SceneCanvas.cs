@@ -57,6 +57,16 @@ public sealed class SceneCanvas : Control
     /// <summary>Ponto do mundo no centro do viewport — onde entidades novas nascem.</summary>
     public Point CameraCenter => _cameraPosition;
 
+    /// <summary>Volta câmera/zoom pro estado inicial — scroll de zoom não tem limite visual
+    /// (só o clamp 0.05x-20x), então rolar demais deixa a cena minúscula/fora de vista sem
+    /// nenhum jeito óbvio de voltar. Chamado pela tecla Home (ver MainWindow.axaml.cs).</summary>
+    public void ResetView()
+    {
+        _zoom = 0.5;
+        _cameraPosition = default;
+        InvalidateVisual();
+    }
+
     public SceneCanvas()
     {
         ClipToBounds = true;

@@ -376,7 +376,8 @@
     </Border>
 
     <Border DockPanel.Dock="Bottom" Background="#E7EEF7" Padding="8,4">
-      <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"/>
+      <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"
+                 ToolTip.Tip="{Binding StatusDetail}"/>
     </Border>
 
     <Grid ColumnDefinitions="230,4,*,4,330">

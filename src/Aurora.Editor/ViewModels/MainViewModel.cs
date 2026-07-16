@@ -61,14 +61,24 @@ public sealed class MainViewModel : ViewModelBase
         Status = "Procurando scripts [SceneScript] no projeto do jogo...";
         try
         {
-            var scripts = await GameScriptDiscovery.DiscoverAsync(_settings.GameProject);
+            var result = await GameScriptDiscovery.DiscoverAsync(_settings.GameProject);
             if (version != _scriptCatalogVersion)
                 return; // outra chamada mais nova já está em andamento/terminou
 
+            if (result.Error is not null)
+            {
+                // Mantém o catálogo antigo (não zera o dropdown) — só avisa que este
+                // refresh falhou, tipicamente porque o script novo/editado não compila.
+                Status = $"Scripts não atualizados: {result.Error}";
+                StatusDetail = result.Detail ?? result.Error;
+                return;
+            }
+
             CustomScripts.Clear();
-            foreach (var script in scripts)
+            foreach (var script in result.Scripts)
                 CustomScripts.Add(script);
             Status = $"{CustomScripts.Count} script(s) encontrado(s).";
+            StatusDetail = null;
         }
         finally
         {
@@ -115,6 +125,17 @@ public sealed class MainViewModel : ViewModelBase
         set => Set(ref _status, value);
     }
 
+    private string? _statusDetail;
+
+    /// <summary>Log completo (stdout+stderr) do último build/discover que falhou — não existe
+    /// console nenhum pra olhar (os processos rodam com CreateNoWindow=true), então isso é
+    /// mostrado como tooltip da status bar. Null quando não há detalhe extra (some o tooltip).</summary>
+    public string? StatusDetail
+    {
+        get => _statusDetail;
+        set => Set(ref _statusDetail, value);
+    }
+
     public string Title => _document is null
         ? "Aurora Editor"
         : $"Aurora Editor — {Path.GetFileName(_document.FilePath)}{(IsDirty ? " *" : "")}";
@@ -122,7 +143,7 @@ public sealed class MainViewModel : ViewModelBase
     public bool HasDocument => _document is not null;
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
-    public bool CanPlay => _document is not null && !string.IsNullOrWhiteSpace(_settings?.GameProject);
+    public bool CanPlay => _document is not null && !string.IsNullOrWhiteSpace(_settings?.GameProject) && !IsPreparingPlay;
 
     public string AssetsRootDisplay => _document?.AssetsRoot ?? "";
 
@@ -165,8 +186,21 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Salva a cena e lança o executável ou dotnet run com --scene.</summary>
-    public void Play()
+    private bool _isPreparingPlay;
+    public bool IsPreparingPlay
+    {
+        get => _isPreparingPlay;
+        private set
+        {
+            if (Set(ref _isPreparingPlay, value))
+                Raise(nameof(CanPlay));
+        }
+    }
+
+    /// <summary>Salva a cena, builda o projeto (pra pegar erro de compilação antes de
+    /// tentar rodar — <c>dotnet run</c> com UseShellExecute não deixa ler stderr) e só
+    /// então lança o executável ou dotnet run com --scene.</summary>
+    public async void Play()
     {
         if (_document is null || string.IsNullOrWhiteSpace(_settings?.GameProject))
         {
@@ -178,10 +212,52 @@ public sealed class MainViewModel : ViewModelBase
 
         string project   = _settings!.GameProject!.Trim();
         string scenePath = _document.FilePath;
+        bool isExe = project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+
+        if (!isExe)
+        {
+            IsPreparingPlay = true;
+            Status = "Buildando projeto do jogo...";
+            try
+            {
+                var buildPsi = new ProcessStartInfo("dotnet", $"build \"{project}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true,
+                };
+
+                using var buildProcess = Process.Start(buildPsi)
+                    ?? throw new InvalidOperationException("Não consegui iniciar o dotnet build.");
+                string stdout = await buildProcess.StandardOutput.ReadToEndAsync();
+                string stderr = await buildProcess.StandardError.ReadToEndAsync();
+                await buildProcess.WaitForExitAsync();
+
+                if (buildProcess.ExitCode != 0)
+                {
+                    Status = $"Play cancelado — build falhou (código {buildProcess.ExitCode}): {GameScriptDiscovery.FirstErrorLine(stdout, stderr)}";
+                    StatusDetail = GameScriptDiscovery.CombineLog(stdout, stderr);
+                    return;
+                }
+
+                StatusDetail = null;
+            }
+            catch (Exception ex)
+            {
+                Status = $"Erro ao buildar antes do Play: {ex.Message}";
+                StatusDetail = ex.ToString();
+                return;
+            }
+            finally
+            {
+                IsPreparingPlay = false;
+            }
+        }
 
         try
         {
-            ProcessStartInfo psi = project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ProcessStartInfo psi = isExe
                 ? new ProcessStartInfo(project, $"--scene \"{scenePath}\"")
                   { UseShellExecute = true }
                 : new ProcessStartInfo("dotnet",
@@ -194,6 +270,7 @@ public sealed class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             Status = $"Erro ao iniciar jogo: {ex.Message}";
+            StatusDetail = ex.ToString();
         }
     }
 
@@ -255,31 +332,25 @@ public sealed class MainViewModel : ViewModelBase
 
             if (process.ExitCode != 0)
             {
-                Status = $"Build falhou (código {process.ExitCode}): {FirstErrorLine(stdout, stderr)}";
+                Status = $"Build falhou (código {process.ExitCode}): {GameScriptDiscovery.FirstErrorLine(stdout, stderr)}";
+                StatusDetail = GameScriptDiscovery.CombineLog(stdout, stderr);
                 return false;
             }
 
             Status = $"Build concluído: {outputDir}";
+            StatusDetail = null;
             return true;
         }
         catch (Exception ex)
         {
             Status = $"Erro ao buildar: {ex.Message}";
+            StatusDetail = ex.ToString();
             return false;
         }
         finally
         {
             IsBuilding = false;
         }
-    }
-
-    private static string FirstErrorLine(string stdout, string stderr)
-    {
-        string combined = stderr.Length > 0 ? stderr : stdout;
-        string? line = combined.Split('\n')
-            .Select(l => l.Trim())
-            .FirstOrDefault(l => l.Contains("error", StringComparison.OrdinalIgnoreCase));
-        return line ?? "veja o log completo no terminal.";
     }
 
     private bool _isExportingAndroid;
@@ -351,6 +422,7 @@ public sealed class MainViewModel : ViewModelBase
             catch (Exception ex)
             {
                 Status = $"Falha ao gerar projeto Android: {ex.Message}";
+                StatusDetail = ex.ToString();
                 return null;
             }
 
@@ -376,7 +448,8 @@ public sealed class MainViewModel : ViewModelBase
 
             if (process.ExitCode != 0)
             {
-                Status = $"Build Android falhou (código {process.ExitCode}): {FirstErrorLine(stdout, stderr)}";
+                Status = $"Build Android falhou (código {process.ExitCode}): {GameScriptDiscovery.FirstErrorLine(stdout, stderr)}";
+                StatusDetail = GameScriptDiscovery.CombineLog(stdout, stderr);
                 return null;
             }
 
@@ -387,11 +460,13 @@ public sealed class MainViewModel : ViewModelBase
             Status = apk is not null
                 ? $"APK gerado: {apk}"
                 : $"Build concluído mas não achei o .apk em {androidProjectDir}.";
+            StatusDetail = null;
             return apk;
         }
         catch (Exception ex)
         {
             Status = $"Erro ao exportar Android: {ex.Message}";
+            StatusDetail = ex.ToString();
             return null;
         }
         finally

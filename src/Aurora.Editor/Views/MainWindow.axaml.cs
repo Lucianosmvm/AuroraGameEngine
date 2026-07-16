@@ -82,6 +82,13 @@ public partial class MainWindow : Window
                 ViewModel.ClearTileBrush();
                 e.Handled = true;
             }
+            else if (e.Key == Key.Home && e.Source is not TextBox)
+            {
+                // Zoom do scroll não tem limite visual (só o clamp interno) — rolar demais
+                // deixa a cena minúscula/fora de vista. Home restaura câmera/zoom padrão.
+                Scene.ResetView();
+                e.Handled = true;
+            }
             else if (e.Key == Key.Delete && e.Source is not TextBox)
             {
                 // Delete só fora de campos de texto — senão apagar caractere apaga entidade.
