@@ -186,6 +186,18 @@ public abstract class Game : IDisposable
         Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests);
         Events.Save = Save;
 
+        // Disponibiliza os sistemas do Game pra qualquer Behavior via World?.Input / World?.State
+        // / etc — sem isso, cada script precisaria de um campo público + injeção manual repetida
+        // em Game.OnUpdate (World já chega de graça em todo Behavior, isso só estende o mesmo canal).
+        World.Input = Input;
+        World.State = State;
+        World.Inventory = Inventory;
+        World.Quests = Quests;
+        World.Dialogue = Dialogue;
+        World.UI = UI;
+        World.Audio = Audio;
+        World.Save = Save;
+
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 

@@ -16,7 +16,6 @@ jogo 2D de carro top-down funciona (Micro Machines, GTA 1/2, etc.).
 using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
-using Aurora.Runtime.Input;
 using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
 
@@ -32,22 +31,21 @@ public sealed class CarController : Behavior
     public float Drag = 150f;       // desaceleração quando solta W/S (atrito/ar)
     public float TurnSpeed = 3f;    // radianos/seg no MaxSpeed — escala com a velocidade atual
 
-    public InputManager? Input; // injetado pelo Game (ver MeuJogoGame.OnUpdate)
-
     private float _speed; // escalar ao longo de Transform.Rotation — negativo = ré
 
     public float CurrentSpeed => _speed;
 
     public override void Update(float dt)
     {
-        if (Input is null) return;
+        var input = World?.Input;
+        if (input is null) return;
 
         var transform = Get<Transform>();
         if (transform is null) return;
 
-        bool throttle = Input.IsKeyDown(Key.W) || Input.WasGamepadButtonPressed(ButtonName.A);
-        bool brake = Input.IsKeyDown(Key.S);
-        float steer = Input.AxisX;
+        bool throttle = input.IsKeyDown(Key.W) || input.WasGamepadButtonPressed(ButtonName.A);
+        bool brake = input.IsKeyDown(Key.S);
+        float steer = input.AxisX;
 
         if (throttle)
             _speed += Acceleration * dt;
@@ -78,19 +76,8 @@ public sealed class CarController : Behavior
 **direita** (`forward = (cos, sin)`) — se seu sprite do carro olha pra cima por padrão, gira a
 arte 90° ou soma `MathF.PI / 2` no `Rotation` inicial da entidade.
 
-Injeção no `Game` (mesmo padrão do `PlayerController`, mas pra entidade `"Car"`):
-
-```csharp
-protected override void OnUpdate(float dt)
-{
-    if (World.TryFind("Car", out var car))
-    {
-        var cc = car.Get<CarController>();
-        if (cc is not null && cc.Input is null)
-            cc.Input = Input;
-    }
-}
-```
+`World?.Input` já chega pronto (seção 6.6 da referência de scripts) — não precisa de nenhuma
+injeção no `Game` pra isso funcionar, nem entidade com nome fixo `"Car"` do lado do `Game`.
 
 ---
 
@@ -182,12 +169,10 @@ public sealed class CheckpointGate : Behavior
 {
     public string RequiredEntityName = "Car";
 
-    public GameState? State; // injetado pelo Game
-
     public override void OnTriggerEnter(Entity other)
     {
         if (other.Name != RequiredEntityName) return;
-        State?.AddVariable("Lap", 1);
+        World?.State?.AddVariable("Lap", 1);
     }
 }
 ```
@@ -206,34 +191,20 @@ CheckpointGate
   RequiredEntityName   Car
 ```
 
-Injeção no `Game.OnUpdate` (mesmo padrão de sempre — busca todos, injeta quem falta):
-
-```csharp
-foreach (var (_, gate) in World.Query<CheckpointGate>())
-    gate.State ??= State;
-```
+`World?.State` já chega pronto — nenhuma injeção no `Game` precisa ser escrita.
 
 ---
 
 ## 6. HUD — velocímetro e voltas
 
 `CarController.CurrentSpeed` (só-leitura, adicionado no script acima) precisa ser
-sincronizado com `GameState` pra aparecer no HUD via token — nenhum componente nativo lê
-campo de script direto:
+sincronizada com `GameState` pra aparecer no HUD via token — nenhum componente nativo lê
+campo de script direto. Como `CarController` já tem `World` disponível, ele mesmo sincroniza
+no fim do próprio `Update` (uma linha a mais no script da seção 1, não precisa de nada no
+`Game`):
 
 ```csharp
-protected override void OnUpdate(float dt)
-{
-    if (World.TryFind("Car", out var car))
-    {
-        var cc = car.Get<CarController>();
-        if (cc is not null)
-        {
-            if (cc.Input is null) cc.Input = Input;
-            State.SetVariable("Speed", MathF.Abs(cc.CurrentSpeed));
-        }
-    }
-}
+World?.State?.SetVariable("Speed", MathF.Abs(_speed));
 ```
 
 Tela de UI:
@@ -267,9 +238,8 @@ só que ligado nos pneus em vez de instanciado por impacto.
 ## 8. Checklist
 
 - [ ] `CarController.cs` compilando, `Car` na cena com `Transform`+`SpriteRenderer`+`Collider`(não-kinemático)+`CarController`
-- [ ] `MeuJogoGame.OnUpdate` injetando `Input` na `Car`
 - [ ] Pista com `Tilemap.SolidTiles` e/ou paredes `Collider{IsSolid:true, IsKinematic:true}`
 - [ ] `Camera.Follow = "Car"`
 - [ ] Checkpoints com `Collider{IsSolid:false}` + `CheckpointGate` (não `EventTrigger PlayerTouch`)
-- [ ] `GameState` sincronizado (`Speed`, `Lap`) todo frame pro HUD
+- [ ] `CarController` sincronizando `World?.State?.SetVariable("Speed", ...)` pro HUD
 - [ ] (Opcional) `ParticleEmitter` de poeira ligado/desligado por código

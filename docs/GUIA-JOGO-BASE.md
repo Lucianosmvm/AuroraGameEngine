@@ -308,7 +308,6 @@ Esse é o único código realmente necessário pro movimento. Crie `PlayerContro
 using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
-using Aurora.Runtime.Input;
 using Aurora.Runtime.Scenes;
 using Silk.NET.Input;
 
@@ -320,21 +319,20 @@ public sealed class PlayerController : Behavior
     public float Speed = 100f;
     public float AttackCooldown = 0.4f;
 
-    public InputManager? Input; // injetado pelo Game (ver abaixo) — null até o primeiro frame
-
     private float _attackTimer;
     private bool _attacking;
 
     public override void Update(float dt)
     {
-        if (Input is null) return;
+        var input = World?.Input;
+        if (input is null) return;
 
         var transform = Get<Transform>()!;
         var anim = Get<Animator>();
 
         // AxisX/AxisY já combinam teclado (WASD/setas) + analógico esquerdo do gamepad
         // sozinhos — suporte a controle sem nenhum código extra aqui.
-        var move = new Vector2(Input.AxisX, Input.AxisY);
+        var move = new Vector2(input.AxisX, input.AxisY);
 
         if (move.LengthSquared() > 0f)
         {
@@ -355,36 +353,26 @@ public sealed class PlayerController : Behavior
         }
 
         // Espaço no teclado OU botão A do gamepad atacam.
-        bool attackPressed = Input.WasKeyPressed(Key.Space) || Input.WasGamepadButtonPressed(ButtonName.A);
+        bool attackPressed = input.WasKeyPressed(Key.Space) || input.WasGamepadButtonPressed(ButtonName.A);
         if (attackPressed && _attackTimer <= 0f)
         {
             _attacking = true;
             _attackTimer = AttackCooldown;
             anim?.SetBool("Attack", true);
-            // Dano em inimigos próximos: exponha World pro script (mesmo esquema do Input
-            // abaixo) e filtre Query<Transform, Collider>() por distância, ou marque inimigos
-            // com uma tag própria. Efeito visual: instancie o prefab HitEffect (seção 10).
+            // Dano em inimigos próximos: filtre World.Query<Transform, Collider>() por
+            // distância, ou marque inimigos com uma tag própria. Efeito visual: instancie
+            // o prefab HitEffect (seção 10).
         }
     }
 }
 ```
 
-`Behavior` só acessa componentes da própria entidade via `Get<T>()` — sem `Input`/`World`
-diretos. O `Game` injeta a dependência por propriedade pública assim que a cena carrega
-(scripts `[SceneScript]` exigem construtor sem parâmetro, então não dá pra injetar no
-construtor):
-
-```csharp
-protected override void OnUpdate(float dt)
-{
-    if (World.TryFind("Player", out var player))
-    {
-        var pc = player.Get<PlayerController>();
-        if (pc is not null && pc.Input is null)
-            pc.Input = Input;
-    }
-}
-```
+`Behavior` só acessa componentes da própria entidade via `Get<T>()` — mas `World` chega de
+graça em todo script (`Behavior.World`, setado automaticamente ao adicionar a entidade), e o
+`World` carrega referências pros sistemas do `Game` (`Input`, `State`, `Inventory`, `Quests`,
+`Dialogue`, `UI`, `Audio`, `Save`) desde o primeiro frame — não precisa de nenhuma injeção
+manual em `Game.OnUpdate` pra usar `Input` ou qualquer um desses. Só `World?.Input` já
+resolve.
 
 ---
 
@@ -450,7 +438,8 @@ caso em que ele fica `IsSolid: true` separado do trigger de diálogo). Entidade 
 quantidade negativa (trava em 0), e `EventTrigger` não combina duas condições (AND) num só
 componente — não dá pra checar "`HasItem` Gold≥10 **e** switch ligado" de uma vez, então o
 jogador ganharia a espada de graça sem ouro suficiente. Pra uma loja de verdade use um script
-pequeno como gate, injetado igual `Input` no `PlayerController`:
+pequeno como gate — `World?.State`/`World?.Inventory`/`World?.Dialogue` já chegam prontos,
+sem precisar de nenhuma injeção no `Game`:
 
 ```csharp
 [SceneScript]
@@ -461,24 +450,22 @@ public sealed class ShopKeeper : Behavior
     public int Price = 10;
     public string ItemToBuy = "Espada";
 
-    public GameState? State { get; set; }         // injetado pelo Game
-    public InventoryManager? Inventory { get; set; }
-    public DialogueSystem? Dialogue { get; set; }
-
     public override void Update(float dt)
     {
-        if (State is null || Inventory is null || !State.GetSwitch(Switch)) return;
-        State.SetSwitch(Switch, false); // consome, permite tentar de novo depois
+        var state = World?.State;
+        var inventory = World?.Inventory;
+        if (state is null || inventory is null || !state.GetSwitch(Switch)) return;
+        state.SetSwitch(Switch, false); // consome, permite tentar de novo depois
 
-        if (Inventory.GetCount(Currency) >= Price)
+        if (inventory.GetCount(Currency) >= Price)
         {
-            Inventory.Add(Currency, -Price);
-            Inventory.Add(ItemToBuy, 1);
-            Dialogue?.ShowMessage($"{ItemToBuy} comprada!");
+            inventory.Add(Currency, -Price);
+            inventory.Add(ItemToBuy, 1);
+            World?.Dialogue?.ShowMessage($"{ItemToBuy} comprada!");
         }
         else
         {
-            Dialogue?.ShowMessage("Ouro insuficiente.");
+            World?.Dialogue?.ShowMessage("Ouro insuficiente.");
         }
     }
 }
@@ -489,16 +476,6 @@ public sealed class ShopKeeper : Behavior
   { "Type": "Transform", "X": -60, "Y": 0 },
   { "Type": "ShopKeeper", "Switch": "comprou_espada", "Currency": "Gold", "Price": 10, "ItemToBuy": "Espada" }
 ] }
-```
-
-```csharp
-// No Game, junto da injeção de Input:
-foreach (var (_, shop) in World.Query<ShopKeeper>())
-{
-    shop.State = State;
-    shop.Inventory = Inventory;
-    shop.Dialogue = Dialogue;
-}
 ```
 
 Seu jogo precisa chamar `Dialogue.Draw(...)` e ler `Input` (Espaço/Enter avança, W/S ou setas
@@ -563,23 +540,21 @@ public sealed class EnemyAI : Behavior
 {
     public float RepathInterval = 0.4f;
     public float ChaseRange = 200f;
-
-    public Entity TargetEntity;   // injetado pelo Game, igual Input no PlayerController
-    public bool HasTargetEntity;
+    public string TargetName = "Player";
 
     private float _timer;
 
     public override void Update(float dt)
     {
-        if (!HasTargetEntity) return;
-
         _timer -= dt;
         if (_timer > 0f) return;
         _timer = RepathInterval;
 
+        if (World is null || !World.TryFind(TargetName, out var target)) return;
+
         var nav = Get<NavAgent>();
         var transform = Get<Transform>();
-        var targetTransform = TargetEntity.Get<Transform>();
+        var targetTransform = target.Get<Transform>();
         if (nav is null || transform is null || targetTransform is null) return;
 
         float dist = Vector2.Distance(transform.Position, targetTransform.Position);
@@ -591,19 +566,10 @@ public sealed class EnemyAI : Behavior
 }
 ```
 
-```csharp
-// No Game, junto da injeção de Input. NÃO faça World.TryFind("Enemy1", ...) —
-// só liga UM inimigo com esse nome exato e todo o resto do bicho fica parado.
-// Use Query pra pegar TODOS os EnemyAI da cena de uma vez:
-bool hasPlayer = World.TryFind("Player", out var player);
-foreach (var (_, enemy) in World.Query<EnemyAI>())
-{
-    enemy.HasTargetEntity = hasPlayer;
-    if (hasPlayer) enemy.TargetEntity = player;
-}
-```
-
-Salve `Enemy` como prefab pra espalhar várias cópias pela fase.
+Cada `EnemyAI` acha o `Player` sozinho (`World.TryFind`, gratuito — só roda a cada
+`RepathInterval`, não todo frame) — nenhuma injeção no `Game` necessária, e funciona igual
+pra quantas cópias de `Enemy` a cena tiver. Salve `Enemy` como prefab pra espalhar várias
+cópias pela fase.
 
 ---
 

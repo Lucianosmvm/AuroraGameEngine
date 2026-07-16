@@ -1,7 +1,12 @@
 using System.Numerics;
+using Aurora.Runtime;
 using Aurora.Runtime.AI;
+using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Graphics;
+using Aurora.Runtime.Input;
+using Aurora.Runtime.Saves;
+using Aurora.Runtime.UI;
 
 namespace Aurora.Runtime.Ecs;
 
@@ -11,6 +16,23 @@ namespace Aurora.Runtime.Ecs;
 /// </summary>
 public sealed class World
 {
+    /// <summary>
+    /// Referências aos sistemas do <see cref="Game"/> — setadas 1x em <c>Game.HandleLoad</c>,
+    /// disponíveis daí em diante pra qualquer <see cref="Behavior"/> via <c>World?.Input</c> etc.
+    /// Existem só pra eliminar o padrão manual de "acha entidade por nome, injeta campo público"
+    /// que cada script precisava repetir no <c>Game.OnUpdate</c>. Nulas até o primeiro
+    /// <c>HandleLoad</c> — scripts só rodam depois disso, então na prática nunca são null em
+    /// <see cref="Behavior.Update"/>.
+    /// </summary>
+    public InputManager? Input { get; internal set; }
+    public GameState? State { get; internal set; }
+    public InventoryManager? Inventory { get; internal set; }
+    public QuestManager? Quests { get; internal set; }
+    public DialogueSystem? Dialogue { get; internal set; }
+    public UIManager? UI { get; internal set; }
+    public AudioManager? Audio { get; internal set; }
+    public SaveManager? Save { get; internal set; }
+
     private readonly Dictionary<Type, Dictionary<int, IComponent>> _stores = new();
     private readonly Dictionary<int, string> _names = new();
     private readonly HashSet<int> _alive = new();

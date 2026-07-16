@@ -14,9 +14,9 @@ Um script tem acesso a **duas coisas diferentes**, e é fácil confundir:
    pelo JSON da cena (`Transform`, `SpriteRenderer`, `Health`, outro script seu, etc.).
    Lista completa na seção 4.
 2. **Sistemas da engine** — `InputManager`, `GameState`, `InventoryManager`,
-   `QuestManager`, `DialogueSystem`, `UIManager`, `World`, `SaveManager`. Esses **não**
-   vêm de `Get<T>()` — `Behavior` só recebe `World` automaticamente; todo o resto precisa
-   ser **injetado na mão** pelo `Game.OnUpdate` (seção 6.6 explica o padrão).
+   `QuestManager`, `DialogueSystem`, `UIManager`, `AudioManager`, `SaveManager`. Esses
+   **não** vêm de `Get<T>()` — vêm de `World` (`Behavior.World`, injetado automaticamente
+   em toda entidade): `World?.Input`, `World?.State`, `World?.Inventory`, etc. (seção 6.6).
 
 Fora isso, é C# normal: pode usar LINQ, `System.Numerics.Vector2`, qualquer lib referenciada
 no `.csproj`. A engine não sandboxa nada.
@@ -270,7 +270,7 @@ Enabled bool true
 
 ## 5. `InputManager`
 
-Exposto como `Game.Input`, precisa ser injetado manualmente no script (seção 6.6).
+Acesse via `World?.Input` dentro de qualquer script — não precisa de injeção manual (seção 6.6).
 
 ```csharp
 IsKeyDown(Key key) / WasKeyPressed(Key key)          // held / pressionado neste frame
@@ -343,33 +343,35 @@ Find<T>(screenId, elementName) -> T?   // ex.: ler UiJoystick.Value do código
 Telas de UI (JSON com `"UI": true`) são independentes da cena de gameplay — trocar de cena
 (`ChangeScene`) não esconde HUD sozinho, precisa `HideUI`/`ShowUI` explícito.
 
-### 6.6 Padrão de injeção manual
+### 6.6 Acessando os sistemas — `World?.X`
 
-`Behavior` só ganha `World` de graça. Tudo mais (`Input`, `State`, `Inventory`, `Quests`,
-`Dialogue`) precisa de propriedade pública settable no script + `Game.OnUpdate` injetando:
+`Behavior` ganha `World` de graça (setado automaticamente ao adicionar a entidade), e o
+próprio `World` carrega referências pra `Input`/`State`/`Inventory`/`Quests`/`Dialogue`/`UI`/
+`Audio`/`Save` desde o primeiro frame (`Game.HandleLoad` popula isso 1x, antes de qualquer
+cena carregar). Não precisa de propriedade pública nem de injeção manual em `Game.OnUpdate`
+— só usa direto:
 
 ```csharp
-// No script (campo NÃO scriptável — tipo não é float/int/bool/string, tudo bem):
-public InputManager? Input;
-public GameState? State;
-public InventoryManager? Inventory;
-
-// No Game (MeuJogoGame.cs):
-protected override void OnUpdate(float dt)
+public override void Update(float dt)
 {
-    if (World.TryFind("Player", out var player))
-    {
-        var pc = player.Get<PlayerController>();
-        if (pc is not null && pc.Input is null) pc.Input = Input;
-    }
-    foreach (var (_, shop) in World.Query<ShopKeeper>())
-    {
-        shop.State ??= State;
-        shop.Inventory ??= Inventory;
-        shop.Dialogue ??= Dialogue;
-    }
+    var input = World?.Input;
+    if (input is null) return;
+    // ...
+
+    World?.Inventory?.Add("Gold", 10);
+    World?.Dialogue?.ShowMessage("Oi!");
 }
 ```
+
+Só vale null-check (`World?.` / `is null`) porque, em teoria, um `Behavior` pode existir
+antes do primeiro `HandleLoad` rodar — na prática, scripts só recebem `Update` depois disso,
+então sempre vem preenchido.
+
+Isso cobre os **sistemas do Game**. Achar **outra entidade específica** (ex.: o `Player`,
+pra perseguir ou mirar) continua precisando de `World.TryFind(nome, out var entity)` — não
+tem como a engine adivinhar qual entidade um script quer, mas o próprio script já pode
+chamar isso sozinho dentro do seu `Update` (ver `EnemyAI` em `docs/GUIA-JOGO-BASE.md` seção
+13), sem precisar que o `Game` fique fazendo isso por fora.
 
 ### 6.7 `SaveManager` (`Game.Save`)
 ```csharp
@@ -420,15 +422,15 @@ Ações suportadas (`Type` de cada `EventAction`): `SetVariable`, `SetSwitch`, `
 public sealed class PlayerController : Behavior
 {
     public float Speed = 100f;
-    public InputManager? Input;
 
     public override void Update(float dt)
     {
-        if (Input is null) return;
+        var input = World?.Input;
+        if (input is null) return;
         var transform = Get<Transform>()!;
         var anim = Get<Animator>();
 
-        var move = new Vector2(Input.AxisX, Input.AxisY);
+        var move = new Vector2(input.AxisX, input.AxisY);
         if (move.LengthSquared() > 0f)
         {
             move = Vector2.Normalize(move);
@@ -530,31 +532,29 @@ public sealed class ShopKeeper : Behavior
 {
     public int PotionCost = 10;
 
-    public GameState? State;
-    public InventoryManager? Inventory;
-    public DialogueSystem? Dialogue;
-
     public void TryBuyPotion()
     {
-        if (Inventory is null || State is null || Dialogue is null) return;
+        var inventory = World?.Inventory;
+        var dialogue = World?.Dialogue;
+        if (inventory is null || dialogue is null) return;
 
-        if (Inventory.GetCount("Gold") >= PotionCost)
+        if (inventory.GetCount("Gold") >= PotionCost)
         {
-            Inventory.Remove("Gold", PotionCost);
-            Inventory.Add("Potion", 1);
-            Dialogue.ShowMessage("Poção comprada!");
+            inventory.Remove("Gold", PotionCost);
+            inventory.Add("Potion", 1);
+            dialogue.ShowMessage("Poção comprada!");
         }
         else
         {
-            Dialogue.ShowMessage("Ouro insuficiente.");
+            dialogue.ShowMessage("Ouro insuficiente.");
         }
     }
 }
 ```
 Chame `TryBuyPotion()` a partir de um `EventTrigger` `KeyPress`/`PlayerTouch` não dá — ação
 `RunActions` não chama método de script direto. Padrão real: liga a compra num `UiButton`
-(`OnClick`) que dispara um evento próprio, ou chama o método via `World.Query<ShopKeeper>()`
-dentro do `Game.OnUpdate` quando detecta a tecla de interação.
+(`OnClick`) que dispara um evento próprio, ou detecta a tecla de interação dentro do próprio
+`Update` do `ShopKeeper` (`World?.Input?.WasKeyPressed(...)`) e chama `TryBuyPotion()` direto.
 
 ### 8.5 HUD de vida/ouro/quest (`UiText`/`UiBar` com tokens)
 ```json
@@ -568,7 +568,7 @@ dentro do `Game.OnUpdate` quando detecta a tecla de interação.
 ```
 `PlayerHP` precisa ser sincronizada em `Update` do `PlayerController`:
 ```csharp
-State?.SetVariable("PlayerHP", Get<Health>()?.Current ?? 0);
+World?.State?.SetVariable("PlayerHP", Get<Health>()?.Current ?? 0);
 ```
 
 ### 8.6 Inimigo perseguidor com dano por contato
@@ -578,12 +578,11 @@ public sealed class EnemyAI : Behavior
 {
     public float SightRange = 150f;
     public float ContactDamage = 10f;
-
-    public Entity? TargetEntity;   // injetado pelo Game (World.TryFind("Player"))
+    public string TargetName = "Player";
 
     public override void Update(float dt)
     {
-        if (TargetEntity is not { IsAlive: true } target) return;
+        if (World is null || !World.TryFind(TargetName, out var target)) return;
 
         var nav = Get<NavAgent>();
         var transform = Get<Transform>();
@@ -603,15 +602,8 @@ public sealed class EnemyAI : Behavior
     }
 }
 ```
-Pra várias instâncias, injeta com `Query`, não `TryFind`:
-```csharp
-protected override void OnUpdate(float dt)
-{
-    if (!World.TryFind("Player", out var player)) return;
-    foreach (var (_, enemy) in World.Query<EnemyAI>())
-        enemy.TargetEntity ??= player;
-}
-```
+Cada `EnemyAI` acha o alvo sozinho (`World.TryFind`) — funciona igual pra quantas cópias a
+cena tiver, sem `Game.OnUpdate` nenhum envolvido.
 
 ### 8.7 Quest com múltiplos estágios
 ```csharp
@@ -635,18 +627,18 @@ if (Inventory.Has("Erva Medicinal", 3) && Quests.GetStage("CurarVila") == 1)
 |---|---|
 | Mover entidade | `Get<Transform>()!.Position += ...` |
 | Tocar animação | `Get<Animator>()?.SetFloat/SetBool(...)` |
-| Causar dano | `World.Damage(target, amount, source)` |
-| Curar | `World.Heal(target, amount)` |
+| Causar dano | `World?.Damage(target, amount, source)` |
+| Curar | `World?.Heal(target, amount)` |
 | Perseguir alvo | `Get<NavAgent>()?.SetTarget(pos)` |
-| Ler teclado/gamepad | `Input.AxisX/AxisY`, `WasKeyPressed`, `WasGamepadButtonPressed` |
-| Ouro/pontos | `Inventory.Add("Gold", n)` / `GetCount` |
-| Flag global | `State.SetSwitch("X", true)` / `GetSwitch` |
-| Progresso de quest | `Quests.SetStage/GetStage/Advance` |
-| Falar com jogador | `Dialogue.ShowMessage(...)` / `ShowChoice(...)` |
-| Trocar de cena | `Game.LoadScene(...)` / ação `ChangeScene` |
-| Achar entidade única | `World.TryFind(name, out entity)` |
-| Achar todas de um tipo | `World.Query<T>()` |
-| Salvar jogo | `Game.Save.Save(slot)` / ação `Save` |
+| Ler teclado/gamepad | `World?.Input?.AxisX/AxisY`, `WasKeyPressed`, `WasGamepadButtonPressed` |
+| Ouro/pontos | `World?.Inventory?.Add("Gold", n)` / `GetCount` |
+| Flag global | `World?.State?.SetSwitch("X", true)` / `GetSwitch` |
+| Progresso de quest | `World?.Quests?.SetStage/GetStage/Advance` |
+| Falar com jogador | `World?.Dialogue?.ShowMessage(...)` / `ShowChoice(...)` |
+| Trocar de cena | `Game.LoadScene(...)` / ação `ChangeScene` (scripts não têm `Game` direto) |
+| Achar entidade única | `World?.TryFind(name, out entity)` |
+| Achar todas de um tipo | `World?.Query<T>()` |
+| Salvar jogo | `World?.Save?.Save(slot)` / ação `Save` |
 | Pausar | `World.Paused = true` / ação `SetPause` |
 
 Referência de arquivos-fonte, se quiser ler o código de verdade:
