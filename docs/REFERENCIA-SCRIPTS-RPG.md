@@ -440,38 +440,85 @@ public sealed class PlayerController : Behavior
 ```
 
 ### 8.2 Coletável (moeda) — zero código, só `EventTrigger`
-```json
-{
-  "Name": "Moeda",
-  "Components": [
-    { "Type": "Transform", "X": 300, "Y": 150 },
-    { "Type": "SpriteRenderer", "Texture": "sprites/coin.png" },
-    { "Type": "EventTrigger", "Trigger": "PlayerTouch", "Radius": 16, "Once": true,
-      "Actions": [
-        { "Type": "AddItem", "Name": "Gold", "Value": 10 },
-        { "Type": "Destroy" }
-      ] }
-  ]
-}
+
+Passo a passo no editor:
+1. **ENTIDADES → "+ Nova"**, renomeia pra `Moeda`.
+2. **"+Add Componente" → Transform** — seta X/Y no lugar onde a moeda fica.
+3. **"+Add Componente" → SpriteRenderer** — Texture: `sprites/coin.png`.
+4. **"+Add Componente" → EventTrigger** — Trigger: `PlayerTouch`, Radius: `16`, marca `Once`.
+5. Dentro do EventTrigger, **"+ Adicionar Ação"** duas vezes: `AddItem` (Item: `Gold`,
+   Quantidade: `10`) e `Destroy` (sem campo extra — destrói a própria entidade).
+
+Como fica o Inspector depois de montado:
+
+```
+Transform
+  X  300        Y  150
+
+SpriteRenderer
+  Texture   sprites/coin.png
+
+EventTrigger
+  Trigger   [ PlayerTouch ▾ ]
+  Radius    16
+  ☑ Once (dispara uma vez)
+
+  AÇÕES
+  ┌─────────────────────────────┐
+  │ [ AddItem ▾ ]             ✕ │
+  │ Item         Gold           │
+  │ Quantidade   10              │
+  ├─────────────────────────────┤
+  │ [ Destroy ▾ ]             ✕ │
+  └─────────────────────────────┘
+  [ + Adicionar Ação ]
 ```
 
 ### 8.3 NPC com diálogo + escolha
-```json
-{
-  "Name": "Anciao",
-  "Components": [
-    { "Type": "Transform", "X": 500, "Y": 300 },
-    { "Type": "SpriteRenderer", "Texture": "sprites/npc_old.png" },
-    { "Type": "Collider", "IsSolid": true, "IsKinematic": true },
-    { "Type": "EventTrigger", "Trigger": "KeyPress", "Key": "E", "Once": false,
-      "Actions": [
-        { "Type": "ShowMessage", "Text": "Viajante... aceita ajudar a vila?" },
-        { "Type": "ShowChoice", "Text": "Aceitar a missão?",
-          "Options": [ { "Text": "Sim" }, { "Text": "Não" } ] }
-      ] }
-  ]
-}
+
+Passo a passo:
+1. **"+ Nova"**, renomeia pra `Anciao`.
+2. **Transform** — X/Y da posição do NPC.
+3. **SpriteRenderer** — Texture: `sprites/npc_old.png`.
+4. **Collider** — marca `IsSolid` e `IsKinematic` (bloqueia o jogador fisicamente, não se
+   move nunca).
+5. **EventTrigger** — Trigger: `KeyPress`, Tecla: `E`, `Once` **desmarcado** (quer poder
+   interagir de novo).
+6. **"+ Adicionar Ação"**: `ShowMessage` (Texto: "Viajante... aceita ajudar a vila?"),
+   depois outra ação `ShowChoice` (Texto: "Aceitar a missão?", Opções: "Sim" / "Não" — cada
+   opção pode ligar um Switch próprio, campo ao lado do texto da opção).
+
 ```
+Transform
+  X  500        Y  300
+
+SpriteRenderer
+  Texture   sprites/npc_old.png
+
+Collider
+  Shape        [ Box ▾ ]
+  ☑ IsSolid    ☑ IsKinematic
+
+EventTrigger
+  Trigger   [ KeyPress ▾ ]
+  Tecla     E
+  ☐ Once (dispara uma vez)
+
+  AÇÕES
+  ┌───────────────────────────────────────────┐
+  │ [ ShowMessage ▾ ]                       ✕ │
+  │ Texto  Viajante... aceita ajudar a vila?   │
+  ├───────────────────────────────────────────┤
+  │ [ ShowChoice ▾ ]                        ✕ │
+  │ Texto  Aceitar a missão?                   │
+  │ Opções:                                    │
+  │   Sim      [Switch: ______]           ✕    │
+  │   Não      [Switch: ______]           ✕    │
+  │   [ + Opção ]                              │
+  └───────────────────────────────────────────┘
+  [ + Adicionar Ação ]
+```
+
 `KeyPress` só dispara perto do NPC se ele também tiver `Collider` bloqueando o jogador —
 senão o jogador nunca fica "parado" perto o bastante. Alternativa mais simples: `PlayerTouch`
 com `Radius` pequeno, sem precisar de tecla.
