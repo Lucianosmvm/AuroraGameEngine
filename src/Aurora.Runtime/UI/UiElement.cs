@@ -76,13 +76,17 @@ public sealed class UiButton : UiElement
 
     // Estado de runtime (não serializado) — atualizado por UIManager.Update.
     internal bool Hovered;
-    internal bool Pressed;
     internal int? OwnerTouchId;
 
     /// <summary>True só no frame do clique/toque — pra jogo reagir sem precisar do vocabulário
     /// genérico de EventAction (ex: chamar um método específico de um script). Lido em código:
     /// <c>if (UI.Find&lt;UiButton&gt;("hud", "BotaoAtk")?.Clicked == true) ...</c></summary>
     public bool Clicked;
+
+    /// <summary>True enquanto o dedo/mouse continua sobre o botão (segurado) — diferente de
+    /// <see cref="Clicked"/>, que só é true no frame do toque. Pra controles tipo "segura pra
+    /// acelerar": <c>if (UI.Find&lt;UiButton&gt;("Hud", "Gas")?.Pressed == true) ...</c></summary>
+    public bool Pressed;
 }
 
 /// <summary>Joystick virtual (toque multi-dedo no Android; clique-e-arraste no desktop) — base

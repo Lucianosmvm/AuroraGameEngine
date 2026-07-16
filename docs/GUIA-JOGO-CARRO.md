@@ -138,7 +138,7 @@ efeito).
 Entidade de câmera (ou a própria `Car`, se preferir) com `CameraController`:
 
 ```
-Camera
+CameraController
   Follow        Car
   FollowSpeed   6
   Zoom          1.5
@@ -210,8 +210,8 @@ World?.State?.SetVariable("Speed", MathF.Abs(_speed));
 Tela de UI:
 
 ```
-UiText   Text: "Velocidade: {Var:Speed}"    (canto superior)
-UiText   Text: "Volta: {Var:Lap}"           (canto superior, abaixo)
+UiText   Text: "Velocidade: {Speed}"    (canto superior)
+UiText   Text: "Volta: {Lap}"           (canto superior, abaixo)
 ```
 
 ---
