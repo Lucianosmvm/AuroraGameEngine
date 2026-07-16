@@ -37,22 +37,44 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<GameScriptDiscovery.ScriptInfo> CustomScripts { get; } = [];
 
     private int _scriptCatalogVersion;
+    private bool _isRefreshingScripts;
+
+    /// <summary>True enquanto <see cref="RefreshScriptCatalog"/> builda o jogo pra descobrir
+    /// scripts — usado pra desabilitar o botão "↻" e evitar cliques concorrentes.</summary>
+    public bool IsRefreshingScripts
+    {
+        get => _isRefreshingScripts;
+        private set => Set(ref _isRefreshingScripts, value);
+    }
 
     /// <summary>Roda em background e substitui <see cref="CustomScripts"/> quando terminar.
-    /// Versão incremental evita corrida entre chamadas concorrentes sobrescrevendo com resultado velho.</summary>
-    private async void RefreshScriptCatalog()
+    /// Versão incremental evita corrida entre chamadas concorrentes sobrescrevendo com resultado velho.
+    /// Chamado automaticamente ao abrir cena/projeto, e manualmente pelo botão "↻" ao lado de
+    /// "+Add Componente" (scripts novos/editados não aparecem sozinhos — precisa reroda isto).</summary>
+    public async void RefreshScriptCatalog()
     {
         if (string.IsNullOrWhiteSpace(_settings?.GameProject))
             return;
 
         int version = ++_scriptCatalogVersion;
-        var scripts = await GameScriptDiscovery.DiscoverAsync(_settings.GameProject);
-        if (version != _scriptCatalogVersion)
-            return; // outra chamada mais nova já está em andamento/terminou
+        IsRefreshingScripts = true;
+        Status = "Procurando scripts [SceneScript] no projeto do jogo...";
+        try
+        {
+            var scripts = await GameScriptDiscovery.DiscoverAsync(_settings.GameProject);
+            if (version != _scriptCatalogVersion)
+                return; // outra chamada mais nova já está em andamento/terminou
 
-        CustomScripts.Clear();
-        foreach (var script in scripts)
-            CustomScripts.Add(script);
+            CustomScripts.Clear();
+            foreach (var script in scripts)
+                CustomScripts.Add(script);
+            Status = $"{CustomScripts.Count} script(s) encontrado(s).";
+        }
+        finally
+        {
+            if (version == _scriptCatalogVersion)
+                IsRefreshingScripts = false;
+        }
     }
 
     public SceneDocument? Document => _document;

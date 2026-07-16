@@ -428,6 +428,8 @@ public partial class MainWindow : Window
 
     private void OnRefreshPrefabs(object? sender, RoutedEventArgs e) => ViewModel.ReloadPrefabs();
 
+    private void OnRefreshScripts(object? sender, RoutedEventArgs e) => ViewModel.RefreshScriptCatalog();
+
     private void OnPrefabDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is ViewModels.PrefabFileViewModel prefab)

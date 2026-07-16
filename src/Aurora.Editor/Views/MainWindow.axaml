@@ -649,12 +649,16 @@
 
             <!-- Adicionar Componente -->
             <Border BorderThickness="0,1,0,0" BorderBrush="#3A3860" Margin="0,8,0,4"/>
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
               <ComboBox ItemsSource="{Binding AvailableComponentTypes}"
                         SelectedItem="{Binding NewComponentType}" FontSize="12"/>
               <Button Grid.Column="1" Content="+ Add" FontSize="12"
                       Padding="8,4" Margin="4,0,0,0"
                       Command="{Binding AddComponentCommand}"/>
+              <Button Grid.Column="2" Content="↻" FontSize="12"
+                      Padding="6,4" Margin="4,0,0,0"
+                      Click="OnRefreshScripts"
+                      ToolTip.Tip="Reroda o jogo e recarrega scripts [SceneScript] novos/editados"/>
             </Grid>
           </StackPanel>
         </ScrollViewer>

@@ -35,12 +35,14 @@ public static class GameProjectScaffolder
         Directory.CreateDirectory(spritesDir);
         string fontsDir = Path.Combine(projectDir, "Assets", "fonts");
         Directory.CreateDirectory(fontsDir);
+        string scriptsDir = Path.Combine(projectDir, "Scripts");
+        Directory.CreateDirectory(scriptsDir);
 
         string relativeRuntimePath = Path.GetRelativePath(projectDir, runtimeCsproj);
         File.WriteAllText(Path.Combine(projectDir, $"{projectName}.csproj"), BuildCsproj(relativeRuntimePath));
         File.WriteAllText(Path.Combine(projectDir, "Program.cs"), BuildProgram(identifier));
         File.WriteAllText(Path.Combine(projectDir, $"{identifier}Game.cs"), BuildGameClass(identifier));
-        File.WriteAllText(Path.Combine(projectDir, "Spin.cs"), BuildExampleScript(identifier));
+        File.WriteAllText(Path.Combine(scriptsDir, "Spin.cs"), BuildExampleScript(identifier));
         File.WriteAllBytes(Path.Combine(spritesDir, "placeholder.png"), Convert.FromBase64String(PlaceholderPngBase64));
 
         string? fontSource = FindDefaultFont();
