@@ -38,7 +38,7 @@ public sealed class World
     private readonly HashSet<int> _alive = new();
     private readonly List<Behavior> _behaviors = new();
     private readonly List<int> _destroyQueue = new();
-    private readonly List<(int Layer, Transform Transform, IComponent Renderable)> _renderList = new();
+    private readonly List<(int Layer, int EntityId, Transform Transform, IComponent Renderable)> _renderList = new();
 
     /// <summary>Congela behaviors/colisão/partículas/vida (ex.: menu de pausa, inventário) sem
     /// destruir o World — cena continua desenhada por trás, só para de simular. UI (própria) e
@@ -731,21 +731,30 @@ public sealed class World
     {
         _renderList.Clear();
 
-        foreach (var (_, transform, sprite) in Query<Transform, SpriteRenderer>())
+        foreach (var (entity, transform, sprite) in Query<Transform, SpriteRenderer>())
         {
             if (sprite.Visible && sprite.Texture is not null)
-                _renderList.Add((sprite.Layer, transform, sprite));
+                _renderList.Add((sprite.Layer, entity.Id, transform, sprite));
         }
 
-        foreach (var (_, transform, tilemap) in Query<Transform, Tilemap>())
+        foreach (var (entity, transform, tilemap) in Query<Transform, Tilemap>())
         {
             if (tilemap.Tileset is not null && tilemap.Width > 0 && tilemap.Height > 0)
-                _renderList.Add((tilemap.Layer, transform, tilemap));
+                _renderList.Add((tilemap.Layer, entity.Id, transform, tilemap));
         }
 
-        _renderList.Sort(static (a, b) => a.Layer.CompareTo(b.Layer));
+        // Desempate por id: List.Sort é introsort, ou seja NÃO estável, e a lista chega aqui
+        // na ordem de iteração de Dictionary — que muda conforme entidades são criadas e
+        // destruídas. Sem o desempate, dois sprites na mesma Layer podem trocar de ordem
+        // entre um frame e outro e piscar um na frente do outro. O id é estável e único,
+        // então a ordem vira determinística: mesma cena, mesmo resultado, todo frame.
+        _renderList.Sort(static (a, b) =>
+        {
+            int byLayer = a.Layer.CompareTo(b.Layer);
+            return byLayer != 0 ? byLayer : a.EntityId.CompareTo(b.EntityId);
+        });
 
-        foreach (var (_, transform, renderable) in _renderList)
+        foreach (var (_, _, transform, renderable) in _renderList)
         {
             if (renderable is SpriteRenderer sprite)
             {

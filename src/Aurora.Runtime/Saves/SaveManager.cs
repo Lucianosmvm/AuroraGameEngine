@@ -101,7 +101,33 @@ public sealed class SaveManager
             PlayerX: playerX,
             PlayerY: playerY);
 
-        File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
+        WriteAtomic(path, JsonSerializer.Serialize(dto, JsonOpts));
+    }
+
+    /// <summary>
+    /// Escreve num arquivo temporário ao lado do destino e só então move por cima. Gravar
+    /// direto no destino trunca o save antigo antes de escrever o novo: crash, queda de
+    /// energia ou app morto pelo Android nesse intervalo deixa o arquivo pela metade — o
+    /// progresso antigo já foi embora e o novo não chegou inteiro, então o slot vira lixo
+    /// permanente. O move é atômico no mesmo volume: ou o save velho continua inteiro, ou o
+    /// novo está inteiro, nunca um meio-termo.
+    /// </summary>
+    private static void WriteAtomic(string path, string content)
+    {
+        string temp = path + ".tmp";
+        File.WriteAllText(temp, content);
+
+        try
+        {
+            File.Move(temp, path, overwrite: true);
+        }
+        catch
+        {
+            // Move falhou (arquivo travado por antivírus/backup, etc): não deixa o .tmp
+            // órfão poluindo a pasta de saves — o save anterior segue intacto no destino.
+            try { File.Delete(temp); } catch { }
+            throw;
+        }
     }
 
     private bool Read(string path)

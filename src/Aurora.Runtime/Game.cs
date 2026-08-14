@@ -80,6 +80,16 @@ public abstract class Game : IDisposable
     public Color ClearColor { get; set; } = Color.CornflowerBlue;
 
     /// <summary>
+    /// Teto do deltaTime entregue a update/física, em segundos (padrão 0,05 = 20 FPS).
+    /// Sem esse teto, qualquer travada longa (alt-tab, breakpoint no debugger, load de cena
+    /// pesado, app voltando do background no Android) entrega um dt gigante num único frame:
+    /// a integração de posição salta centenas de pixels de uma vez e o passo de colisão —
+    /// que testa sobreposição na posição JÁ atualizada, não ao longo do caminho — simplesmente
+    /// não vê a parede no meio (tunneling). Com o teto, o jogo desacelera em vez de teleportar.
+    /// </summary>
+    public float MaxDeltaTime { get; set; } = 0.05f;
+
+    /// <summary>
     /// Cena passada pelo editor via --scene. Use em <see cref="OnLoad"/>:
     /// <c>LoadScene(BootScene ?? "scenes/inicio.json");</c>
     /// </summary>
@@ -222,7 +232,7 @@ public abstract class Game : IDisposable
 
     private void HandleUpdate(double deltaTime)
     {
-        float dt = (float)deltaTime;
+        float dt = MathF.Min((float)deltaTime, MaxDeltaTime);
         Input.BeginFrame();
 
         // World.Update já isola exceções por behavior; esse try/catch é a rede de segurança
