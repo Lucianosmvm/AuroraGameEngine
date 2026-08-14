@@ -188,8 +188,30 @@ Audio.Play("sounds/coin.wav");            // SFX (one-shot, pool de 16 fontes)
 Audio.Play("sounds/hit.wav", volume: 0.6f, pitch: 1.2f);
 Audio.PlayMusic("sounds/bgm.ogg");        // canal de música com loop
 Audio.StopMusic();
-Audio.MasterVolume = 0.8f;               // volume global (0..1)
 ```
+
+### Volume
+
+Três controles independentes, todos em 0..1 — o suficiente para a tela de opções padrão:
+
+```csharp
+Audio.MasterVolume = 0.8f;   // geral (ganho do listener); multiplica os dois abaixo
+Audio.MusicVolume  = 0.5f;   // aplica na hora, inclusive na faixa que já está tocando
+Audio.SfxVolume    = 1.0f;   // vale do próximo Play em diante
+```
+
+O `volume` passado em `Play`/`PlayMusic` continua valendo: é multiplicado pelo barramento.
+
+### Música em streaming
+
+`PlayMusic` com arquivo `.ogg` decodifica aos poucos — só ~0,7 s ficam em PCM por vez, em vez
+da faixa inteira (uma trilha de 3 min em memória passaria de 30 MB, o bastante para derrubar o
+app no Android). Os bytes **comprimidos** ficam em memória porque asset dentro do APK não é
+seekável e o loop precisa rebobinar.
+
+`Game` chama `Audio.Update()` a cada frame para realimentar a fila; quem roda a engine fora do
+`Game` precisa chamar também. WAV continua carregando inteiro — o formato não comprime, então
+música longa em WAV é cara de qualquer jeito.
 
 ### Nos eventos visuais (JSON de cena)
 

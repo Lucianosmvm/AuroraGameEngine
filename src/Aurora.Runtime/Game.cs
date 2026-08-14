@@ -247,6 +247,11 @@ public abstract class Game : IDisposable
             Events.Update(dt);
             UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
             UpdateCamera(dt);
+
+            // Por último de propósito: realimenta a fila de streaming da música. Se a lógica
+            // do jogo estourar acima, o frame de áudio se perde junto — mas a fila tem folga
+            // de quase um segundo, então um frame ruim não corta o som.
+            Audio.Update();
         }
         catch (Exception ex)
         {

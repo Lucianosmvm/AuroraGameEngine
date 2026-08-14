@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- O preenchimento de buffer de streaming (PcmFiller) é interno de propósito: não faz
+         parte da API do jogo, mas é a lógica com risco real de laço infinito / loop de faixa
+         errado, então precisa ser alcançável pelos testes. -->
+    <InternalsVisibleTo Include="Aurora.Runtime.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NVorbis" Version="0.10.5" />
     <PackageReference Include="Silk.NET.Input" Version="2.23.0" />
     <PackageReference Include="Silk.NET.OpenAL" Version="2.23.0" />
