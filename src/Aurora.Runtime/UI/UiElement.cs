@@ -29,6 +29,20 @@ public sealed class UiText : UiElement
     public string Text = "";
     public string Color = "#FFFFFFFF";
     public float Scale = 1f;
+
+    /// <summary>Largura máxima em pixels de tela antes de quebrar a linha. 0 (padrão) = sem
+    /// quebra automática, o texto vai até onde for. Quebras <c>\n</c> escritas no Text valem
+    /// nos dois casos.</summary>
+    public float MaxWidth;
+
+    // Memo de uma entrada só do texto já quebrado: Text passa por interpolação de {Var} e pode
+    // mudar todo frame, então a chave é o texto resolvido, não o template. Fica por elemento
+    // (não na Font) pra telas com vários UiText não brigarem por um cache único.
+    internal string? WrapSource;
+    internal float WrapWidth;
+    internal float WrapScale;
+    internal Graphics.Font? WrapFont;
+    internal string WrapResult = "";
 }
 
 /// <summary>Ícone/imagem estática (textura resolvida no Load).</summary>

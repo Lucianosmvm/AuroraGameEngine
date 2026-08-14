@@ -20,6 +20,8 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações
   PlaySound/PlayMusic/StopMusic nos eventos visuais
 - ✅ **Animação de sprites**: componente `Animator` com clipes de sprite sheet, troca de clipe em runtime
+- ✅ **Quebra de linha automática**: caixa de diálogo quebra sozinha na largura da caixa;
+  `UiText` ganha `MaxWidth` (0 = desligado). Palavra que não cabe sozinha é cortada em vez de vazar
 
 ## Editor
 

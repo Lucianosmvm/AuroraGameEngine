@@ -72,6 +72,8 @@ public class ComponentViewModel : ViewModelBase
         [
             ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
             ("Text", ""), ("Color", "#FFFFFFFF"), ("Scale", 1f),
+            // MaxWidth: 0 = sem quebra automática de linha; >0 = largura em pixels de tela.
+            ("MaxWidth", 0f),
         ],
         ["UiImage"] =
         [

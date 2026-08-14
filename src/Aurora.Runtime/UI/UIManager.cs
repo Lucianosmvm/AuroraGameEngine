@@ -60,7 +60,13 @@ public sealed class UIManager
 
         UiElement? element = type switch
         {
-            "UiText" => new UiText { Text = GetS("Text"), Color = GetS("Color", "#FFFFFFFF"), Scale = GetF("Scale", 1f) },
+            "UiText" => new UiText
+            {
+                Text = GetS("Text"),
+                Color = GetS("Color", "#FFFFFFFF"),
+                Scale = GetF("Scale", 1f),
+                MaxWidth = GetF("MaxWidth", 0f),
+            },
             "UiImage" => BuildImage(GetS("Texture"), GetF("Width"), GetF("Height"), GetS("Color", "#FFFFFFFF"), assets),
             "UiBar" => new UiBar
             {
@@ -355,9 +361,10 @@ public sealed class UIManager
                     case UiText text when font is not null:
                     {
                         string resolved = Interpolate(text.Text, state, inventory, quests);
-                        var size = font.MeasureText(resolved, text.Scale);
+                        string laidOut = WrapCached(text, resolved, font);
+                        var size = font.MeasureText(laidOut, text.Scale);
                         var position = ResolvePosition(text, size, screenWidth, screenHeight);
-                        font.Draw(batch, resolved, position, Color.FromHex(text.Color), text.Scale);
+                        font.Draw(batch, laidOut, position, Color.FromHex(text.Color), text.Scale);
                         break;
                     }
 
@@ -390,6 +397,27 @@ public sealed class UIManager
                 }
             }
         }
+    }
+
+    /// <summary>Texto já quebrado pra caber em <c>MaxWidth</c>, reaproveitando o resultado
+    /// anterior. Sem o memo, cada UiText com quebra ligada refaria o layout todo frame.</summary>
+    private static string WrapCached(UiText text, string resolved, Font font)
+    {
+        if (text.MaxWidth <= 0f)
+            return resolved;
+
+        if (text.WrapSource == resolved && text.WrapWidth == text.MaxWidth
+            && text.WrapScale == text.Scale && ReferenceEquals(text.WrapFont, font))
+        {
+            return text.WrapResult;
+        }
+
+        text.WrapSource = resolved;
+        text.WrapWidth = text.MaxWidth;
+        text.WrapScale = text.Scale;
+        text.WrapFont = font;
+        text.WrapResult = font.WrapText(resolved, text.MaxWidth, text.Scale);
+        return text.WrapResult;
     }
 
     private static string Interpolate(string template, GameState state, InventoryManager? inventory, QuestManager? quests)

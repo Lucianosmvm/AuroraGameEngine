@@ -18,7 +18,22 @@ public sealed record DialogueChoice(string Prompt, IReadOnlyList<string> Options
 /// </summary>
 public sealed class DialogueSystem
 {
+    private const float Padding = 16f;
+
+    /// <summary>Recuo do marcador "» " das opções — as linhas de continuação de uma opção
+    /// quebrada não são recuadas, mas a largura disponível já desconta o marcador.</summary>
+    private const string OptionMarker = "» ";
+
     private readonly Queue<DialogueEntry> _queue = new();
+
+    // Layout já quebrado em linhas, refeito só quando muda a entrada, a fonte ou a largura da
+    // caixa. Sem isso a quebra rodaria a cada frame em cima do mesmo texto — a caixa de diálogo
+    // fica na tela por segundos.
+    private DialogueEntry? _layoutFor;
+    private Font? _layoutFont;
+    private float _layoutWidth = -1f;
+    private string _layoutBody = "";
+    private readonly List<string> _layoutOptions = [];
 
     public DialogueEntry? Current { get; private set; }
     public int SelectedIndex { get; private set; }
@@ -31,6 +46,16 @@ public sealed class DialogueSystem
         _queue.Clear();
         Current = null;
         SelectedIndex = 0;
+        InvalidateLayout();
+    }
+
+    private void InvalidateLayout()
+    {
+        _layoutFor = null;
+        _layoutFont = null;
+        _layoutWidth = -1f;
+        _layoutBody = "";
+        _layoutOptions.Clear();
     }
 
     public void ShowMessage(string text, string? speaker = null)
@@ -83,32 +108,28 @@ public sealed class DialogueSystem
         if (Current is null)
             return;
 
-        const float padding = 16f;
         var background = new Color(0.06f, 0.05f, 0.12f, 0.92f);
         var accent = Color.FromBytes(120, 110, 200);
         var speakerColor = Color.FromBytes(251, 242, 54);
 
-        string body = Current switch
-        {
-            DialogueMessage message => message.Text,
-            DialogueChoice choice => choice.Prompt,
-            _ => "",
-        };
         string? speaker = (Current as DialogueMessage)?.Speaker;
-        var options = (Current as DialogueChoice)?.Options;
 
         float boxWidth = MathF.Min(screenWidth * 0.85f, 720f);
-        float textHeight = font.MeasureText(body).Y
-            + (speaker is not null ? font.LineHeight : 0f)
-            + (options?.Count ?? 0) * font.LineHeight;
-        float boxHeight = textHeight + padding * 2f + 8f;
+        EnsureLayout(font, boxWidth);
+
+        float textHeight = font.MeasureText(_layoutBody).Y
+            + (speaker is not null ? font.LineHeight : 0f);
+        foreach (string option in _layoutOptions)
+            textHeight += font.MeasureText(option).Y;
+
+        float boxHeight = textHeight + Padding * 2f + 8f;
 
         var boxPosition = new Vector2((screenWidth - boxWidth) / 2f, screenHeight - boxHeight - 20f);
 
         batch.DrawRect(boxPosition, new Vector2(boxWidth, boxHeight), background);
         batch.DrawRect(boxPosition, new Vector2(boxWidth, 2f), accent);
 
-        var pen = boxPosition + new Vector2(padding, padding);
+        var pen = boxPosition + new Vector2(Padding, Padding);
 
         if (speaker is not null)
         {
@@ -116,29 +137,61 @@ public sealed class DialogueSystem
             pen.Y += font.LineHeight;
         }
 
-        font.Draw(batch, body, pen, Color.White);
-        pen.Y += font.MeasureText(body).Y + 4f;
+        font.Draw(batch, _layoutBody, pen, Color.White);
+        pen.Y += font.MeasureText(_layoutBody).Y + 4f;
 
-        if (options is not null)
+        if (_layoutOptions.Count > 0)
         {
-            for (int i = 0; i < options.Count; i++)
+            for (int i = 0; i < _layoutOptions.Count; i++)
             {
                 bool selected = i == SelectedIndex;
+                float optionHeight = font.MeasureText(_layoutOptions[i]).Y;
+
                 if (selected)
                 {
                     batch.DrawRect(new Vector2(boxPosition.X + 6f, pen.Y - 2f),
-                        new Vector2(boxWidth - 12f, font.LineHeight), accent.WithAlpha(0.35f));
+                        new Vector2(boxWidth - 12f, optionHeight), accent.WithAlpha(0.35f));
                 }
 
-                font.Draw(batch, (selected ? "» " : "   ") + options[i],
+                font.Draw(batch, (selected ? OptionMarker : "   ") + _layoutOptions[i],
                     pen, selected ? Color.White : new Color(0.75f, 0.75f, 0.8f));
-                pen.Y += font.LineHeight;
+                pen.Y += optionHeight;
             }
         }
         else
         {
-            font.Draw(batch, "»", boxPosition + new Vector2(boxWidth - padding - 10f, boxHeight - font.LineHeight - 6f),
+            font.Draw(batch, "»", boxPosition + new Vector2(boxWidth - Padding - 10f, boxHeight - font.LineHeight - 6f),
                 accent);
+        }
+    }
+
+    /// <summary>Recalcula o texto quebrado se a entrada, a fonte ou a largura da caixa mudaram.
+    /// A caixa ocupa a largura toda menos as margens; as opções ainda descontam o marcador.</summary>
+    private void EnsureLayout(Font font, float boxWidth)
+    {
+        if (ReferenceEquals(_layoutFor, Current) && ReferenceEquals(_layoutFont, font) && _layoutWidth == boxWidth)
+            return;
+
+        _layoutFor = Current;
+        _layoutFont = font;
+        _layoutWidth = boxWidth;
+        _layoutOptions.Clear();
+
+        float textWidth = boxWidth - Padding * 2f;
+
+        string body = Current switch
+        {
+            DialogueMessage message => message.Text,
+            DialogueChoice choice => choice.Prompt,
+            _ => "",
+        };
+        _layoutBody = font.WrapText(body, textWidth);
+
+        if (Current is DialogueChoice { Options: { } options })
+        {
+            float optionWidth = textWidth - font.MeasureText(OptionMarker).X;
+            foreach (string option in options)
+                _layoutOptions.Add(font.WrapText(option, optionWidth));
         }
     }
 }

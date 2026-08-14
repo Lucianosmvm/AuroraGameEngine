@@ -101,6 +101,31 @@ public sealed unsafe class Font : IDisposable
         return new Font(atlas, pixelSize, ascent, ascent - descent + lineGap, glyphs);
     }
 
+    /// <summary>Avanço horizontal do caractere, em pixels do tamanho do bake (sem escala).</summary>
+    public float Advance(char c) => _glyphs[GlyphIndex(c)].xadvance;
+
+    // Delegate guardado: WrapText roda a cada frame nos callers que não cacheiam, e criar um
+    // novo Func<char,float> por chamada seria uma alocação por frame só pra apontar pro Advance.
+    private Func<char, float>? _advance;
+
+    /// <summary>
+    /// Devolve o texto com quebras de linha inseridas pra caber em <paramref name="maxWidth"/>
+    /// pixels (largura já na escala de <paramref name="scale"/>). 0 ou menos = sem quebra.
+    /// O resultado passa direto pra <see cref="Draw"/>/<see cref="MeasureText"/>, que já
+    /// entendem <c>'\n'</c>. Não há cache aqui: quem desenha todo frame deve guardar o
+    /// resultado e só refazer quando texto ou largura mudarem.
+    /// </summary>
+    public string WrapText(string text, float maxWidth, float scale = 1f)
+    {
+        if (maxWidth <= 0f)
+            return text;
+
+        // As larguras de glifo estão na unidade do bake; converter o limite uma vez é mais
+        // barato (e mais preciso) do que escalar o avanço de cada caractere.
+        float limit = scale > 0f ? maxWidth / scale : maxWidth;
+        return TextWrapper.Wrap(text, limit, _advance ??= Advance);
+    }
+
     private int GlyphIndex(char c) => c switch
     {
         >= (char)AsciiFirst and <= (char)(AsciiFirst + AsciiCount - 1) => c - AsciiFirst,
