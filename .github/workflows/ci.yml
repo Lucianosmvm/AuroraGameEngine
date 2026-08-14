@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Um push novo no mesmo branch cancela a run anterior — sem fila de builds obsoletas.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  # Portão principal: compila o runtime e roda a suíte. Tudo o que é testado é lógica pura
+  # (colisão, A*, serialização, estado) — não precisa de GPU, janela nem dispositivo de áudio,
+  # então roda em Linux, que é o runner mais rápido.
+  test:
+    name: Testes (runtime)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore tests/Aurora.Runtime.Tests/Aurora.Runtime.Tests.csproj
+
+      - name: Build
+        run: dotnet build tests/Aurora.Runtime.Tests/Aurora.Runtime.Tests.csproj -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test tests/Aurora.Runtime.Tests/Aurora.Runtime.Tests.csproj
+          -c Release --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory artifacts/test-results
+
+      - name: Publicar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/test-results
+          if-no-files-found: ignore
+
+  # Garante que editor e demo desktop continuam compilando. Projetos listados um a um em vez
+  # de buildar a solução inteira: Aurora.Sandbox.Android exige a workload `android` (download
+  # de centenas de MB) e não vale o custo num CI que não publica APK.
+  build:
+    name: Build (editor + demo)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Editor
+        run: dotnet build src/Aurora.Editor/Aurora.Editor.csproj -c Release
+
+      - name: Build Sandbox
+        run: dotnet build samples/Aurora.Sandbox/Aurora.Sandbox.csproj -c Release

@@ -52,6 +52,24 @@ O título da janela mostra FPS, contagem de entidades e draw calls.
 
 `--smoke` fecha a janela sozinha após 1,5 s (usado para teste automatizado).
 
+## Testes
+
+```bash
+dotnet test tests/Aurora.Runtime.Tests
+```
+
+Cobre a lógica pura do runtime — colisão e resolução (caixa/círculo/tilemap, camadas, triggers),
+A* e `NavGrid`, roundtrip de cena no `SceneSerializer` (incluindo scripts `[SceneScript]`),
+`GameState`/inventário/quests, vida e i-frames, e o ciclo de vida de entidades e behaviors.
+Nada aqui precisa de GPU, janela ou dispositivo de áudio.
+
+Fora de cobertura por dependerem de contexto OpenGL: `SpriteBatch`, `Font`, `Texture2D`,
+`AudioManager` e o loop do `Game`. A demo `--smoke` continua sendo o teste de ponta a ponta
+desses.
+
+O CI (`.github/workflows/ci.yml`) roda a suíte em cada push/PR e compila editor e demo desktop.
+`Aurora.Sandbox.Android` fica fora do CI: exige a workload `android`.
+
 ## Estrutura
 
 ```
@@ -62,6 +80,7 @@ src/Aurora.Runtime      Núcleo da engine (sem dependência de editor/UI desktop
   Input/                InputManager (teclado/mouse)
   Assets/               AssetManager (cache de texturas)
 samples/Aurora.Sandbox  Demo jogável da Fase 1
+tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```
 
 ## Formato de cena
