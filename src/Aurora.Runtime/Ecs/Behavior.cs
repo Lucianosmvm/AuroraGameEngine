@@ -19,13 +19,20 @@ public abstract class Behavior : IComponent
 
     internal bool Started;
 
+    /// <summary>True depois que este behavior saiu do mundo (entidade destruída, componente
+    /// removido ou substituído). O World checa isso pra parar de rodar/notificar na mesma hora,
+    /// mesmo antes da instância sair fisicamente da lista de execução.</summary>
+    internal bool Removed;
+
     /// <summary>Chamado uma vez, no primeiro frame em que o behavior está ativo.</summary>
     public virtual void Start() { }
 
     /// <summary>Chamado a cada frame com o delta em segundos.</summary>
     public virtual void Update(float deltaTime) { }
 
-    /// <summary>Chamado quando a entidade é destruída (antes dos componentes serem removidos).</summary>
+    /// <summary>Chamado quando este behavior sai do mundo: entidade destruída (antes dos
+    /// componentes serem removidos), <see cref="World.Remove{T}"/>, ou substituição por outro
+    /// componente do mesmo tipo. Depois disso ele não roda nem recebe callback.</summary>
     public virtual void OnDestroy() { }
 
     /// <summary>Chamado após resolução de colisão sólida. Normal aponta para fora da outra entidade.</summary>

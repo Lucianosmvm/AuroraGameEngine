@@ -40,6 +40,26 @@ public sealed class World
     private readonly List<int> _destroyQueue = new();
     private readonly List<(int Layer, int EntityId, Transform Transform, IComponent Renderable)> _renderList = new();
 
+    /// <summary>Índice id → behaviors daquela entidade. Os callbacks (colisão, trigger, dano,
+    /// morte) são endereçados a UMA entidade, mas a única lista disponível era a global: cada
+    /// evento varria todos os behaviors da cena pra achar os poucos do alvo, o que faz o custo
+    /// de colisão crescer com o tamanho do mundo inteiro em vez de com o número de scripts da
+    /// entidade atingida. <see cref="_behaviors"/> continua existindo porque o laço de Update
+    /// precisa de uma ordem única e estável pra cena toda.</summary>
+    private readonly Dictionary<int, List<Behavior>> _behaviorsByEntity = new();
+
+    /// <summary>Índice nome → ids vivos com aquele nome. <see cref="TryFind"/> é chamado todo
+    /// frame (câmera que segue o player, eventos que miram entidade por nome) e varria o
+    /// dicionário de nomes inteiro. Os ids entram em ordem crescente e saem na destruição,
+    /// então o primeiro da lista é sempre a entidade mais antiga viva com aquele nome.</summary>
+    private readonly Dictionary<string, List<int>> _idsByName = new();
+
+    /// <summary>True quando há behaviors marcados como removidos ainda presentes em
+    /// <see cref="_behaviors"/>. Tirar do meio da lista durante o laço de Update desalinharia
+    /// os índices e faria um behavior vizinho perder o frame — então a remoção física é
+    /// adiada pro fim do passo e a lógica ignora quem está marcado.</summary>
+    private bool _behaviorsNeedCompacting;
+
     /// <summary>Congela behaviors/colisão/partículas/vida (ex.: menu de pausa, inventário) sem
     /// destruir o World — cena continua desenhada por trás, só para de simular. UI (própria) e
     /// o resto do Game continuam rodando normalmente enquanto isso.</summary>
@@ -65,6 +85,9 @@ public sealed class World
         _names.Clear();
         _stores.Clear();
         _behaviors.Clear();
+        _behaviorsByEntity.Clear();
+        _idsByName.Clear();
+        _behaviorsNeedCompacting = false;
         _destroyQueue.Clear();
         _renderList.Clear();
         _collisionBuffer.Clear();
@@ -80,7 +103,25 @@ public sealed class World
         int id = _nextId++;
         _alive.Add(id);
         _names[id] = name;
+        LinkName(id, name);
         return new Entity(id, this);
+    }
+
+    private void LinkName(int id, string name)
+    {
+        if (!_idsByName.TryGetValue(name, out var ids))
+            _idsByName[name] = ids = [];
+        ids.Add(id);
+    }
+
+    private void UnlinkName(int id, string name)
+    {
+        if (!_idsByName.TryGetValue(name, out var ids))
+            return;
+
+        ids.Remove(id);
+        if (ids.Count == 0)
+            _idsByName.Remove(name);
     }
 
     public bool IsAlive(int id) => _alive.Contains(id);
@@ -90,16 +131,14 @@ public sealed class World
     /// <summary>Todas as entidades vivas, em ordem de criação.</summary>
     public IEnumerable<Entity> Entities => _alive.OrderBy(id => id).Select(id => new Entity(id, this));
 
-    /// <summary>Primeira entidade com o nome dado (nomes não são únicos).</summary>
+    /// <summary>Entidade viva mais antiga com o nome dado (nomes não são únicos). Comparação
+    /// exata, diferenciando maiúsculas.</summary>
     public bool TryFind(string name, out Entity entity)
     {
-        foreach (var (id, entityName) in _names)
+        if (_idsByName.TryGetValue(name, out var ids) && ids.Count > 0)
         {
-            if (entityName == name && _alive.Contains(id))
-            {
-                entity = new Entity(id, this);
-                return true;
-            }
+            entity = new Entity(ids[0], this);
+            return true;
         }
 
         entity = default;
@@ -126,13 +165,28 @@ public sealed class World
         if (!_stores.TryGetValue(type, out var store))
             _stores[type] = store = new Dictionary<int, IComponent>();
 
+        // Substituir um componente já existente: se o antigo era Behavior, precisa sair das
+        // listas de execução. Sem isso ele continuava recebendo Update e callbacks de colisão
+        // pra sempre, mesmo depois de sumir do store e de Get<T>() já devolver o substituto.
+        if (store.TryGetValue(entityId, out var anterior))
+        {
+            if (ReferenceEquals(anterior, component))
+                return component;
+
+            if (anterior is Behavior antigo)
+            {
+                UnlinkBehavior(antigo);
+                CompactBehaviorsIfIdle();
+            }
+        }
+
         store[entityId] = component;
 
         if (component is Behavior behavior)
         {
             behavior.Entity = new Entity(entityId, this);
             behavior.World = this;
-            _behaviors.Add(behavior);
+            LinkBehavior(entityId, behavior);
         }
 
         return component;
@@ -143,15 +197,98 @@ public sealed class World
             ? (T)c
             : null;
 
+    /// <summary>
+    /// Tira um componente da entidade e devolve se havia algo pra tirar. Casa com
+    /// <see cref="Get{T}"/>: o tipo é resolvido pelo tipo concreto usado no
+    /// <see cref="Add{T}"/>, então <c>Remove&lt;PlayerController&gt;()</c> funciona e
+    /// <c>Remove&lt;Behavior&gt;()</c> não remove nada.
+    /// <para>Sendo um <see cref="Behavior"/>, ele para de rodar na mesma hora (não roda mais
+    /// neste frame nem recebe callback) e leva um <see cref="Behavior.OnDestroy"/>.</para>
+    /// </summary>
+    public bool Remove<T>(int entityId) where T : class, IComponent
+    {
+        if (!_stores.TryGetValue(typeof(T), out var store) || !store.Remove(entityId, out var component))
+            return false;
+
+        if (component is Behavior behavior)
+        {
+            UnlinkBehavior(behavior);
+            CompactBehaviorsIfIdle();
+        }
+
+        return true;
+    }
+
+    private void LinkBehavior(int entityId, Behavior behavior)
+    {
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            _behaviorsByEntity[entityId] = list = [];
+        list.Add(behavior);
+
+        // Reaproveitar uma instância já removida (raro, mas legítimo: guardar o script e
+        // recolocar depois) só pode voltar pra lista global se a remoção física já aconteceu —
+        // senão a mesma instância rodaria duas vezes por frame até a compactação.
+        if (behavior.Removed)
+        {
+            behavior.Removed = false;
+            if (!_behaviors.Contains(behavior))
+                _behaviors.Add(behavior);
+        }
+        else
+        {
+            _behaviors.Add(behavior);
+        }
+    }
+
+    /// <summary>Marca o behavior como fora do mundo, tira do índice por entidade e avisa o
+    /// próprio behavior. A saída de <see cref="_behaviors"/> fica pra <see cref="CompactBehaviors"/>.</summary>
+    private void UnlinkBehavior(Behavior behavior)
+    {
+        if (behavior.Removed)
+            return;
+
+        behavior.Removed = true;
+        _behaviorsNeedCompacting = true;
+
+        int entityId = behavior.Entity.Id;
+        if (_behaviorsByEntity.TryGetValue(entityId, out var list))
+        {
+            list.Remove(behavior);
+            if (list.Count == 0)
+                _behaviorsByEntity.Remove(entityId);
+        }
+
+        behavior.OnDestroy();
+    }
+
+    private void CompactBehaviorsIfIdle()
+    {
+        if (!_updating)
+            CompactBehaviors();
+    }
+
+    private void CompactBehaviors()
+    {
+        if (!_behaviorsNeedCompacting)
+            return;
+
+        _behaviors.RemoveAll(static b => b.Removed);
+        _behaviorsNeedCompacting = false;
+    }
+
     public void Destroy(Entity entity) => Destroy(entity.Id);
 
     /// <summary>Destruição durante Update é adiada para o fim do frame.</summary>
     public void Destroy(int id)
     {
         if (_updating)
+        {
             _destroyQueue.Add(id);
-        else
-            RemoveNow(id);
+            return;
+        }
+
+        RemoveNow(id);
+        CompactBehaviors();
     }
 
     private void RemoveNow(int id)
@@ -159,14 +296,18 @@ public sealed class World
         if (!_alive.Remove(id))
             return;
 
-        // Snapshot: OnDestroy pode chamar Destroy() em cascata, modificando _behaviors
-        foreach (var b in _behaviors.Where(b => b.Entity.Id == id).ToArray())
-            b.OnDestroy();
+        // Snapshot: OnDestroy pode destruir outras entidades em cascata, mexendo na lista.
+        if (_behaviorsByEntity.TryGetValue(id, out var list))
+        {
+            foreach (var b in list.ToArray())
+                UnlinkBehavior(b);
+        }
 
-        _names.Remove(id);
+        if (_names.Remove(id, out var name))
+            UnlinkName(id, name);
+
         foreach (var store in _stores.Values)
             store.Remove(id);
-        _behaviors.RemoveAll(b => b.Entity.Id == id);
     }
 
     public IEnumerable<(Entity Entity, T1 C1)> Query<T1>()
@@ -203,7 +344,7 @@ public sealed class World
             for (int i = 0; i < _behaviors.Count; i++)
             {
                 var behavior = _behaviors[i];
-                if (!behavior.Enabled || !_alive.Contains(behavior.Entity.Id))
+                if (!behavior.Enabled || behavior.Removed || !_alive.Contains(behavior.Entity.Id))
                     continue;
 
                 try
@@ -243,6 +384,8 @@ public sealed class World
                 RemoveNow(id);
             _destroyQueue.Clear();
         }
+
+        CompactBehaviors();
     }
 
     /// <summary>Nasce/envelhece/mata partículas de todo ParticleEmitter vivo.</summary>
@@ -670,52 +813,73 @@ public sealed class World
         return true;
     }
 
+    // Os cinco Notify abaixo repetem o mesmo laço de propósito: passar o callback como
+    // delegate unificaria o código, mas capturaria os argumentos numa closure alocada a cada
+    // colisão/dano — exatamente o lixo por frame que este índice existe pra evitar.
+    // O laço é por índice e relê Count a cada volta porque o callback pode mexer na própria
+    // lista: um script que adiciona ou remove componente de si mesmo ao colidir é caso normal.
+
     private void NotifyCollision(int entityId, Entity other, CollisionInfo info)
     {
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            return;
+
+        for (int i = 0; i < list.Count; i++)
         {
-            var b = _behaviors[i];
-            if (b.Entity.Id == entityId && b.Enabled)
+            var b = list[i];
+            if (b.Enabled && !b.Removed)
                 b.OnCollision(other, info);
         }
     }
 
     private void NotifyTriggerEnter(int entityId, Entity other)
     {
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            return;
+
+        for (int i = 0; i < list.Count; i++)
         {
-            var b = _behaviors[i];
-            if (b.Entity.Id == entityId && b.Enabled)
+            var b = list[i];
+            if (b.Enabled && !b.Removed)
                 b.OnTriggerEnter(other);
         }
     }
 
     private void NotifyTriggerExit(int entityId, Entity other)
     {
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            return;
+
+        for (int i = 0; i < list.Count; i++)
         {
-            var b = _behaviors[i];
-            if (b.Entity.Id == entityId && b.Enabled)
+            var b = list[i];
+            if (b.Enabled && !b.Removed)
                 b.OnTriggerExit(other);
         }
     }
 
     private void NotifyDamaged(int entityId, float amount, Entity? source)
     {
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            return;
+
+        for (int i = 0; i < list.Count; i++)
         {
-            var b = _behaviors[i];
-            if (b.Entity.Id == entityId && b.Enabled)
+            var b = list[i];
+            if (b.Enabled && !b.Removed)
                 b.OnDamaged(amount, source);
         }
     }
 
     private void NotifyDeath(int entityId)
     {
-        for (int i = 0; i < _behaviors.Count; i++)
+        if (!_behaviorsByEntity.TryGetValue(entityId, out var list))
+            return;
+
+        for (int i = 0; i < list.Count; i++)
         {
-            var b = _behaviors[i];
-            if (b.Entity.Id == entityId && b.Enabled)
+            var b = list[i];
+            if (b.Enabled && !b.Removed)
                 b.OnDeath();
         }
     }

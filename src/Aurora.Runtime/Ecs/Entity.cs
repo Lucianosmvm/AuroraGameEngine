@@ -22,6 +22,10 @@ public readonly struct Entity : IEquatable<Entity>
     public T Add<T>(T component) where T : class, IComponent => _world.Add(Id, component);
     public T? Get<T>() where T : class, IComponent => _world.Get<T>(Id);
     public bool Has<T>() where T : class, IComponent => _world.Get<T>(Id) is not null;
+
+    /// <summary>Tira o componente da entidade. Retorna false se ela não tinha. Ver <see cref="World.Remove{T}"/>.</summary>
+    public bool Remove<T>() where T : class, IComponent => _world.Remove<T>(Id);
+
     public void Destroy() => _world.Destroy(Id);
 
     public bool Equals(Entity other) => Id == other.Id;

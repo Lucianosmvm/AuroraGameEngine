@@ -219,6 +219,67 @@ public class WorldTests
     }
 
     [Fact]
+    public void TryFindPassaParaAProximaQuandoAPrimeiraMorre()
+    {
+        var world = new World();
+        var primeira = world.CreateEntity("Inimigo");
+        var segunda = world.CreateEntity("Inimigo");
+
+        primeira.Destroy();
+
+        Assert.True(world.TryFind("Inimigo", out var achada));
+        Assert.Equal(segunda, achada);
+    }
+
+    [Fact]
+    public void TryFindDiferenciaMaiusculas()
+    {
+        var world = new World();
+        world.CreateEntity("Player");
+
+        Assert.True(world.TryFind("Player", out _));
+        Assert.False(world.TryFind("player", out _));
+    }
+
+    [Fact]
+    public void TryFindNaoAchaNadaDepoisDoClear()
+    {
+        var world = new World();
+        world.CreateEntity("Player");
+
+        world.Clear();
+
+        Assert.False(world.TryFind("Player", out _));
+    }
+
+    [Fact]
+    public void TryFindAchaEntidadeCriadaDepoisDoClear()
+    {
+        var world = new World();
+        world.CreateEntity("Player").Destroy();
+        world.Clear();
+
+        var nova = world.CreateEntity("Player");
+
+        Assert.True(world.TryFind("Player", out var achada));
+        Assert.Equal(nova, achada);
+    }
+
+    [Fact]
+    public void TryFindNaoAchaEntidadeDestruidaDuranteOUpdate()
+    {
+        // A destruição durante o Update é adiada; o índice de nomes só pode soltar o id
+        // quando a remoção acontecer de fato, senão TryFind mente por um frame.
+        var world = new World();
+        var alvo = world.CreateEntity("Alvo");
+        world.CreateEntity("Carrasco").Add(new DestruidorNoUpdate { Alvo = alvo });
+
+        world.Update(0.016f);
+
+        Assert.False(world.TryFind("Alvo", out _));
+    }
+
+    [Fact]
     public void QueryDeUmComponenteRetornaSoQuemTem()
     {
         var world = new World();
