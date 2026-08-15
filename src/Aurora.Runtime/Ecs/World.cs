@@ -897,7 +897,7 @@ public sealed class World
 
         foreach (var (entity, transform, sprite) in Query<Transform, SpriteRenderer>())
         {
-            if (sprite.Visible && sprite.Texture is not null)
+            if (sprite.Visible)
                 _renderList.Add((sprite.Layer, entity.Id, transform, sprite));
         }
 
@@ -922,11 +922,20 @@ public sealed class World
         {
             if (renderable is SpriteRenderer sprite)
             {
-                var texture = sprite.Texture!;
-                var source = sprite.SourceRect ?? new RectF(0f, 0f, texture.Width, texture.Height);
-                var size = (sprite.Size ?? new Vector2(source.Width, source.Height)) * transform.Scale;
-                batch.Draw(texture, transform.Position, size, sprite.Origin, transform.Rotation,
-                    sprite.Color, source, sprite.FlipX, sprite.FlipY);
+                if (sprite.Texture is { } texture)
+                {
+                    var source = sprite.SourceRect ?? new RectF(0f, 0f, texture.Width, texture.Height);
+                    var size = (sprite.Size ?? new Vector2(source.Width, source.Height)) * transform.Scale;
+                    batch.Draw(texture, transform.Position, size, sprite.Origin, transform.Rotation,
+                        sprite.Color, source, sprite.FlipX, sprite.FlipY);
+                }
+                else
+                {
+                    // Sem textura: desenha um retângulo sólido com a Color do sprite.
+                    var size = (sprite.Size ?? new Vector2(32f, 32f)) * transform.Scale;
+                    batch.Draw(batch.WhitePixel, transform.Position, size, sprite.Origin, transform.Rotation,
+                        sprite.Color, sprite.FlipX, sprite.FlipY);
+                }
             }
             else if (renderable is Tilemap tilemap)
             {
