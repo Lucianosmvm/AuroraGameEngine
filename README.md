@@ -40,6 +40,23 @@ dotnet run --project src/Aurora.Editor -- samples/Aurora.Sandbox.Core/Assets/sce
 dotnet run --project samples/Aurora.Sandbox
 ```
 
+### Demo de plataforma (2D, duas fases)
+
+```bash
+dotnet run --project samples/Aurora.Platformer
+```
+
+Jogo de plataforma completo e comentado, feito para servir de referência: gravidade e pulo
+(com coyote time e jump buffer), colisão do jogador com o tilemap, moedas, espinhos com
+respawn e bandeira que leva para a fase 2. **A/D** ou setas movem, **Espaço/W/↑** pulam,
+**R** reinicia a fase, **ESC** sai. `--smoke` roda o roteiro automatizado (chão, pulo,
+moeda, espinho e troca de fase) e falha com exceção se algo quebrar.
+
+As fases são cenas JSON comuns — abra no editor com
+`dotnet run --project src/Aurora.Editor -- samples/Aurora.Platformer/Assets/scenes/level1.json`.
+O passo a passo (física, colisão, montagem da cena, regras de level design) está em
+[docs/GUIA-JOGO-PLATAFORMA.md](docs/GUIA-JOGO-PLATAFORMA.md).
+
 ### Android (APK)
 
 ```bash
@@ -82,6 +99,7 @@ src/Aurora.Runtime      Núcleo da engine (sem dependência de editor/UI desktop
   Input/                InputManager (teclado/mouse)
   Assets/               AssetManager (cache de texturas)
 samples/Aurora.Sandbox  Demo jogável da Fase 1
+samples/Aurora.Platformer   Demo de plataforma 2D com duas fases (referência)
 tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```
 

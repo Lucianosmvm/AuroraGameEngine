@@ -69,3 +69,6 @@ jobs:
 
       - name: Build Sandbox
         run: dotnet build samples/Aurora.Sandbox/Aurora.Sandbox.csproj -c Release
+
+      - name: Build Platformer
+        run: dotnet build samples/Aurora.Platformer/Aurora.Platformer.csproj -c Release
