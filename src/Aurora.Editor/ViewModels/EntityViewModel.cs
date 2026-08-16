@@ -77,6 +77,7 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Sprite => Component("SpriteRenderer");
     public ComponentViewModel? Tilemap => Component("Tilemap");
     public ComponentViewModel? Camera => Component("CameraController");
+    public ComponentViewModel? Collider => Component("Collider");
 
     // ---- EventTrigger visibility in hierarchy ----
 

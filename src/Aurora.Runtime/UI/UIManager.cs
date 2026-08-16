@@ -164,13 +164,10 @@ public sealed class UIManager
             ResolveAxis(element.AnchorX, element.X, screenWidth, size.X),
             ResolveAxis(element.AnchorY, element.Y, screenHeight, size.Y));
 
+    // A regra em si mora em UiAnchor: o editor compila aquele arquivo por link pra desenhar o
+    // preview exatamente igual. Ver o comentário de lá antes de mexer.
     private static float ResolveAxis(string anchor, float coordinate, float screenSize, float elementSize)
-        => anchor switch
-        {
-            "Center" => screenSize / 2f + coordinate - elementSize / 2f,
-            "Right" or "Bottom" => screenSize - coordinate - elementSize,
-            _ => coordinate, // "Left"/"Top"
-        };
+        => UiAnchor.Resolve(anchor, coordinate, screenSize, elementSize);
 
     private static Vector2 JoystickCenter(UiJoystick stick, float screenWidth, float screenHeight)
     {

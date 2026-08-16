@@ -369,6 +369,9 @@
                 IsEnabled="{Binding CanPlay}"
                 FontSize="13" FontWeight="SemiBold" Padding="14,5"
                 Background="#2E9E44" Foreground="White"/>
+        <CheckBox Content="Colisores" IsChecked="{Binding ShowColliders}"
+                  VerticalAlignment="Center" FontSize="12"
+                  ToolTip.Tip="Mostra a hitbox de cada Collider no viewport: verde = sólido, laranja = trigger, tracejado = cinemático. Não aparece no jogo."/>
         <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
                    VerticalAlignment="Center" FontSize="11" Opacity="0.5"
                    IsVisible="{Binding !CanPlay}"/>
@@ -635,6 +638,20 @@
             </Grid>
             <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
               No Main() do jogo: game.ParseArgs(args); e em OnLoad(): LoadScene(BootScene ?? "default.json");
+            </TextBlock>
+            <TextBlock Text="TELA DE REFERÊNCIA (UI)" FontSize="10" FontWeight="Bold" Opacity="0.5" Margin="0,4,0,0"/>
+            <Grid ColumnDefinitions="*,Auto,*,Auto,Auto">
+              <TextBox Text="{Binding DesignWidth}" FontSize="11" Padding="6,3"/>
+              <TextBlock Grid.Column="1" Text="×" VerticalAlignment="Center" Margin="5,0" Opacity="0.6" FontSize="11"/>
+              <TextBox Grid.Column="2" Text="{Binding DesignHeight}" FontSize="11" Padding="6,3"/>
+              <TextBlock Grid.Column="3" Text="fonte" VerticalAlignment="Center" Margin="8,0,4,0" Opacity="0.6" FontSize="11"/>
+              <TextBox Grid.Column="4" Text="{Binding UiFontSize}" FontSize="11" Padding="6,3" Width="46"/>
+            </Grid>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              Tamanho de tela que o viewport usa pra desenhar a moldura e resolver AnchorX/AnchorY,
+              e o tamanho de fonte usado pra medir UiText. Precisa bater com o código do jogo:
+              game.DesignResolution e Assets.LoadFont(..., 22f). Diferente = menu montado aqui cai
+              noutro lugar no jogo.
             </TextBlock>
             <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5" Margin="0,4,0,0"/>
             <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"

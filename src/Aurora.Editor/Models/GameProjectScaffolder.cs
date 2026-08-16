@@ -101,13 +101,16 @@ public static class GameProjectScaffolder
         };
         File.WriteAllText(scenePath, sceneRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
-        // designWidth/Height gravados explícitos e iguais ao DesignResolution de BuildGameClass —
-        // é o contrato que faz o preview de UI do editor bater com o jogo rodando.
+        // Contrato entre editor e jogo, gravado explícito: designWidth/Height iguais ao
+        // DesignResolution de BuildGameClass, uiFont/uiFontSize iguais ao Assets.LoadFont() dele.
+        // É o que faz o preview de UI do editor bater com o jogo rodando — mexeu num, mexe no outro.
         var settings = new ProjectSettings
         {
             GameProject = Path.Combine(projectDir, $"{projectName}.csproj"),
             DesignWidth = 1280,
             DesignHeight = 720,
+            UiFont = "fonts/DejaVuSans.ttf",
+            UiFontSize = 22f,
         };
         File.WriteAllText(Path.Combine(projectDir, "aurora.project.json"),
             JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));

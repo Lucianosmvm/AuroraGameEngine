@@ -47,6 +47,25 @@ public sealed class ProjectSettings
     [JsonIgnore]
     public int EffectiveDesignHeight => DesignHeight is > 0 ? DesignHeight.Value : 720;
 
+    /// <summary>Fonte que o jogo passa pro <c>UI.Draw</c>, relativa à pasta de Assets
+    /// (null = "fonts/DejaVuSans.ttf"). O editor lê o TTF pra medir UiText igual ao runtime —
+    /// o tamanho do texto entra no cálculo de Anchor, então medir errado desloca o elemento.</summary>
+    [JsonPropertyName("uiFont")]
+    public string? UiFont { get; set; }
+
+    /// <summary>Tamanho em pixels usado no <c>Assets.LoadFont(...)</c> do jogo (null = 22).
+    /// Precisa bater com o código, senão o preview mede numa escala e o jogo desenha noutra.</summary>
+    [JsonPropertyName("uiFontSize")]
+    public float? UiFontSize { get; set; }
+
+    /// <summary>Caminho de fonte efetivo — <see cref="UiFont"/> ou o padrão dos projetos novos.</summary>
+    [JsonIgnore]
+    public string EffectiveUiFont => string.IsNullOrWhiteSpace(UiFont) ? "fonts/DejaVuSans.ttf" : UiFont;
+
+    /// <summary>Tamanho de fonte efetivo — <see cref="UiFontSize"/> ou o padrão 22.</summary>
+    [JsonIgnore]
+    public float EffectiveUiFontSize => UiFontSize is > 0 ? UiFontSize.Value : 22f;
+
     /// <summary>Caminho absoluto do arquivo aurora.project.json em disco.</summary>
     [JsonIgnore]
     public string FilePath { get; private set; } = "";

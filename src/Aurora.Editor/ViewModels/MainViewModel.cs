@@ -108,13 +108,88 @@ public sealed class MainViewModel : ViewModelBase
     public bool IsUiScreenDocument =>
         _document?.Root["UI"]?.GetValue<bool>() == true;
 
+    private bool _showColliders = true;
+
+    /// <summary>Liga o desenho dos colisores no viewport (checkbox da toolbar). Ligado por padrão:
+    /// Collider não tem representação visual nenhuma no jogo, então sem isso a única forma de saber
+    /// onde a hitbox está é rodar e bater nela.</summary>
+    public bool ShowColliders
+    {
+        get => _showColliders;
+        set => Set(ref _showColliders, value);
+    }
+
     /// <summary>Resolução de referência da UI vinda do aurora.project.json (padrão 1280x720).
     /// O SceneCanvas desenha a moldura do jogo com esse tamanho e resolve os Anchor contra ela,
-    /// pro preview bater com o jogo em vez de acompanhar o tamanho do painel do editor.</summary>
-    public int DesignWidth => _settings?.EffectiveDesignWidth ?? 1280;
+    /// pro preview bater com o jogo em vez de acompanhar o tamanho do painel do editor. Precisa
+    /// ser igual ao <c>Game.DesignResolution</c> do código do jogo.</summary>
+    public int DesignWidth
+    {
+        get => _settings?.EffectiveDesignWidth ?? 1280;
+        set => SetDesign(width: value);
+    }
 
     /// <summary>Ver <see cref="DesignWidth"/>.</summary>
-    public int DesignHeight => _settings?.EffectiveDesignHeight ?? 720;
+    public int DesignHeight
+    {
+        get => _settings?.EffectiveDesignHeight ?? 720;
+        set => SetDesign(height: value);
+    }
+
+    /// <summary>Tamanho em pixels da fonte que o jogo passa pro UI.Draw — usado pra medir UiText
+    /// no preview. Precisa bater com o <c>Assets.LoadFont(..., 22f)</c> do código do jogo.</summary>
+    public float UiFontSize
+    {
+        get => _settings?.EffectiveUiFontSize ?? 22f;
+        set => SetDesign(fontSize: value);
+    }
+
+    private void SetDesign(int? width = null, int? height = null, float? fontSize = null)
+    {
+        if (_settings is null)
+            return;
+
+        // Valor inválido (campo apagado, zero, negativo) volta pro padrão em vez de gravar lixo
+        // que faria a moldura sumir ou o texto ser medido com escala zero.
+        if (width is not null) _settings.DesignWidth = width > 0 ? width : null;
+        if (height is not null) _settings.DesignHeight = height > 0 ? height : null;
+        if (fontSize is not null) _settings.UiFontSize = fontSize > 0 ? fontSize : null;
+
+        try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
+
+        _uiFontPath = null;
+        _uiFont = null;
+        Raise(nameof(DesignWidth));
+        Raise(nameof(DesignHeight));
+        Raise(nameof(UiFontSize));
+        SceneEdited?.Invoke();
+    }
+
+    private string? _uiFontPath;
+    private TrueTypeMetrics? _uiFont;
+
+    /// <summary>Métricas da fonte da UI, lidas do TTF do próprio projeto — é o que deixa o editor
+    /// medir UiText igual ao runtime. Null quando o arquivo não existe (projeto sem a fonte ainda,
+    /// ou caminho errado no aurora.project.json): quem desenha cai numa estimativa e segue.
+    /// Cacheado por caminho — o TTF é lido uma vez, não a cada frame de render.</summary>
+    public TrueTypeMetrics? UiFont
+    {
+        get
+        {
+            if (_document is null)
+                return null;
+
+            string path = Path.Combine(_document.AssetsRoot,
+                (_settings?.EffectiveUiFont ?? "fonts/DejaVuSans.ttf").Replace('/', Path.DirectorySeparatorChar));
+
+            if (path != _uiFontPath)
+            {
+                _uiFontPath = path;
+                _uiFont = TrueTypeMetrics.FromFile(path);
+            }
+            return _uiFont;
+        }
+    }
 
     /// <summary>Disparado em qualquer edição — o canvas usa para redesenhar.</summary>
     public event Action? SceneEdited;

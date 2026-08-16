@@ -10,6 +10,15 @@
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+  <!-- Quebra de linha do runtime reusada por link, não por referência de projeto: o editor é
+       independente do Aurora.Runtime de propósito (mexe só no JSON da cena, sem GL), mas se o
+       preview quebrasse linha diferente do jogo o editor voltaria a mentir. TextWrapper é
+       estático e puro — recebe a largura de cada caractere por delegate — então compila sozinho. -->
+  <ItemGroup>
+    <Compile Include="..\Aurora.Runtime\Graphics\TextWrapper.cs" Link="Models\TextWrapper.cs" />
+    <Compile Include="..\Aurora.Runtime\UI\UiAnchor.cs" Link="Models\UiAnchor.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.18" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.18" />

@@ -23,8 +23,10 @@ public sealed class SceneCanvas : Control
     private readonly record struct SpriteView(EntityViewModel Entity, Matrix LocalToScreen, Rect LocalRect, float Layer);
 
     /// <summary>Elemento de UI (HUD/menu) pronto para desenhar: coordenadas de pixel de tela
-    /// diretas, sem passar pela câmera do mundo — mesma convenção do UIManager em runtime.</summary>
-    private readonly record struct UiElementView(EntityViewModel Entity, ComponentViewModel Component, string Kind, Rect Rect);
+    /// diretas, sem passar pela câmera do mundo — mesma convenção do UIManager em runtime.
+    /// <paramref name="Text"/> é o texto já com as quebras de linha resolvidas (só UiText usa).</summary>
+    private readonly record struct UiElementView(EntityViewModel Entity, ComponentViewModel Component,
+        string Kind, Rect Rect, string Text);
 
     /// <summary>Tilemap pronto para desenhar: célula em unidades do mundo, grade e tileset.</summary>
     private readonly record struct TilemapView(EntityViewModel Entity, Matrix LocalToScreen,
@@ -117,7 +119,8 @@ public sealed class SceneCanvas : Control
             _viewModel.SceneEdited += InvalidateVisual;
             _viewModel.PropertyChanged += (_, args) =>
             {
-                if (args.PropertyName == nameof(MainViewModel.SelectedEntity))
+                if (args.PropertyName is nameof(MainViewModel.SelectedEntity)
+                                      or nameof(MainViewModel.ShowColliders))
                     InvalidateVisual();
             };
         }
@@ -201,7 +204,141 @@ public sealed class SceneCanvas : Control
         }
     }
 
-    private static readonly HashSet<string> UiTypesWithBounds = ["UiButton", "UiPanel", "UiBar", "UiImage"];
+    /// <summary>Colisor pronto pra desenhar: retângulo já em pixel do canvas (Circle usa o
+    /// retângulo como bounding box do círculo) e as flags que definem a cor.</summary>
+    private readonly record struct ColliderView(EntityViewModel Entity, bool IsCircle, Rect Rect,
+        bool IsSolid, bool IsKinematic, string SizeLabel);
+
+    /// <summary>Colisores de todas as entidades com Transform + Collider.
+    ///
+    /// Segue a convenção do runtime (<c>World.ProcessCollisions</c>): a forma fica centrada em
+    /// <c>Transform.Position + Collider.Offset</c>, com Width/Height (ou Radius) em pixels de
+    /// mundo — <b>sem</b> passar por ScaleX/ScaleY nem por Rotation do Transform. Ou seja: mudar a
+    /// escala do sprite não muda a hitbox, e a hitbox nunca gira. É de propósito no runtime (AABB),
+    /// e é justamente por isso que ver o colisor desenhado importa: ele não acompanha o sprite.</summary>
+    private IEnumerable<ColliderView> VisibleColliders()
+    {
+        if (_viewModel is null)
+            yield break;
+
+        foreach (var entity in _viewModel.Entities)
+        {
+            var transform = entity.Transform;
+            var collider = entity.Collider;
+            if (transform is null || collider is null)
+                continue;
+
+            double centerX = transform.GetFloat("X", 0f) + collider.GetFloat("OffsetX", 0f);
+            double centerY = transform.GetFloat("Y", 0f) + collider.GetFloat("OffsetY", 0f);
+
+            bool isCircle = collider.GetString("Shape") == "Circle";
+            double width, height;
+            string label;
+            if (isCircle)
+            {
+                double radius = collider.GetFloat("Radius", 8f);
+                width = height = radius * 2;
+                label = $"r {radius:0.##}";
+            }
+            else
+            {
+                width = collider.GetFloat("Width", 16f);
+                height = collider.GetFloat("Height", 16f);
+                label = $"{width:0.##} × {height:0.##}";
+            }
+
+            if (width < 0.01 || height < 0.01)
+                continue;
+
+            var topLeft = new Point(centerX - width / 2, centerY - height / 2).Transform(ViewMatrix);
+            yield return new ColliderView(entity, isCircle,
+                new Rect(topLeft.X, topLeft.Y, width * _zoom, height * _zoom),
+                collider.GetBool("IsSolid", true), collider.GetBool("IsKinematic", false), label);
+        }
+    }
+
+    /// <summary>Células sólidas do tilemap (índices de <c>SolidTiles</c>) pintadas por cima dos
+    /// tiles. Elas colidem no runtime (<c>World.ResolveTilemap</c>) sem existir nenhum componente
+    /// Collider na cena — olhando só o tileset desenhado não dá pra distinguir a parede do chão
+    /// decorativo, e é aí que o personagem trava num lugar que parecia vazio.</summary>
+    private void DrawSolidTiles(DrawingContext context, TilemapView map)
+    {
+        var tilemap = map.Entity.Tilemap;
+        if (tilemap is null)
+            return;
+
+        // "1, 3, 5" no inspector → conjunto de índices. Entrada meio digitada é ignorada em vez
+        // de derrubar o render.
+        var solid = new HashSet<int>();
+        foreach (var part in (tilemap.GetString("SolidTiles") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+            if (int.TryParse(part.Trim(), out int parsed))
+                solid.Add(parsed);
+
+        if (solid.Count == 0 || map.Entity.Tilemap?.Node["Tiles"] is not System.Text.Json.Nodes.JsonArray tiles)
+            return;
+
+        using var _ = context.PushTransform(map.LocalToScreen);
+
+        var color = Color.FromRgb(80, 226, 130);
+        var fill = new SolidColorBrush(color, 0.22);
+        var pen = new Pen(new SolidColorBrush(color, 0.7), 1 / _zoom);
+        int total = Math.Min(tiles.Count, map.Columns * map.Rows);
+
+        for (int cell = 0; cell < total; cell++)
+        {
+            if (!solid.Contains(tiles[cell]?.GetValue<int>() ?? -1))
+                continue;
+
+            context.DrawRectangle(fill, pen, new Rect(
+                cell % map.Columns * map.CellWidth, cell / map.Columns * map.CellHeight,
+                map.CellWidth, map.CellHeight));
+        }
+    }
+
+    /// <summary>Contorno dos colisores por cima dos sprites. Cor conta o tipo: verde = sólido
+    /// (empurra), laranja = trigger (IsSolid=false, só dispara callback). Tracejado = cinemático
+    /// (não é empurrado por ninguém). O selecionado ganha traço mais forte e o tamanho escrito.</summary>
+    private void DrawColliders(DrawingContext context)
+    {
+        foreach (var view in VisibleColliders())
+        {
+            bool selected = ReferenceEquals(view.Entity, _viewModel?.SelectedEntity);
+            var color = view.IsSolid ? Color.FromRgb(80, 226, 130) : Color.FromRgb(255, 176, 60);
+
+            var pen = new Pen(new SolidColorBrush(color, selected ? 1.0 : 0.75), selected ? 2 : 1.25)
+            {
+                DashStyle = view.IsKinematic ? DashStyle.Dash : null,
+            };
+            var fill = new SolidColorBrush(color, selected ? 0.16 : 0.08);
+
+            if (view.IsCircle)
+            {
+                double radius = view.Rect.Width / 2;
+                context.DrawEllipse(fill, pen, view.Rect.Center, radius, radius);
+            }
+            else
+            {
+                context.DrawRectangle(fill, pen, view.Rect);
+            }
+
+            // Cruz no centro: com colisor grande a borda pode sair da tela, e o centro é o que
+            // o Offset move — é ele que precisa ficar achável.
+            var center = view.Rect.Center;
+            var crossPen = new Pen(new SolidColorBrush(color, 0.9), 1);
+            context.DrawLine(crossPen, new Point(center.X - 4, center.Y), new Point(center.X + 4, center.Y));
+            context.DrawLine(crossPen, new Point(center.X, center.Y - 4), new Point(center.X, center.Y + 4));
+
+            if (!selected)
+                continue;
+
+            var label = new Avalonia.Media.FormattedText(view.SizeLabel,
+                System.Globalization.CultureInfo.CurrentCulture, Avalonia.Media.FlowDirection.LeftToRight,
+                new Avalonia.Media.Typeface("Sans-Serif"), 11, new SolidColorBrush(color));
+            context.DrawText(label, new Point(view.Rect.X, view.Rect.Y - label.Height - 2));
+        }
+    }
+
+    private static readonly HashSet<string> UiTypesWithBounds = ["UiButton", "UiPanel", "UiBar"];
 
     /// <summary>Moldura da tela do jogo dentro do viewport do editor: retângulo da resolução de
     /// referência (aurora.project.json → designWidth/Height, padrão 1280x720) encaixado no painel,
@@ -261,22 +398,62 @@ public sealed class SceneCanvas : Control
                     {
                         "UiButton" => (120f, 32f),
                         "UiBar"    => (100f, 12f),
-                        "UiImage"  => (32f, 32f),
                         _          => (100f, 100f), // UiPanel
                     };
                     float width = comp.GetFloat("Width", defaultWidth);
                     float height = comp.GetFloat("Height", defaultHeight);
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
-                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height));
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height), "");
+                }
+                else if (comp.Type == "UiImage")
+                {
+                    // Width/Height ausentes ou <= 0: o runtime usa o tamanho natural da textura
+                    // (UIManager.BuildImage). Assumir 32x32 aqui mostrava um quadradinho no editor
+                    // e a imagem inteira no jogo.
+                    var bitmap = ResolveTexture(comp.GetString("Texture"));
+                    double width = comp.GetFloat("Width", 0f);
+                    double height = comp.GetFloat("Height", 0f);
+                    if (width <= 0) width = bitmap?.Size.Width ?? 32;
+                    if (height <= 0) height = bitmap?.Size.Height ?? 32;
+
+                    double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
+                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height), "");
                 }
                 else if (comp.Type == "UiText")
                 {
+                    // Medido com o TTF do próprio projeto, igual Font.MeasureText faz em runtime:
+                    // o tamanho entra no cálculo do Anchor, então estimativa por contagem de
+                    // caracteres (o que havia aqui) desloca todo texto Center/Right no preview.
                     string text = comp.GetString("Text") ?? "";
-                    double width = Math.Max(20, text.Length * 7 + 6);
+                    float textScale = comp.GetFloat("Scale", 1f);
+                    float maxTextWidth = comp.GetFloat("MaxWidth", 0f);
+                    float fontSize = _viewModel.UiFontSize;
+
+                    string laidOut;
+                    double width, height;
+                    if (_viewModel.UiFont is { } font)
+                    {
+                        laidOut = font.Wrap(text, maxTextWidth, fontSize, textScale);
+                        (width, height) = font.Measure(laidOut, fontSize, textScale);
+                    }
+                    else
+                    {
+                        // Sem o TTF em disco: estimativa grosseira, mas ao menos proporcional ao
+                        // tamanho de fonte do jogo em vez de um 7px/caractere fixo.
+                        laidOut = text;
+                        int longest = 0;
+                        foreach (var line in text.Split('\n'))
+                            longest = Math.Max(longest, line.Length);
+                        width = longest * fontSize * 0.5 * textScale;
+                        height = (text.Count(c => c == '\n') + 1) * fontSize * 1.17 * textScale;
+                    }
+
+                    width = Math.Max(width, 4);
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
-                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, 18);
-                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, 18));
+                    double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height), laidOut);
                 }
                 else if (comp.Type == "UiJoystick")
                 {
@@ -286,31 +463,19 @@ public sealed class SceneCanvas : Control
                     double side = radius * 2.0;
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, side);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, side);
-                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, side, side));
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, side, side), "");
                 }
             }
         }
     }
 
-    /// <summary>Mesma lógica de Aurora.Runtime.UI.UIManager.ResolveAxis — precisa bater com o
-    /// runtime, senão o preview do editor mostra posição diferente do jogo de verdade.</summary>
+    // Mesmíssimo código que o runtime roda: UiAnchor.cs entra neste projeto por link no .csproj,
+    // não por cópia. Era regra duplicada, e foi por isso que o preview divergiu do jogo.
     private static double ResolveAnchorAxis(string anchor, float coordinate, double screenSize, double elementSize)
-        => anchor switch
-        {
-            "Center" => screenSize / 2.0 + coordinate - elementSize / 2.0,
-            "Right" or "Bottom" => screenSize - coordinate - elementSize,
-            _ => coordinate,
-        };
+        => Aurora.Runtime.UI.UiAnchor.Resolve(anchor, coordinate, (float)screenSize, (float)elementSize);
 
-    /// <summary>Inverso de <see cref="ResolveAnchorAxis"/>: canto do elemento na tela → X/Y que
-    /// vai pro JSON, respeitando o Anchor. Usado ao arrastar.</summary>
     private static double UnresolveAnchorAxis(string anchor, double edge, double screenSize, double elementSize)
-        => anchor switch
-        {
-            "Center" => edge - screenSize / 2.0 + elementSize / 2.0,
-            "Right" or "Bottom" => screenSize - edge - elementSize,
-            _ => edge,
-        };
+        => Aurora.Runtime.UI.UiAnchor.Unresolve(anchor, (float)edge, (float)screenSize, (float)elementSize);
 
     /// <summary>Converte hex "#RRGGBB"/"#RRGGBBAA" (convenção do engine, alpha por último) —
     /// Avalonia.Media.Color.Parse espera alpha primeiro, não dá pra reusar direto.</summary>
@@ -372,13 +537,49 @@ public sealed class SceneCanvas : Control
             {
                 case "UiText":
                 {
-                    string text = element.Component.GetString("Text") ?? "";
                     var textColor = ParseEngineColor(element.Component.GetString("Color"), Colors.White);
-                    context.DrawText(
-                        new Avalonia.Media.FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
-                            Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
-                            14 * uiScale, new SolidColorBrush(textColor)),
-                        rect.TopLeft);
+                    float textScale = element.Component.GetFloat("Scale", 1f);
+                    double lineHeight = (_viewModel?.UiFont?.LineHeight(_viewModel.UiFontSize)
+                                         ?? _viewModel?.UiFontSize * 1.17 ?? 26) * textScale * uiScale;
+
+                    // Uma linha por vez, avançando LineHeight — mesma coisa que Font.Draw faz.
+                    // O glifo desenhado é o do sistema (Avalonia não carrega TTF de disco), então
+                    // o traço pode diferir um pouco do jogo; a caixa medida é que tem que bater,
+                    // porque é ela que decide a posição pelo Anchor.
+                    double lineY = rect.Y;
+                    foreach (string line in element.Text.Split('\n'))
+                    {
+                        context.DrawText(
+                            new Avalonia.Media.FormattedText(line, System.Globalization.CultureInfo.CurrentCulture,
+                                Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
+                                Math.Max(1, _viewModel?.UiFontSize * textScale * uiScale ?? 14), new SolidColorBrush(textColor)),
+                            new Point(rect.X, lineY));
+                        lineY += lineHeight;
+                    }
+                    break;
+                }
+
+                case "UiImage":
+                {
+                    var bitmap = ResolveTexture(element.Component.GetString("Texture"));
+                    if (bitmap is not null)
+                        context.DrawImage(bitmap, new Rect(bitmap.Size), rect);
+                    else
+                        context.DrawRectangle(new SolidColorBrush(Colors.Magenta, 0.35),
+                            new Pen(new SolidColorBrush(Colors.Magenta, 0.8), 1), rect);
+                    break;
+                }
+
+                case "UiBar":
+                {
+                    // Fundo + preenchimento, como o runtime desenha. A fração é ilustrativa: o
+                    // valor real vem de uma variável do GameState que só existe rodando o jogo.
+                    var back = ParseEngineColor(element.Component.GetString("BackColor"), Color.FromRgb(48, 48, 48));
+                    var fillColor = ParseEngineColor(element.Component.GetString("FillColor"), Color.FromRgb(64, 192, 64));
+                    context.FillRectangle(new SolidColorBrush(back), rect);
+                    context.FillRectangle(new SolidColorBrush(fillColor),
+                        rect.WithWidth(rect.Width * 0.7));
+                    context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.25), 1), rect);
                     break;
                 }
 
@@ -441,13 +642,29 @@ public sealed class SceneCanvas : Control
         {
             if (spriteView is { } sprite)
             {
+                // Numa tela de UI ("UI":true) o UIManager.Load só lê componentes Ui* — Transform e
+                // SpriteRenderer são silenciosamente descartados e NÃO existem no jogo. Desenhar
+                // igual a uma cena normal fazia o editor mostrar um objeto que nunca ia aparecer;
+                // fantasma + contorno vermelho tracejado deixa claro sem impedir de selecionar
+                // pra apagar.
+                bool ghost = _viewModel.IsUiScreenDocument;
+
                 using (context.PushTransform(sprite.LocalToScreen))
+                using (context.PushOpacity(ghost ? 0.25 : 1.0))
                 {
                     var bitmap = ResolveTexture(sprite.Entity.Sprite?.GetString("Texture"));
                     if (bitmap is not null)
                         context.DrawImage(bitmap, new Rect(bitmap.Size), sprite.LocalRect);
                     else
                         context.FillRectangle(Brushes.Magenta, sprite.LocalRect);
+                }
+
+                if (ghost)
+                {
+                    using var _ = context.PushTransform(sprite.LocalToScreen);
+                    context.DrawRectangle(
+                        new Pen(new SolidColorBrush(Colors.OrangeRed, 0.9), 1.5 / _zoom) { DashStyle = DashStyle.Dash },
+                        sprite.LocalRect);
                 }
 
                 if (ReferenceEquals(sprite.Entity, _viewModel.SelectedEntity))
@@ -459,6 +676,16 @@ public sealed class SceneCanvas : Control
                 if (ReferenceEquals(map.Entity, _viewModel.SelectedEntity))
                     selectedMap = map;
             }
+        }
+
+        // Colisores por cima dos sprites (senão o sprite tapa a hitbox) e abaixo dos gizmos, que
+        // precisam continuar legíveis pra arrastar. Tiles sólidos entram junto: no runtime eles
+        // colidem igual, mesmo sem componente Collider.
+        if (_viewModel.ShowColliders)
+        {
+            foreach (var map in VisibleTilemaps())
+                DrawSolidTiles(context, map);
+            DrawColliders(context);
         }
 
         if (selectedSprite is { } sel)

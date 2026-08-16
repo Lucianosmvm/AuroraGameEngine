@@ -303,6 +303,17 @@ Na cena `main.json`, crie a entidade `Player` (**+ Nova**), depois **+ Add** est
 - **Collider** — `Shape: Box`, ajuste Width/Height pro hitbox; `IsSolid: true`.
 - **Animator** — `FrameWidth`/`FrameHeight` do spritesheet, `SheetColumns`.
 
+> **Ver a hitbox:** o checkbox **Colisores** na toolbar (ligado por padrão) desenha o colisor de
+> cada entidade no viewport — **verde** = sólido, **laranja** = trigger (`IsSolid: false`),
+> **tracejado** = cinemático, cruz no centro = onde o `OffsetX/OffsetY` colocou a forma. As células
+> `SolidTiles` do tilemap entram junto, pintadas de verde: elas colidem no jogo sem existir nenhum
+> componente `Collider`, e olhando só o tileset não dá pra distinguir parede de chão decorativo.
+> Selecione a entidade pra ver o tamanho escrito em cima do colisor.
+>
+> Detalhe que confunde: o colisor **não** acompanha `ScaleX`/`ScaleY` nem `Rotation` do Transform
+> — a colisão é AABB, sempre alinhada aos eixos e com o Width/Height escritos no próprio Collider.
+> Esticar o sprite não estica a hitbox; é justamente por isso que vale olhar o desenho.
+
 Clipes (botão **+ Clipe** no Animator, um clique por linha, preenche Nome/Duração/Frames/Loop):
 
 ```
@@ -728,19 +739,33 @@ certo mas fisicamente errado) — não precisa mexer em mais nada.
 
 O viewport do editor desenha a **moldura da tela do jogo** com essa mesma resolução e resolve
 `AnchorX`/`AnchorY` contra ela — é o que faz um menu montado no editor cair no mesmo lugar no
-jogo. O editor lê o tamanho de `aurora.project.json`:
+jogo. Dá pra editar direto no inspector, em **TELA DE REFERÊNCIA (UI)**; fica gravado no
+`aurora.project.json`:
 
 ```json
 {
   "designWidth": 1280,
-  "designHeight": 720
+  "designHeight": 720,
+  "uiFont": "fonts/DejaVuSans.ttf",
+  "uiFontSize": 22
 }
 ```
 
-Projetos novos já saem com esses dois campos e com `DesignResolution` no construtor do `Game`.
-**Os dois números precisam ser iguais.** Se o jogo não define `DesignResolution`, a tela dele é o
+`uiFont`/`uiFontSize` são a fonte que o jogo passa pro `UI.Draw`. O editor **lê esse .ttf** e mede
+`UiText` com as métricas reais do arquivo, do mesmo jeito que a `Font` do runtime mede — o tamanho
+do texto entra no cálculo do anchor, então medir por estimativa desloca todo texto `Center`/`Right`
+no preview. Se o arquivo não existir, o editor cai numa aproximação e segue funcionando.
+
+Projetos novos já saem com os quatro campos, com `DesignResolution` no construtor do `Game` e com
+`Assets.LoadFont("fonts/DejaVuSans.ttf", 22f)` no `OnLoad`. **Os números precisam ser iguais dos
+dois lados.** Se o jogo não define `DesignResolution`, a tela dele é o
 tamanho real da janela: só os elementos `Left`/`Top` batem com o preview, e os `Center`/`Right`/
 `Bottom` aparecem deslocados — quanto maior a diferença entre janela e moldura, maior o desvio.
+
+Numa **tela de UI** (arquivo com `"UI": true`), o `UIManager.Load` lê **só** componentes `Ui*` —
+`Transform`/`SpriteRenderer` na mesma entidade são descartados e não existem no jogo. O editor
+desenha esses casos apagados, com contorno vermelho tracejado, justamente pra você não montar o
+menu em cima de um objeto que nunca vai aparecer.
 
 E ao desenhar a UI, passe `ScreenSize` (não `View.FramebufferSize`) — é o tamanho que
 `UI.Update` usa no hit-test dos botões:
