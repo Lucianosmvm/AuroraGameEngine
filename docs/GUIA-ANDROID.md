@@ -209,13 +209,20 @@ public sealed class AndroidAssetSource : IAssetSource
     AnchorX  [ Left ▾ ]   AnchorY  [ Bottom ▾ ]
     Radius  70
   ```
-  No jogo, leia o vetor e o clique direto — sem precisar de `Camera`/drag manual:
+  Num script (`Behavior`), leia o vetor e o clique direto pelo `World.UI` — sem precisar de
+  `Camera`/drag manual. O id da tela é o nome do arquivo sem extensão (`scenes/Hud.json` → `"Hud"`):
   ```csharp
-  var stick = UI.Find<UiJoystick>("hud", "MoveStick");
-  var atk = UI.Find<UiButton>("hud", "BotaoAtk");
-  controller.ExternalMove = stick?.Value ?? default;
-  if (atk?.Clicked == true) controller.TriggerMelee();
+  var stick = World?.UI?.Find<UiJoystick>("Hud", "MoveStick");
+  var atk = World?.UI?.Find<UiButton>("Hud", "BotaoAtk");
+
+  var move = stick?.Value ?? Vector2.Zero;          // já vem com intensidade 0..1
+  Get<Transform>()!.Position += move * Speed * deltaTime;
+  if (atk?.Clicked == true) Atacar();
   ```
+  **Atenção:** o template "Movimento (Character Controller)" do painel SCRIPTS lê
+  `Input.AxisX`/`AxisY`, que é teclado + gamepad — no celular isso fica sempre zero e o
+  personagem não anda. Pra jogo de toque, o movimento tem que ler o joystick como acima;
+  há um script pronto em [TUTORIAL-JOGO-ANDROID.md](TUTORIAL-JOGO-ANDROID.md) (seção 7).
   `AnchorY: "Bottom"` com margem generosa (`Y` grande o bastante) é importante —
   toque muito perto da borda inferior costuma ser engolido pelo gesto de
   navegação do Android (voltar/home por swipe), mesmo em tela cheia.

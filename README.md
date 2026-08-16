@@ -66,6 +66,9 @@ dotnet publish samples/Aurora.Sandbox.Android -c Release -f net10.0-android
 APK sai em `samples/Aurora.Sandbox.Android/bin/Release/net10.0-android/publish/com.auroraengine.sandbox-Signed.apk`.
 Copie para o celular e instale (permitir "fontes desconhecidas"). Controle por toque: segure o dedo e o jogador segue.
 
+Pra fazer o **seu** jogo mobile (orientação, resolução de referência, joystick de toque e o APK
+pelo editor), o passo a passo está em [docs/TUTORIAL-JOGO-ANDROID.md](docs/TUTORIAL-JOGO-ANDROID.md).
+
 Controles: **WASD/setas** movem o jogador, câmera segue, **ESC** sai.
 O título da janela mostra FPS, contagem de entidades e draw calls.
 
