@@ -101,7 +101,14 @@ public static class GameProjectScaffolder
         };
         File.WriteAllText(scenePath, sceneRoot.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
-        var settings = new ProjectSettings { GameProject = Path.Combine(projectDir, $"{projectName}.csproj") };
+        // designWidth/Height gravados explícitos e iguais ao DesignResolution de BuildGameClass —
+        // é o contrato que faz o preview de UI do editor bater com o jogo rodando.
+        var settings = new ProjectSettings
+        {
+            GameProject = Path.Combine(projectDir, $"{projectName}.csproj"),
+            DesignWidth = 1280,
+            DesignHeight = 720,
+        };
         File.WriteAllText(Path.Combine(projectDir, "aurora.project.json"),
             JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
 
@@ -139,7 +146,10 @@ public static class GameProjectScaffolder
         return null;
     }
 
-    private static string ToIdentifier(string name)
+    /// <summary>Sanitiza um nome livre (nome de projeto, de pasta, etc.) para um identificador
+    /// C# válido — usado tanto pro namespace do projeto gerado quanto pelo "Novo Script" do
+    /// editor pra montar o namespace/classe dos templates prontos (ver ScriptTemplates).</summary>
+    public static string ToIdentifier(string name)
     {
         string cleaned = Regex.Replace(name, "[^A-Za-z0-9_]", "");
         if (cleaned.Length == 0)
@@ -181,12 +191,23 @@ public static class GameProjectScaffolder
     private static string BuildGameClass(string identifier) => $$"""
         using Aurora.Runtime;
         using Aurora.Runtime.Graphics;
+        using Silk.NET.Maths;
 
         namespace {{identifier}};
 
         public sealed class {{identifier}}Game : Game
         {
             private Font _font = null!;
+
+            public {{identifier}}Game()
+            {
+                // Mesma resolução de referência que o editor usa pra desenhar a moldura da tela
+                // (aurora.project.json → designWidth/designHeight). É o que faz um menu montado no
+                // editor cair no mesmo lugar no jogo: sem isso a tela do jogo é o tamanho real da
+                // janela, e só os elementos Left/Top coincidem com o preview. Se mudar aqui, mude
+                // no aurora.project.json também.
+                DesignResolution = new Vector2D<int>(1280, 720);
+            }
 
             protected override void OnLoad()
             {
@@ -197,7 +218,10 @@ public static class GameProjectScaffolder
 
             protected override void OnRenderUI(float dt)
             {
-                UI.Draw(SpriteBatch, _font, State, Inventory, Quests, View.FramebufferSize.X, View.FramebufferSize.Y);
+                // ScreenSize, não View.FramebufferSize: é o tamanho que UI.Update usa no hit-test
+                // dos botões (e que respeita o DesignResolution). Ler os dois diferentes desenha o
+                // botão num lugar e detecta o clique em outro.
+                UI.Draw(SpriteBatch, _font, State, Inventory, Quests, ScreenSize.X, ScreenSize.Y);
             }
         }
         """;

@@ -4,6 +4,15 @@ Este documento é a referência do que dá pra usar dentro de um script `[SceneS
 classe que herda `Behavior`). Pra um tutorial passo a passo de como montar um jogo do zero,
 veja `docs/GUIA-JOGO-BASE.md` — este arquivo aqui é consulta, não tutorial.
 
+## 0. Criando um script pelo editor
+
+O painel **SCRIPTS** (coluna esquerda, entre PREFABS e ASSETS) lista os arquivos `.cs` da
+pasta `Scripts/` do projeto. **"+ Novo…"** cria um script a partir de um template pronto
+(escolhido no dropdown ao lado — Movimento, Arma, Inimigo, Item, Magia ou Vazio), pergunta
+onde salvar e já abre o arquivo no VS Code. Duplo-clique num script existente da lista também
+abre no VS Code. Depois de editar e salvar, aperte o "↻" ao lado de "+Add Componente" (ou
+Play) pra engine descobrir o script de novo — ver seção 2 sobre o requisito de `[SceneScript]`.
+
 ---
 
 ## 1. Os dois mundos: Componentes vs. C# normal

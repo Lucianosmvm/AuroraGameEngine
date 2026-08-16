@@ -437,6 +437,79 @@ public partial class MainWindow : Window
 
     private void OnRefreshScripts(object? sender, RoutedEventArgs e) => ViewModel.RefreshScriptCatalog();
 
+    private void OnRefreshScriptFiles(object? sender, RoutedEventArgs e) => ViewModel.ReloadScripts();
+
+    /// <summary>"+ Novo…" do painel SCRIPTS: escolhe onde salvar (sugerindo a pasta Scripts do
+    /// projeto e o nome padrão do template selecionado), gera o arquivo a partir do template e
+    /// já abre no VS Code — é o fluxo "clica em novo e abre no editor de código" pedido, sem
+    /// passo manual nenhum no meio.</summary>
+    private async Task PickAndNewScriptAsync()
+    {
+        if (ViewModel.Document is null)
+            return;
+
+        var template = ViewModel.SelectedScriptTemplate;
+        string scriptsDir = ViewModel.ScriptsDirPath;
+        if (scriptsDir.Length > 0)
+            Directory.CreateDirectory(scriptsDir);
+
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = $"Novo Script — {template.DisplayName}",
+            DefaultExtension = "cs",
+            SuggestedFileName = $"{template.DefaultClassName}.cs",
+            SuggestedStartLocation = scriptsDir.Length > 0
+                ? await StorageProvider.TryGetFolderFromPathAsync(scriptsDir)
+                : null,
+            FileTypeChoices =
+            [
+                new FilePickerFileType("Script C#") { Patterns = ["*.cs"] },
+            ],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+            return;
+
+        try
+        {
+            ViewModel.CreateScriptFile(path);
+            OpenInVsCode(path);
+        }
+        catch (Exception ex)
+        {
+            ViewModel.Status = $"Erro ao criar script: {ex.Message}";
+        }
+    }
+
+    private void OnNewScript(object? sender, RoutedEventArgs e) => _ = PickAndNewScriptAsync();
+
+    private void OnScriptFileDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as Control)?.DataContext is ViewModels.ScriptFileViewModel script)
+            OpenInVsCode(script.FullPath);
+    }
+
+    /// <summary>Abre um arquivo no VS Code via "code" no PATH (roda por cmd.exe pra resolver o
+    /// shim .cmd que o instalador do VS Code registra — Process.Start direto com
+    /// UseShellExecute=false não resolve extensão de batch). Se "code" não estiver instalado/no
+    /// PATH, cai pro Explorer selecionando o arquivo, pra sempre sobrar algum jeito de abrir.</summary>
+    private static void OpenInVsCode(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/c code \"{path}\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+        }
+        catch
+        {
+            try { Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"")); }
+            catch { /* melhor esforço — sem VS Code no PATH nem Explorer, nada mais a fazer */ }
+        }
+    }
+
     private void OnPrefabDoubleTapped(object? sender, TappedEventArgs e)
     {
         if ((e.Source as Control)?.DataContext is ViewModels.PrefabFileViewModel prefab)

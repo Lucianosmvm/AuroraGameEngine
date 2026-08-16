@@ -44,8 +44,12 @@ public sealed class SceneCanvas : Control
     private EntityViewModel? _target;
     private Point _dragOffset;
 
-    // Alvo do drag de elemento de UI (MoveUi) — X/Y em pixel de tela direto, sem ScreenToWorld.
+    // Alvo do drag de elemento de UI (MoveUi) — X/Y em pixel de tela do jogo, sem ScreenToWorld.
     private ComponentViewModel? _uiTarget;
+
+    // Tamanho do elemento arrastado em pixel de tela do jogo: X/Y ancorado em Center/Right/Bottom
+    // é relativo à borda da tela e ao próprio tamanho, então converter canto → X/Y precisa dele.
+    private Size _uiTargetSize;
 
     // Estado inicial do gesto de escala/rotação.
     private Point _gestureLocalStart;
@@ -199,15 +203,48 @@ public sealed class SceneCanvas : Control
 
     private static readonly HashSet<string> UiTypesWithBounds = ["UiButton", "UiPanel", "UiBar", "UiImage"];
 
-    /// <summary>Elementos de UI (HUD/menu) de todas as entidades, em coordenadas de pixel de
-    /// tela — não passam pela câmera/pan/zoom do mundo, igual ao runtime (UIManager.Draw).</summary>
+    /// <summary>Moldura da tela do jogo dentro do viewport do editor: retângulo da resolução de
+    /// referência (aurora.project.json → designWidth/Height, padrão 1280x720) encaixado no painel,
+    /// com a escala usada pra converter pixel de tela do jogo em pixel do canvas.
+    ///
+    /// Resolver Anchor contra o painel do editor (o que era feito antes) mostra o menu montado
+    /// numa tela do tamanho do painel — que nunca é o tamanho da janela do jogo. Um UiButton
+    /// AnchorX=Center e outro Left encostam um no outro no editor e aparecem separados no jogo,
+    /// porque só o Center anda junto com a largura da tela.</summary>
+    private (Rect Rect, double Scale) UiFrame()
+    {
+        double designWidth = Math.Max(1, _viewModel?.DesignWidth ?? 1280);
+        double designHeight = Math.Max(1, _viewModel?.DesignHeight ?? 720);
+        double scale = Math.Min(Bounds.Width / designWidth, Bounds.Height / designHeight);
+        if (scale <= 0 || double.IsNaN(scale) || double.IsInfinity(scale))
+            scale = 1;
+
+        double width = designWidth * scale;
+        double height = designHeight * scale;
+        return (new Rect((Bounds.Width - width) / 2, (Bounds.Height - height) / 2, width, height), scale);
+    }
+
+    /// <summary>Pixel do canvas → pixel de tela do jogo (o X/Y que o UiElement guarda).</summary>
+    private Point CanvasToUi(Point canvasPoint)
+    {
+        var (rect, scale) = UiFrame();
+        return new Point((canvasPoint.X - rect.X) / scale, (canvasPoint.Y - rect.Y) / scale);
+    }
+
+    /// <summary>Elementos de UI (HUD/menu) de todas as entidades, posicionados na moldura da
+    /// resolução de referência — não passam pela câmera/pan/zoom do mundo, igual ao runtime
+    /// (UIManager.Draw). O Rect devolvido já está em pixel do canvas, pronto pra desenhar.</summary>
     private IEnumerable<UiElementView> VisibleUiElements()
     {
         if (_viewModel is null)
             yield break;
 
-        double screenWidth = Bounds.Width;
-        double screenHeight = Bounds.Height;
+        var (frame, uiScale) = UiFrame();
+        double screenWidth = frame.Width / uiScale;
+        double screenHeight = frame.Height / uiScale;
+
+        Rect ToCanvas(double left, double top, double width, double height) => new(
+            frame.X + left * uiScale, frame.Y + top * uiScale, width * uiScale, height * uiScale);
 
         foreach (var entity in _viewModel.Entities)
         {
@@ -231,7 +268,7 @@ public sealed class SceneCanvas : Control
                     float height = comp.GetFloat("Height", defaultHeight);
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
-                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, width, height));
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height));
                 }
                 else if (comp.Type == "UiText")
                 {
@@ -239,7 +276,7 @@ public sealed class SceneCanvas : Control
                     double width = Math.Max(20, text.Length * 7 + 6);
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, 18);
-                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, width, 18));
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, 18));
                 }
                 else if (comp.Type == "UiJoystick")
                 {
@@ -249,7 +286,7 @@ public sealed class SceneCanvas : Control
                     double side = radius * 2.0;
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, side);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, side);
-                    yield return new UiElementView(entity, comp, comp.Type, new Rect(left, top, side, side));
+                    yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, side, side));
                 }
             }
         }
@@ -263,6 +300,16 @@ public sealed class SceneCanvas : Control
             "Center" => screenSize / 2.0 + coordinate - elementSize / 2.0,
             "Right" or "Bottom" => screenSize - coordinate - elementSize,
             _ => coordinate,
+        };
+
+    /// <summary>Inverso de <see cref="ResolveAnchorAxis"/>: canto do elemento na tela → X/Y que
+    /// vai pro JSON, respeitando o Anchor. Usado ao arrastar.</summary>
+    private static double UnresolveAnchorAxis(string anchor, double edge, double screenSize, double elementSize)
+        => anchor switch
+        {
+            "Center" => edge - screenSize / 2.0 + elementSize / 2.0,
+            "Right" or "Bottom" => screenSize - edge - elementSize,
+            _ => edge,
         };
 
     /// <summary>Converte hex "#RRGGBB"/"#RRGGBBAA" (convenção do engine, alpha por último) —
@@ -290,8 +337,33 @@ public sealed class SceneCanvas : Control
         }
     }
 
+    /// <summary>Contorno da tela do jogo (resolução de referência) com o resto do viewport
+    /// escurecido — sem essa moldura não dá pra saber, olhando o editor, onde é "a borda da
+    /// tela" que os Anchor Right/Bottom/Center usam como referência.</summary>
+    private void DrawUiFrame(DrawingContext context)
+    {
+        var (frame, _) = UiFrame();
+
+        var shade = new SolidColorBrush(Colors.Black, 0.28);
+        context.FillRectangle(shade, new Rect(0, 0, Bounds.Width, frame.Y));
+        context.FillRectangle(shade, new Rect(0, frame.Bottom, Bounds.Width, Bounds.Height - frame.Bottom));
+        context.FillRectangle(shade, new Rect(0, frame.Y, frame.X, frame.Height));
+        context.FillRectangle(shade, new Rect(frame.Right, frame.Y, Bounds.Width - frame.Right, frame.Height));
+
+        context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.45), 1), frame);
+
+        int width = _viewModel?.DesignWidth ?? 1280;
+        int height = _viewModel?.DesignHeight ?? 720;
+        var label = new Avalonia.Media.FormattedText($"{width}x{height}", System.Globalization.CultureInfo.CurrentCulture,
+            Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
+            11, new SolidColorBrush(Colors.White, 0.5));
+        context.DrawText(label, new Point(frame.X + 4, Math.Max(0, frame.Y - label.Height - 2)));
+    }
+
     private void DrawUiElements(DrawingContext context)
     {
+        var (_, uiScale) = UiFrame();
+
         foreach (var element in VisibleUiElements())
         {
             var rect = element.Rect;
@@ -305,7 +377,7 @@ public sealed class SceneCanvas : Control
                     context.DrawText(
                         new Avalonia.Media.FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
                             Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
-                            14, new SolidColorBrush(textColor)),
+                            14 * uiScale, new SolidColorBrush(textColor)),
                         rect.TopLeft);
                     break;
                 }
@@ -333,7 +405,7 @@ public sealed class SceneCanvas : Control
                         var textColor = ParseEngineColor(element.Component.GetString("TextColor"), Colors.White);
                         var formatted = new Avalonia.Media.FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
                             Avalonia.Media.FlowDirection.LeftToRight, new Avalonia.Media.Typeface("Sans-Serif"),
-                            13, new SolidColorBrush(textColor));
+                            13 * uiScale, new SolidColorBrush(textColor));
                         context.DrawText(formatted, new Point(
                             rect.X + (rect.Width - formatted.Width) / 2,
                             rect.Y + (rect.Height - formatted.Height) / 2));
@@ -399,8 +471,14 @@ public sealed class SceneCanvas : Control
         if (selEntity?.Camera is { } camComp && selEntity.Transform is { } camTransform)
             DrawCameraPreview(context, camTransform, camComp);
 
-        // Elementos de UI (HUD/menu) por cima de tudo — pixel de tela, sem câmera.
-        DrawUiElements(context);
+        // Elementos de UI (HUD/menu) por cima de tudo — pixel de tela, sem câmera. A moldura da
+        // resolução de referência só aparece quando há UI pra posicionar, pra não poluir cena
+        // de gameplay pura.
+        if (_viewModel.IsUiScreenDocument || VisibleUiElements().Any())
+        {
+            DrawUiFrame(context);
+            DrawUiElements(context);
+        }
     }
 
     private void DrawTilemap(DrawingContext context, TilemapView map)
@@ -599,9 +677,13 @@ public sealed class SceneCanvas : Control
             _drag = DragMode.MoveUi;
             _target = hitUi.Entity;
             _uiTarget = hitUi.Component;
-            _dragOffset = new Point(
-                hitUi.Component.GetFloat("X", 0f) - point.Position.X,
-                hitUi.Component.GetFloat("Y", 0f) - point.Position.Y);
+            // Offset guardado no canto superior-esquerdo (não no X/Y bruto): com AnchorX=Right o
+            // X cresce pra esquerda, então arrastar somando no X direto move o elemento ao contrário.
+            var uiPoint = CanvasToUi(point.Position);
+            var uiTopLeft = CanvasToUi(hitUi.Rect.TopLeft);
+            double uiScale = UiFrame().Scale;
+            _uiTargetSize = new Size(hitUi.Rect.Width / uiScale, hitUi.Rect.Height / uiScale);
+            _dragOffset = new Point(uiTopLeft.X - uiPoint.X, uiTopLeft.Y - uiPoint.Y);
             InvalidateVisual();
             e.Handled = true;
             return;
@@ -732,10 +814,17 @@ public sealed class SceneCanvas : Control
                 break;
 
             case DragMode.MoveUi when _target is not null && _uiTarget is not null:
+            {
+                var uiPoint = CanvasToUi(position);
+                double screenWidth = _viewModel?.DesignWidth ?? 1280;
+                double screenHeight = _viewModel?.DesignHeight ?? 720;
                 _target.SetUiPosition(_uiTarget,
-                    (float)(position.X + _dragOffset.X),
-                    (float)(position.Y + _dragOffset.Y));
+                    (float)UnresolveAnchorAxis(_uiTarget.GetString("AnchorX") ?? "Left",
+                        uiPoint.X + _dragOffset.X, screenWidth, _uiTargetSize.Width),
+                    (float)UnresolveAnchorAxis(_uiTarget.GetString("AnchorY") ?? "Top",
+                        uiPoint.Y + _dragOffset.Y, screenHeight, _uiTargetSize.Height));
                 break;
+            }
 
             case DragMode.Move when _target is not null:
             {

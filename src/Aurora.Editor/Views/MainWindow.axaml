@@ -382,8 +382,8 @@
 
     <Grid ColumnDefinitions="230,4,*,4,330">
 
-      <!-- Cenas + Telas UI + Prefabs + Assets + Hierarquia -->
-      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,Auto,4,*,4,*">
+      <!-- Cenas + Telas UI + Prefabs + Scripts + Assets + Hierarquia -->
+      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,*,4,*">
 
         <DockPanel Grid.Row="0" MaxHeight="130">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
@@ -452,7 +452,34 @@
 
         <GridSplitter Grid.Row="5" Background="#D7DEE8"/>
 
-        <DockPanel Grid.Row="6">
+        <DockPanel Grid.Row="6" MaxHeight="130">
+          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
+            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
+                    Click="OnRefreshScriptFiles" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Reescanear a pasta Scripts do projeto"/>
+            <Button DockPanel.Dock="Right" Content="+ Novo…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
+                    Click="OnNewScript" IsEnabled="{Binding HasDocument}"
+                    ToolTip.Tip="Cria um script a partir do template selecionado e abre no VS Code"/>
+            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ScriptTemplateOptions}"
+                      SelectedItem="{Binding SelectedScriptTemplate}"
+                      FontSize="11" Width="150" Margin="0,0,4,0" IsEnabled="{Binding HasDocument}"/>
+            <TextBlock Text="SCRIPTS" FontSize="11" FontWeight="Bold" Opacity="0.5"
+                       VerticalAlignment="Center"/>
+          </DockPanel>
+          <ListBox ItemsSource="{Binding Scripts}" DoubleTapped="OnScriptFileDoubleTapped"
+                    ToolTip.Tip="Duplo-clique abre o script no VS Code">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding RelativePath}"/>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="7" Background="#D7DEE8"/>
+
+        <DockPanel Grid.Row="8">
           <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
             <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
                     Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
@@ -480,9 +507,9 @@
           </ListBox>
         </DockPanel>
 
-        <GridSplitter Grid.Row="7" Background="#D7DEE8"/>
+        <GridSplitter Grid.Row="9" Background="#D7DEE8"/>
 
-        <DockPanel Grid.Row="8">
+        <DockPanel Grid.Row="10">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">

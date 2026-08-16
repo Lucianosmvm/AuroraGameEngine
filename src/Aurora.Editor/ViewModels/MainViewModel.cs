@@ -30,7 +30,19 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<SceneFileViewModel> SceneFiles { get; } = [];
     public ObservableCollection<SceneFileViewModel> UiScreens { get; } = [];
     public ObservableCollection<PrefabFileViewModel> Prefabs { get; } = [];
+    public ObservableCollection<ScriptFileViewModel> Scripts { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
+
+    /// <summary>Templates prontos oferecidos pelo "+ Novo…" do painel SCRIPTS (ver ScriptTemplates).</summary>
+    public IReadOnlyList<ScriptTemplates.Template> ScriptTemplateOptions { get; } = ScriptTemplates.All;
+
+    private ScriptTemplates.Template _selectedScriptTemplate = ScriptTemplates.All[0];
+
+    public ScriptTemplates.Template SelectedScriptTemplate
+    {
+        get => _selectedScriptTemplate;
+        set => Set(ref _selectedScriptTemplate, value);
+    }
 
     /// <summary>Scripts [SceneScript] descobertos no projeto do jogo — alimenta o dropdown
     /// "+Add Componente" das entidades. Atualizado em background ao abrir cena/projeto.</summary>
@@ -95,6 +107,14 @@ public sealed class MainViewModel : ViewModelBase
     /// travam o jogo no load: SceneSerializer não conhece esses tipos fora de TELAS UI).</summary>
     public bool IsUiScreenDocument =>
         _document?.Root["UI"]?.GetValue<bool>() == true;
+
+    /// <summary>Resolução de referência da UI vinda do aurora.project.json (padrão 1280x720).
+    /// O SceneCanvas desenha a moldura do jogo com esse tamanho e resolve os Anchor contra ela,
+    /// pro preview bater com o jogo em vez de acompanhar o tamanho do painel do editor.</summary>
+    public int DesignWidth => _settings?.EffectiveDesignWidth ?? 1280;
+
+    /// <summary>Ver <see cref="DesignWidth"/>.</summary>
+    public int DesignHeight => _settings?.EffectiveDesignHeight ?? 720;
 
     /// <summary>Disparado em qualquer edição — o canvas usa para redesenhar.</summary>
     public event Action? SceneEdited;
@@ -515,6 +535,7 @@ public sealed class MainViewModel : ViewModelBase
         ReloadSceneFiles();
         ReloadPrefabs();
         ReloadUiScreens();
+        ReloadScripts();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -547,6 +568,7 @@ public sealed class MainViewModel : ViewModelBase
         ReloadSceneFiles();
         ReloadPrefabs();
         ReloadUiScreens();
+        ReloadScripts();
         RefreshScriptCatalog();
         SceneEdited?.Invoke();
     }
@@ -763,6 +785,69 @@ public sealed class MainViewModel : ViewModelBase
             string relative = Path.GetRelativePath(_document.AssetsRoot, file).Replace('\\', '/');
             Prefabs.Add(new PrefabFileViewModel(file, relative));
         }
+    }
+
+    /// <summary>Pasta "Scripts" do projeto aberto (irmã de "Assets", criada por
+    /// GameProjectScaffolder pra todo projeto novo) — raiz do painel SCRIPTS e destino sugerido
+    /// pro "+ Novo…". Deriva da pasta de aurora.project.json, não de GameProjectPath, porque
+    /// GameProjectPath pode apontar pra um .exe dentro de bin/Debug em vez da raiz do projeto.</summary>
+    public string ScriptsDirPath =>
+        _settings is { FilePath.Length: > 0 }
+            ? Path.Combine(Path.GetDirectoryName(_settings.FilePath)!, "Scripts")
+            : "";
+
+    /// <summary>Varre a pasta Scripts do projeto por arquivos .cs (para o painel SCRIPTS).</summary>
+    public void ReloadScripts()
+    {
+        Scripts.Clear();
+        string dir = ScriptsDirPath;
+        if (dir.Length == 0 || !Directory.Exists(dir))
+            return;
+
+        var files = Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in files)
+        {
+            string relative = Path.GetRelativePath(dir, file).Replace('\\', '/');
+            Scripts.Add(new ScriptFileViewModel(file, relative));
+        }
+    }
+
+    /// <summary>Cria um script em <paramref name="absolutePath"/> a partir de
+    /// <see cref="SelectedScriptTemplate"/>: nome da classe = nome do arquivo (sanitizado, pra
+    /// sempre bater com o C# convencional), namespace = nome do projeto. Não builda nem registra
+    /// nada — [SceneScript] é descoberto por reflection no assembly do jogo (ver Game.AutoRegisterScripts),
+    /// então o arquivo já funciona assim que o jogo rodar de novo (botão "↻" do +Add Componente,
+    /// ou o próprio Play).</summary>
+    public void CreateScriptFile(string absolutePath)
+    {
+        string className = GameProjectScaffolder.ToIdentifier(Path.GetFileNameWithoutExtension(absolutePath));
+        if (className.Length == 0)
+            className = SelectedScriptTemplate.DefaultClassName;
+
+        string @namespace = ResolveScriptNamespace();
+        string content = ScriptTemplates.Build(SelectedScriptTemplate, @namespace, className);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
+        File.WriteAllText(absolutePath, content);
+
+        ReloadScripts();
+        Status = $"Script criado: {Path.GetFileName(absolutePath)} ({SelectedScriptTemplate.DisplayName})";
+    }
+
+    /// <summary>Nome do namespace pros templates de "Novo Script": nome do .csproj do jogo se
+    /// conhecido, senão o nome da pasta do projeto — só estética (Game.AutoRegisterScripts acha
+    /// [SceneScript] por reflection, não importa o namespace nem precisa de "using").</summary>
+    private string ResolveScriptNamespace()
+    {
+        string? csproj = _settings?.GameProject;
+        if (!string.IsNullOrWhiteSpace(csproj) && csproj.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
+            return GameProjectScaffolder.ToIdentifier(Path.GetFileNameWithoutExtension(csproj));
+
+        string projectDir = _settings is { FilePath.Length: > 0 } ? Path.GetDirectoryName(_settings.FilePath)! : "";
+        string dirName = projectDir.Length > 0 ? Path.GetFileName(projectDir.TrimEnd('\\', '/')) : "";
+        return dirName.Length > 0 ? GameProjectScaffolder.ToIdentifier(dirName) : "Game";
     }
 
     private static bool LooksLikeScene(string jsonPath)

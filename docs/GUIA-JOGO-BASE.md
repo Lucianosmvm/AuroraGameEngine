@@ -724,6 +724,32 @@ game.Run("MeuJogo");
 Isso também corrige mouse/toque automaticamente (sem essa correção o clique ficaria visualmente
 certo mas fisicamente errado) — não precisa mexer em mais nada.
 
+### Por que isso importa pro editor de UI
+
+O viewport do editor desenha a **moldura da tela do jogo** com essa mesma resolução e resolve
+`AnchorX`/`AnchorY` contra ela — é o que faz um menu montado no editor cair no mesmo lugar no
+jogo. O editor lê o tamanho de `aurora.project.json`:
+
+```json
+{
+  "designWidth": 1280,
+  "designHeight": 720
+}
+```
+
+Projetos novos já saem com esses dois campos e com `DesignResolution` no construtor do `Game`.
+**Os dois números precisam ser iguais.** Se o jogo não define `DesignResolution`, a tela dele é o
+tamanho real da janela: só os elementos `Left`/`Top` batem com o preview, e os `Center`/`Right`/
+`Bottom` aparecem deslocados — quanto maior a diferença entre janela e moldura, maior o desvio.
+
+E ao desenhar a UI, passe `ScreenSize` (não `View.FramebufferSize`) — é o tamanho que
+`UI.Update` usa no hit-test dos botões:
+
+```csharp
+protected override void OnRenderUI(float dt)
+    => UI.Draw(SpriteBatch, _font, State, Inventory, Quests, ScreenSize.X, ScreenSize.Y);
+```
+
 ---
 
 ## 17. Build final (desktop)
