@@ -6,6 +6,7 @@ using Aurora.Runtime.Assets;
 using Aurora.Runtime.Events;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Input;
+using Silk.NET.Input;
 
 namespace Aurora.Runtime.UI;
 
@@ -93,6 +94,20 @@ public sealed class UIManager
                 PressedColor = GetS("PressedColor", "#2A2850FF"),
                 TextColor = GetS("TextColor", "#FFFFFFFF"),
                 OnClick = json.TryGetProperty("OnClick", out var onClick) ? EventAction.ParseList(onClick) : [],
+            },
+            "UiTextInput" => new UiTextInput
+            {
+                Width = GetF("Width", 200f),
+                Height = GetF("Height", 32f),
+                Text = GetS("Text"),
+                Placeholder = GetS("Placeholder"),
+                MaxLength = (int)GetF("MaxLength", 32f),
+                Allowed = GetS("Allowed"),
+                Color = GetS("Color", "#20203CFF"),
+                FocusColor = GetS("FocusColor", "#2A2A55FF"),
+                TextColor = GetS("TextColor", "#FFFFFFFF"),
+                PlaceholderColor = GetS("PlaceholderColor", "#8888A8FF"),
+                CaretColor = GetS("CaretColor", "#FFFFFFFF"),
             },
             "UiJoystick" => new UiJoystick
             {
@@ -261,8 +276,13 @@ public sealed class UIManager
         // Reseta o "clique de um frame só" antes de reivindicar toque novo (senão Clicked
         // nunca voltaria a false depois do primeiro toque).
         foreach (var screen in _screens.Values)
+        {
             foreach (var button in screen.Elements.OfType<UiButton>())
                 button.Clicked = false;
+
+            foreach (var field in screen.Elements.OfType<UiTextInput>())
+                field.Submitted = false;
+        }
 
         // Toques sem dono tentam reivindicar um UiButton ou UiJoystick livre (telas visíveis
         // por cima ganham prioridade — mesma ordem em que foram carregadas/mostradas).
@@ -270,6 +290,10 @@ public sealed class UIManager
         {
             if (claimedIds.Contains(id))
                 continue;
+
+            // Todo toque sem dono redefine o foco: cair num campo foca ele, cair em qualquer
+            // outro lugar (botao, cenario, tela vazia) tira o cursor de todos.
+            UpdateFocus(pos, screenWidth, screenHeight);
 
             bool claimed = false;
             foreach (var screen in _screens.Values)
@@ -311,6 +335,60 @@ public sealed class UIManager
                         break;
                     }
                 }
+            }
+        }
+
+        UpdateTyping(input);
+    }
+
+    /// <summary>Foca o campo sob o toque e desfoca o resto.</summary>
+    private void UpdateFocus(Vector2 point, float screenWidth, float screenHeight)
+    {
+        UiTextInput? hit = null;
+
+        foreach (var screen in _screens.Values)
+        {
+            if (!screen.Visible) continue;
+
+            foreach (var field in screen.Elements.OfType<UiTextInput>())
+            {
+                var position = ResolvePosition(field, new Vector2(field.Width, field.Height), screenWidth, screenHeight);
+                bool inside = point.X >= position.X && point.X <= position.X + field.Width
+                           && point.Y >= position.Y && point.Y <= position.Y + field.Height;
+
+                if (inside) hit = field;
+            }
+        }
+
+        foreach (var screen in _screens.Values)
+            foreach (var field in screen.Elements.OfType<UiTextInput>())
+                field.Focused = ReferenceEquals(field, hit);
+    }
+
+    /// <summary>Entrega ao campo focado o que foi digitado no frame.</summary>
+    private void UpdateTyping(InputManager input)
+    {
+        foreach (var screen in _screens.Values)
+        {
+            if (!screen.Visible) continue;
+
+            foreach (var field in screen.Elements.OfType<UiTextInput>())
+            {
+                if (!field.Focused) continue;
+
+                if (input.WasKeyPressed(Key.Backspace) && field.Text.Length > 0)
+                    field.Text = field.Text[..^1];
+
+                foreach (char c in input.TypedText)
+                {
+                    if (field.Text.Length >= field.MaxLength) break;
+                    if (field.Allowed.Length > 0 && !field.Allowed.Contains(c)) continue;
+
+                    field.Text += c;
+                }
+
+                if (input.WasKeyPressed(Key.Enter) || input.WasKeyPressed(Key.KeypadEnter))
+                    field.Submitted = true;
             }
         }
     }
@@ -384,6 +462,33 @@ public sealed class UIManager
                         break;
                     }
 
+                    case UiTextInput field:
+                    {
+                        var position = ResolvePosition(field, new Vector2(field.Width, field.Height), screenWidth, screenHeight);
+                        batch.DrawRect(position, new Vector2(field.Width, field.Height),
+                            Color.FromHex(field.Focused ? field.FocusColor : field.Color));
+
+                        if (font is null) break;
+
+                        const float padding = 6f;
+                        bool empty = field.Text.Length == 0;
+                        string shown = empty ? field.Placeholder : VisibleTail(field.Text, font, field.Width - padding * 2f);
+                        var textSize = font.MeasureText(shown);
+                        var textPos = position + new Vector2(padding, (field.Height - textSize.Y) / 2f);
+
+                        if (shown.Length > 0)
+                            font.Draw(batch, shown, textPos, Color.FromHex(empty ? field.PlaceholderColor : field.TextColor));
+
+                        if (field.Focused)
+                        {
+                            // Cursor fixo, sem piscar: o Update da UI nao recebe deltaTime, e
+                            // pedir um so pra animar cursor mudaria a assinatura pra todo mundo.
+                            var caretPos = position + new Vector2(padding + (empty ? 0f : textSize.X) + 1f, 4f);
+                            batch.DrawRect(caretPos, new Vector2(2f, field.Height - 8f), Color.FromHex(field.CaretColor));
+                        }
+                        break;
+                    }
+
                     case UiJoystick stick:
                     {
                         var center = JoystickCenter(stick, screenWidth, screenHeight);
@@ -394,6 +499,19 @@ public sealed class UIManager
                 }
             }
         }
+    }
+
+    /// <summary>Fim do texto que cabe na largura do campo. Campo de texto mostra o fim, nao o
+    /// comeco: o jogador precisa ver o que esta digitando agora.</summary>
+    private static string VisibleTail(string text, Font font, float maxWidth)
+    {
+        if (maxWidth <= 0f) return text;
+
+        int start = 0;
+        while (start < text.Length && font.MeasureText(text[start..]).X > maxWidth)
+            start++;
+
+        return text[start..];
     }
 
     /// <summary>Texto já quebrado pra caber em <c>MaxWidth</c>, reaproveitando o resultado

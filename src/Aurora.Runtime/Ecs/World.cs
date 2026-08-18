@@ -145,6 +145,10 @@ public sealed class World
         return false;
     }
 
+    /// <summary>Handle da entidade a partir do id. Não valida: use <see cref="IsAlive"/> antes
+    /// se o id veio de fora (rede, save) e pode estar velho.</summary>
+    public Entity GetEntity(int id) => new(id, this);
+
     /// <summary>Todos os componentes de uma entidade (serialização de cenas).</summary>
     public IEnumerable<IComponent> GetComponents(int entityId)
     {

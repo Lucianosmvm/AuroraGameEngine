@@ -273,6 +273,7 @@ public sealed class SceneSerializer
         RegisterLight2D();
         RegisterGlobalTint();
         RegisterNavAgent();
+        RegisterNetworkIdentity();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -762,6 +763,25 @@ public sealed class SceneSerializer
                 if (t.Intensity != 0.3f) json.WriteNumber("Intensity", t.Intensity);
                 if (!t.Enabled) json.WriteBoolean("Enabled", false);
                 if (t.Color.ToHex() != "#000028FF") json.WriteString("Color", t.Color.ToHex());
+            });
+    }
+
+    private void RegisterNetworkIdentity()
+    {
+        // NetId e IsMine não são persistidos: o número da entidade na sala é distribuído pelo
+        // host a cada partida, e salvar um valor de uma sessão antiga só criaria conflito com
+        // as entidades numeradas na sessão nova.
+        Register<NetworkIdentity>("NetworkIdentity",
+            static (json, _) => new NetworkIdentity
+            {
+                OwnerId = (byte)GetInt(json, "OwnerId", 0),
+                PrefabId = (byte)GetInt(json, "PrefabId", 0),
+            },
+            static (json, component, _) =>
+            {
+                var identity = (NetworkIdentity)component;
+                if (identity.OwnerId != 0) json.WriteNumber("OwnerId", identity.OwnerId);
+                if (identity.PrefabId != 0) json.WriteNumber("PrefabId", identity.PrefabId);
             });
     }
 

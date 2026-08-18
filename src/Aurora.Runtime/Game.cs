@@ -5,6 +5,7 @@ using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Graphics;
 using Aurora.Runtime.Events;
 using Aurora.Runtime.Input;
+using Aurora.Runtime.Net;
 using Aurora.Runtime.Saves;
 using Aurora.Runtime.Scenes;
 using Aurora.Runtime.UI;
@@ -68,6 +69,12 @@ public abstract class Game : IDisposable
     public DialogueSystem Dialogue { get; } = new();
     public UIManager UI { get; } = new();
     public EventSystem Events { get; }
+
+    /// <summary>
+    /// Multiplayer local (LAN). Offline até alguém chamar <c>Net.StartHost()</c> ou
+    /// <c>Net.Join(ip)</c> — nenhuma porta é aberta em jogo single player.
+    /// </summary>
+    public NetSession Net { get; } = new();
 
     protected Game()
     {
@@ -208,6 +215,14 @@ public abstract class Game : IDisposable
         World.Audio = Audio;
         World.Save = Save;
 
+        // Só aqui, e não no construtor: a sincronização precisa do World já apontando pros
+        // sistemas do Game, porque as fábricas de prefab montam entidades completas (sprite,
+        // áudio, script) na hora que um jogador entra.
+        // Identificador da busca por salas: dois jogos Aurora diferentes na mesma rede não
+        // devem aparecer um na lista do outro.
+        Net.GameId = GameName;
+        Net.AttachWorld(World);
+
         Gl.Enable(EnableCap.Blend);
         Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 
@@ -240,6 +255,9 @@ public abstract class Game : IDisposable
         // lógica é ignorado e logado, o jogo não fecha sozinho.
         try
         {
+            // Antes de tudo: quem entrou/saiu precisa estar refletido já neste frame, senão a
+            // lógica roda um frame inteiro com uma lista de jogadores desatualizada.
+            Net.Update(dt);
             SceneManager.Update(dt);
             Dialogue.Update();
             OnUpdate(dt);
@@ -386,6 +404,10 @@ public abstract class Game : IDisposable
     private void HandleClosing()
     {
         OnUnload();
+
+        // Antes do resto: avisa o outro lado que saímos. Fechar o socket calado deixaria os
+        // outros jogadores olhando pro nosso boneco parado até o timeout estourar.
+        Net.Dispose();
         Audio?.Dispose();
         Assets?.Dispose();
         SpriteBatch?.Dispose();

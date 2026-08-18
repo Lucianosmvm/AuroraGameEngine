@@ -45,9 +45,37 @@ public sealed class InputManager
     private Vector2 _viewportOffset = Vector2.Zero;
     private Vector2 _viewportScale = Vector2.One;
 
+    /// <summary>Caracteres digitados desde o frame anterior, já como texto (respeitando layout
+    /// do teclado e acentuação — coisa que ler tecla por tecla não daria).</summary>
+    private readonly System.Text.StringBuilder _pendingText = new();
+    private IKeyboard? _typingKeyboard;
+
+    /// <summary>Teto do que se acumula entre frames. Só chega perto disso se ninguém estiver
+    /// consumindo o texto (nenhum campo focado) — e aí é lixo mesmo.</summary>
+    private const int MaxPendingText = 64;
+
     public InputManager(IInputContext context)
     {
         _context = context;
+    }
+
+    /// <summary>
+    /// O que o jogador digitou neste frame, pronto pra concatenar num campo de texto. Vazio na
+    /// maioria dos frames.
+    /// <para>Vem do evento de caractere do teclado, não da varredura de teclas: só ele sabe o
+    /// layout (ABNT2, AZERTY), maiúscula, acento e tecla morta. Montar texto a partir de
+    /// <see cref="WasKeyPressed"/> daria "a" onde o jogador digitou "á" e "1" onde ele digitou "!".</para>
+    /// </summary>
+    public string TypedText { get; private set; } = "";
+
+    private void OnKeyChar(IKeyboard keyboard, char character)
+    {
+        // Backspace, Enter, Escape e companhia chegam aqui como caractere de controle. Quem
+        // trata isso é o campo de texto, via WasKeyPressed — no texto eles virariam lixo.
+        if (char.IsControl(character)) return;
+        if (_pendingText.Length >= MaxPendingText) return;
+
+        _pendingText.Append(character);
     }
 
     /// <summary>Chamado pelo Game quando usa DesignResolution: converte clique/toque em pixel
@@ -232,6 +260,23 @@ public sealed class InputManager
     /// via polling (não evento), pra funcionar mesmo com dispositivo que aparece tarde.</summary>
     internal void BeginFrame()
     {
+        // Assinatura do evento de digitação conferida por frame, e não uma vez no construtor,
+        // pela mesma razão que o resto: teclado pode aparecer depois (USB plugado com o jogo
+        // aberto, teclado virtual do Android).
+        var typingKeyboard = Keyboard;
+        if (!ReferenceEquals(typingKeyboard, _typingKeyboard))
+        {
+            if (_typingKeyboard is not null) _typingKeyboard.KeyChar -= OnKeyChar;
+            if (typingKeyboard is not null) typingKeyboard.KeyChar += OnKeyChar;
+
+            _typingKeyboard = typingKeyboard;
+        }
+
+        // O evento dispara durante o bombeamento de eventos da janela, que acontece antes deste
+        // BeginFrame — então o que se acumulou desde o frame passado é exatamente o deste frame.
+        TypedText = _pendingText.Length == 0 ? "" : _pendingText.ToString();
+        _pendingText.Clear();
+
         _keysPressedThisFrame.Clear();
         if (Keyboard is { } keyboard)
         {

@@ -75,6 +75,41 @@ public sealed class UiPanel : UiElement
 }
 
 /// <summary>Botão clicável (mouse no Windows, toque no Android via InputManager.SetPointer).
+/// <summary>
+/// Campo de texto digitável — o que faltava pra montar "entrar por IP" só com a UI da engine.
+/// <para>Estado de um frame só (<see cref="Submitted"/>) é lido igual ao
+/// <see cref="UiButton.Clicked"/>: consulte no Update do seu jogo.</para>
+/// </summary>
+public sealed class UiTextInput : UiElement
+{
+    public float Width = 200f;
+    public float Height = 32f;
+
+    /// <summary>Conteúdo atual. Escreva aqui pra preencher o campo por código.</summary>
+    public string Text = "";
+
+    /// <summary>Mostrado em cinza quando o campo está vazio (ex.: "192.168.0.10").</summary>
+    public string Placeholder = "";
+
+    public int MaxLength = 32;
+
+    /// <summary>Caracteres aceitos. Vazio = todos. Para IP, <c>"0123456789."</c> — barrar na
+    /// entrada evita a tela de erro depois e é o tipo de coisa que ninguém lembra de validar.</summary>
+    public string Allowed = "";
+
+    public string Color = "#20203CFF";
+    public string FocusColor = "#2A2A55FF";
+    public string TextColor = "#FFFFFFFF";
+    public string PlaceholderColor = "#8888A8FF";
+    public string CaretColor = "#FFFFFFFF";
+
+    /// <summary>Com o cursor. Só um campo por vez fica focado.</summary>
+    public bool Focused;
+
+    /// <summary>Enter foi apertado neste frame com o campo focado.</summary>
+    public bool Submitted;
+}
+
 /// OnClick usa o mesmo vocabulário de ações do EventTrigger, rodado por
 /// <see cref="Aurora.Runtime.Events.EventSystem.RunActions"/> ao clicar/tocar.</summary>
 public sealed class UiButton : UiElement
