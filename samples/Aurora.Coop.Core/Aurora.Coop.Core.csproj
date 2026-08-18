@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Aurora.Coop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sprites e fonte são os mesmos do Sandbox. Apontar pra lá em vez de copiar evita
+         carregar uma segunda cópia da fonte (~700 KB) no repositório só pra este exemplo. -->
+    <None Include="..\Aurora.Sandbox.Core\Assets\**"
+          Link="Assets\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <Compile Remove="..\Aurora.Sandbox.Core\Assets\**\*.cs" />
+  </ItemGroup>
+
+</Project>

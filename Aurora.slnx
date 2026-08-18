@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/samples/">
+    <Project Path="samples/Aurora.Coop/Aurora.Coop.csproj" />
+    <Project Path="samples/Aurora.Coop.Android/Aurora.Coop.Android.csproj" />
+    <Project Path="samples/Aurora.Coop.Core/Aurora.Coop.Core.csproj" />
     <Project Path="samples/Aurora.Farm/Aurora.Farm.csproj" />
     <Project Path="samples/Aurora.Farm.Android/Aurora.Farm.Android.csproj" />
     <Project Path="samples/Aurora.Platformer/Aurora.Platformer.csproj" />

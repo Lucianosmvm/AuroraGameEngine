@@ -239,10 +239,12 @@ public sealed class NetBrowser : IDisposable
                 }
             }
         }
-        catch (NetworkInformationException)
+        catch (Exception ex) when (ex is NetworkInformationException or PlatformNotSupportedException
+                                      or UnauthorizedAccessException)
         {
-            // Sem permissão ou plataforma que não expõe as interfaces: o 255.255.255.255
-            // sozinho já resolve na maioria das redes domésticas.
+            // Sem permissão, ou plataforma que não expõe as interfaces (acontece no Android
+            // dependendo da versão): o 255.255.255.255 sozinho já resolve na maioria das redes
+            // domésticas, então isto é degradação e não erro.
         }
 
         return targets;

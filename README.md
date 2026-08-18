@@ -57,6 +57,20 @@ As fases são cenas JSON comuns — abra no editor com
 O passo a passo (física, colisão, montagem da cena, regras de level design) está em
 [docs/GUIA-JOGO-PLATAFORMA.md](docs/GUIA-JOGO-PLATAFORMA.md).
 
+### Jogo coop de teste (LAN, PC e Android)
+
+```bash
+dotnet run --project samples/Aurora.Coop
+```
+
+Caça às moedas cooperativa até 8 jogadores: um hospeda, os outros acham a partida numa lista.
+Feito pra testar o multiplayer numa rede de verdade — liga busca de salas, entrada/saída de
+jogadores, criação e destruição de entidades, host autoritativo com previsão, interpolação e
+RPC ao mesmo tempo.
+
+APK: `dotnet build samples/Aurora.Coop.Android -c Release`. Passo a passo, controles e o que
+fazer quando a partida não aparece na lista: [docs/GUIA-JOGO-COOP.md](docs/GUIA-JOGO-COOP.md).
+
 ### Android (APK)
 
 ```bash
@@ -105,6 +119,7 @@ src/Aurora.Runtime      Núcleo da engine (sem dependência de editor/UI desktop
                         NetRpcSystem, NetBrowser/NetLobby, canal confiável, protocolo UDP
 samples/Aurora.Sandbox  Demo jogável da Fase 1
 samples/Aurora.Platformer   Demo de plataforma 2D com duas fases (referência)
+samples/Aurora.Coop.Core    Jogo coop de teste do multiplayer (desktop + Android)
 tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```
 
