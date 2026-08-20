@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ae="using:AvaloniaEdit"
+        x:Class="Aurora.Editor.Views.ScriptEditorWindow"
+        Width="960" Height="720" WindowStartupLocation="CenterOwner"
+        Title="Editor de Script">
+
+  <DockPanel>
+
+    <!-- Barra de ações: nome da classe (dita o nome do arquivo em script novo), salvar,
+         salvar+anexar na entidade selecionada e verificação de compilação. -->
+    <DockPanel DockPanel.Dock="Top" Margin="10,10,10,6">
+      <TextBlock Text="Classe:" VerticalAlignment="Center" FontSize="12" Margin="0,0,6,0"/>
+      <TextBox x:Name="ClassNameBox" Width="200" FontSize="12" DockPanel.Dock="Left"
+               ToolTip.Tip="Nome da classe [SceneScript]. O arquivo é salvo com esse nome (Nome.cs)."/>
+
+      <Button DockPanel.Dock="Right" x:Name="CompileButton" Content="Verificar" FontSize="12"
+              Padding="10,4" Margin="4,0,0,0" Click="OnCompile"
+              ToolTip.Tip="Roda dotnet build no projeto do jogo e mostra o primeiro erro aqui"/>
+      <Button DockPanel.Dock="Right" x:Name="SaveAttachButton" Content="Salvar e anexar" FontSize="12"
+              Padding="10,4" Margin="4,0,0,0" Click="OnSaveAndAttach"
+              ToolTip.Tip="Salva e adiciona o script como componente da entidade selecionada na cena"/>
+      <Button DockPanel.Dock="Right" x:Name="SaveButton" Content="Salvar (Ctrl+S)" FontSize="12"
+              Padding="10,4" Margin="8,0,0,0" Click="OnSave"/>
+
+      <TextBlock x:Name="PathText" VerticalAlignment="Center" FontSize="11" Opacity="0.6"
+                 Margin="10,0,10,0" TextTrimming="CharacterEllipsis"/>
+    </DockPanel>
+
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Padding="10,6">
+      <TextBlock x:Name="StatusText" FontSize="11" TextWrapping="Wrap" MaxHeight="60"/>
+    </Border>
+
+    <Border Margin="10,0,10,6" BorderThickness="1" BorderBrush="#D7DEE8">
+      <ae:TextEditor x:Name="Editor"
+                     FontFamily="Cascadia Mono,Consolas,Menlo,monospace"
+                     FontSize="13"
+                     ShowLineNumbers="True"
+                     WordWrap="False"/>
+    </Border>
+
+  </DockPanel>
+</Window>

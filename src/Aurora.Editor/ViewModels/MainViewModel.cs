@@ -889,26 +889,109 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Cria um script em <paramref name="absolutePath"/> a partir de
-    /// <see cref="SelectedScriptTemplate"/>: nome da classe = nome do arquivo (sanitizado, pra
-    /// sempre bater com o C# convencional), namespace = nome do projeto. Não builda nem registra
-    /// nada — [SceneScript] é descoberto por reflection no assembly do jogo (ver Game.AutoRegisterScripts),
-    /// então o arquivo já funciona assim que o jogo rodar de novo (botão "↻" do +Add Componente,
-    /// ou o próprio Play).</summary>
-    public void CreateScriptFile(string absolutePath)
+    /// <summary>Código inicial do editor interno pro template selecionado, já com o namespace
+    /// do projeto e o nome de classe pedido — o arquivo em si só nasce no Salvar.</summary>
+    public string BuildScriptTemplateSource(string className)
+        => ScriptTemplates.Build(SelectedScriptTemplate, ResolveScriptNamespace(),
+            className.Length > 0 ? className : SelectedScriptTemplate.DefaultClassName);
+
+    /// <summary>Grava o texto do editor interno em disco e já registra os [SceneScript] dele no
+    /// catálogo por leitura de texto (<see cref="ScriptSourceParser"/>) — é isso que dispensa o
+    /// ciclo "salva fora → ↻ → espera buildar" antes de anexar o script numa entidade. O "↻"
+    /// continua existindo e corrige o catálogo com a verdade do assembly compilado.</summary>
+    public void SaveScriptSource(string absolutePath, string source)
     {
-        string className = GameProjectScaffolder.ToIdentifier(Path.GetFileNameWithoutExtension(absolutePath));
-        if (className.Length == 0)
-            className = SelectedScriptTemplate.DefaultClassName;
-
-        string @namespace = ResolveScriptNamespace();
-        string content = ScriptTemplates.Build(SelectedScriptTemplate, @namespace, className);
-
         Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-        File.WriteAllText(absolutePath, content);
+        File.WriteAllText(absolutePath, source);
 
         ReloadScripts();
-        Status = $"Script criado: {Path.GetFileName(absolutePath)} ({SelectedScriptTemplate.DisplayName})";
+        var parsed = ScriptSourceParser.Parse(source);
+        RegisterParsedScripts(parsed);
+
+        string names = parsed.Count > 0 ? string.Join(", ", parsed.Select(s => s.Name)) : "nenhum [SceneScript]";
+        Status = $"Script salvo: {Path.GetFileName(absolutePath)} ({names})";
+        StatusDetail = null;
+    }
+
+    /// <summary>Insere/atualiza scripts no catálogo <see cref="CustomScripts"/> por nome.
+    /// Substitui em vez de duplicar pra um campo novo aparecer no inspector no mesmo instante
+    /// em que foi salvo.</summary>
+    public void RegisterParsedScripts(IReadOnlyList<GameScriptDiscovery.ScriptInfo> scripts)
+    {
+        foreach (var script in scripts)
+        {
+            int existing = -1;
+            for (int i = 0; i < CustomScripts.Count; i++)
+            {
+                if (CustomScripts[i].Name == script.Name)
+                {
+                    existing = i;
+                    break;
+                }
+            }
+
+            if (existing >= 0)
+                CustomScripts[existing] = script;
+            else
+                CustomScripts.Add(script);
+        }
+    }
+
+    public sealed record CompileResult(bool Success, string Summary, string? Detail);
+
+    /// <summary>Roda <c>dotnet build</c> no projeto do jogo só pra dizer se o script compila —
+    /// usado pelo botão "Verificar" do editor de scripts, que precisa mostrar o erro do
+    /// compilador dentro da própria janela (o editor não tem console).</summary>
+    public async Task<CompileResult> CompileGameProjectAsync()
+    {
+        string project = _settings?.GameProject?.Trim() ?? "";
+        if (project.Length == 0)
+            return new CompileResult(false, "Configure o caminho do projeto (Inspector → PROJETO) antes de verificar.", null);
+        if (project.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            return new CompileResult(false, "PROJETO aponta pra um .exe — verificar precisa do .csproj (ou pasta) do jogo.", null);
+
+        try
+        {
+            var psi = new ProcessStartInfo("dotnet")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
+            psi.ArgumentList.Add("build");
+            psi.ArgumentList.Add(project);
+
+            using var process = Process.Start(psi)
+                ?? throw new InvalidOperationException("Não consegui iniciar o dotnet build.");
+
+            string stdout = await process.StandardOutput.ReadToEndAsync();
+            string stderr = await process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            return process.ExitCode == 0
+                ? new CompileResult(true, "Compilou sem erros.", null)
+                : new CompileResult(false, GameScriptDiscovery.FirstErrorLine(stdout, stderr),
+                    GameScriptDiscovery.CombineLog(stdout, stderr));
+        }
+        catch (Exception ex)
+        {
+            return new CompileResult(false, ex.Message, ex.ToString());
+        }
+    }
+
+    /// <summary>Anexa um script já registrado à entidade selecionada (mesmo caminho do
+    /// "+ Add Componente", inclusive campos pré-preenchidos com os defaults). False quando não
+    /// há entidade selecionada — quem chama avisa na UI.</summary>
+    public bool AttachScriptToSelectedEntity(string scriptName)
+    {
+        if (SelectedEntity is not { } entity || scriptName.Length == 0)
+            return false;
+
+        entity.NewComponentType = scriptName;
+        entity.AddComponent();
+        Status = $"{scriptName} anexado a {entity.Name}.";
+        return true;
     }
 
     /// <summary>Nome do namespace pros templates de "Novo Script": nome do .csproj do jogo se

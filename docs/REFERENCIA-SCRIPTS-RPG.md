@@ -7,11 +7,28 @@ veja `docs/GUIA-JOGO-BASE.md` — este arquivo aqui é consulta, não tutorial.
 ## 0. Criando um script pelo editor
 
 O painel **SCRIPTS** (coluna esquerda, entre PREFABS e ASSETS) lista os arquivos `.cs` da
-pasta `Scripts/` do projeto. **"+ Novo…"** cria um script a partir de um template pronto
-(escolhido no dropdown ao lado — Movimento, Arma, Inimigo, Item, Magia ou Vazio), pergunta
-onde salvar e já abre o arquivo no VS Code. Duplo-clique num script existente da lista também
-abre no VS Code. Depois de editar e salvar, aperte o "↻" ao lado de "+Add Componente" (ou
-Play) pra engine descobrir o script de novo — ver seção 2 sobre o requisito de `[SceneScript]`.
+pasta `Scripts/` do projeto e tem duas entradas:
+
+- **"+ Novo…"** abre o **editor de código embutido** já preenchido com o template escolhido no
+  dropdown ao lado (Movimento, Arma, Inimigo, Item, Magia ou Vazio). O arquivo só nasce no
+  **Salvar** (Ctrl+S), em `Scripts/<NomeDaClasse>.cs` — o campo "Classe:" no topo renomeia a
+  classe no código junto, então nome de arquivo e nome de classe nunca divergem.
+- **"Carregar…"** abre um `.cs` existente no mesmo editor. Duplo-clique num script da lista faz
+  o mesmo (com **Shift** ele abre no VS Code, pra quem prefere o editor externo).
+
+Ao salvar, o editor lê as classes `[SceneScript]` do próprio texto e já as registra no catálogo:
+o script aparece **na hora** no dropdown do "+Add Componente", sem build no meio. O botão
+**"Salvar e anexar"** faz os dois passos de uma vez — grava e adiciona o script como componente
+da entidade selecionada na hierarquia, com os campos públicos já preenchidos com os defaults.
+
+Duas coisas continuam valendo:
+
+- **"Verificar"** (na janela do editor) roda `dotnet build` no projeto do jogo e mostra o
+  primeiro erro do compilador ali mesmo — o registro por leitura de texto não compila nada,
+  então erro de sintaxe só aparece aqui ou no Play.
+- O **"↻"** ao lado de "+Add Componente" (e o Play) continua sendo a fonte da verdade: ele
+  descobre os scripts por reflection no assembly compilado e corrige o catálogo, inclusive para
+  arquivos editados fora do Aurora. Ver seção 2 sobre o requisito de `[SceneScript]`.
 
 ---
 

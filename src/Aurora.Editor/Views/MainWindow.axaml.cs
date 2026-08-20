@@ -439,55 +439,89 @@ public partial class MainWindow : Window
 
     private void OnRefreshScriptFiles(object? sender, RoutedEventArgs e) => ViewModel.ReloadScripts();
 
-    /// <summary>"+ Novo…" do painel SCRIPTS: escolhe onde salvar (sugerindo a pasta Scripts do
-    /// projeto e o nome padrão do template selecionado), gera o arquivo a partir do template e
-    /// já abre no VS Code — é o fluxo "clica em novo e abre no editor de código" pedido, sem
-    /// passo manual nenhum no meio.</summary>
-    private async Task PickAndNewScriptAsync()
+    /// <summary>"+ Novo…" do painel SCRIPTS: abre o editor de código interno já com o template
+    /// escolhido. O arquivo nasce no Salvar da própria janela (Scripts/&lt;Classe&gt;.cs), que
+    /// também registra o [SceneScript] na hora — sem dialog de arquivo, sem editor externo e sem
+    /// esperar build pra poder anexar numa entidade.</summary>
+    private void OnNewScript(object? sender, RoutedEventArgs e)
     {
         if (ViewModel.Document is null)
             return;
 
-        var template = ViewModel.SelectedScriptTemplate;
         string scriptsDir = ViewModel.ScriptsDirPath;
         if (scriptsDir.Length > 0)
             Directory.CreateDirectory(scriptsDir);
 
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        OpenScriptEditor(null);
+    }
+
+    /// <summary>"Carregar…": abre um .cs existente no editor interno (começa na pasta Scripts do
+    /// projeto, mas aceita qualquer caminho — abrir de fora serve pra copiar/colar código pronto
+    /// e salvar como script novo).</summary>
+    private async Task PickAndLoadScriptAsync()
+    {
+        string scriptsDir = ViewModel.ScriptsDirPath;
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = $"Novo Script — {template.DisplayName}",
-            DefaultExtension = "cs",
-            SuggestedFileName = $"{template.DefaultClassName}.cs",
+            Title = "Carregar Script",
+            AllowMultiple = false,
             SuggestedStartLocation = scriptsDir.Length > 0
                 ? await StorageProvider.TryGetFolderFromPathAsync(scriptsDir)
                 : null,
-            FileTypeChoices =
+            FileTypeFilter =
             [
                 new FilePickerFileType("Script C#") { Patterns = ["*.cs"] },
             ],
         });
 
-        if (file?.TryGetLocalPath() is not { } path)
-            return;
-
-        try
-        {
-            ViewModel.CreateScriptFile(path);
-            OpenInVsCode(path);
-        }
-        catch (Exception ex)
-        {
-            ViewModel.Status = $"Erro ao criar script: {ex.Message}";
-        }
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
+            OpenScriptEditor(path);
     }
 
-    private void OnNewScript(object? sender, RoutedEventArgs e) => _ = PickAndNewScriptAsync();
+    private void OnLoadScript(object? sender, RoutedEventArgs e) => _ = PickAndLoadScriptAsync();
 
+    /// <summary>Duplo-clique abre no editor interno; com Shift, no VS Code (quem já tem o VS Code
+    /// configurado com analisadores não perde o caminho antigo).</summary>
     private void OnScriptFileDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if ((e.Source as Control)?.DataContext is ViewModels.ScriptFileViewModel script)
+        if ((e.Source as Control)?.DataContext is not ViewModels.ScriptFileViewModel script)
+            return;
+
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             OpenInVsCode(script.FullPath);
+        else
+            OpenScriptEditor(script.FullPath);
     }
+
+    /// <summary>Uma janela de editor por arquivo: reabrir o mesmo script traz a janela existente
+    /// pra frente em vez de criar uma segunda cópia do mesmo texto (duas janelas salvando o mesmo
+    /// arquivo perderiam edição).</summary>
+    private void OpenScriptEditor(string? path)
+    {
+        // Compara pelo arquivo que cada janela está editando (não pela chave): um script criado
+        // como "novo" vira um caminho depois do primeiro Salvar, e abrir ele pela lista precisa
+        // cair na mesma janela.
+        if (path is not null)
+        {
+            var open = _scriptEditors.Values.FirstOrDefault(
+                w => string.Equals(w.CurrentPath, path, StringComparison.OrdinalIgnoreCase));
+            if (open is not null)
+            {
+                open.Activate();
+                return;
+            }
+        }
+
+        string key = path ?? $"novo:{Guid.NewGuid():N}";
+
+        var window = new ScriptEditorWindow(ViewModel, path);
+        _scriptEditors[key] = window;
+        window.Closed += (_, _) => _scriptEditors.Remove(key);
+        window.Show(this);
+    }
+
+    private readonly Dictionary<string, ScriptEditorWindow> _scriptEditors = [];
 
     /// <summary>Abre um arquivo no VS Code via "code" no PATH (roda por cmd.exe pra resolver o
     /// shim .cmd que o instalador do VS Code registra — Process.Start direto com

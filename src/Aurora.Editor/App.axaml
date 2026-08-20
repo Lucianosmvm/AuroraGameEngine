@@ -9,5 +9,8 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <!-- Editor de código C# embutido (ScriptEditorWindow) — sem este tema o TextEditor
+         renderiza sem cores nem gutter de linhas. -->
+    <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml"/>
   </Application.Styles>
 </Application>
