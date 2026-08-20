@@ -99,6 +99,13 @@ Editável 100% pelo Inspector (painel TELAS UI → abre a cena → seleciona o b
   `Left`/`Center`/`Bottom`... na prática `Top`/`Center`/`Bottom` pro eixo Y). **Menu quase sempre
   quer `Center`/`Center`** — coordenada fixa tipo `"X": 540` só cai no meio numa tela de exatamente
   1080px de largura; celular real costuma ser bem mais largo, e sem âncora o menu fica desalinhado.
+- **Texture** — caminho de imagem relativo à pasta `Assets` (mesma convenção do `UiImage`,
+  ex.: `sprites/botao_jogar.png`). Preenchida, a imagem **substitui** o retângulo colorido:
+  `Color`/`HoverColor`/`PressedColor` deixam de valer, e o `Text` continua desenhado por cima
+  (deixe vazio se a arte já tem o texto). Com o botão selecionado, duplo-clique num sprite do
+  painel ASSETS preenche esse campo. **Width/Height em `0`** herdam o tamanho do PNG.
+  - **HoverTexture / PressedTexture** — opcionais. Vazias, a própria `Texture` é clareada no
+    hover e escurecida no clique, então um PNG só já dá feedback de toque.
 - **OnClick** — painel ONCLICK → **+ Adicionar Ação**. O dropdown de ação já lista `ChangeScene`,
   `ShowUI`, `HideUI`, `ToggleUI`, `SetPause` (entre outras) — e quando a ação é uma dessas 4
   primeiras, o campo "Nome"/"Arquivo"/"Tela UI" também vira ComboBox listando as cenas/telas reais

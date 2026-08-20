@@ -93,10 +93,15 @@ public class ComponentViewModel : ViewModelBase
             ("Width", 100f), ("Height", 100f), ("Color", "#000000AA"),
         ],
         // Botão clicável (mouse/toque) — ações em "OnClick" (editor: UiButtonViewModel).
+        // Texture preenchida troca o retângulo colorido pela imagem (Color/HoverColor/PressedColor
+        // passam a não valer; o Text continua sendo desenhado por cima). HoverTexture/PressedTexture
+        // são opcionais: sem elas o mesmo PNG é clareado no hover e escurecido no clique.
+        // Width/Height em 0 com Texture preenchida herdam o tamanho da imagem.
         ["UiButton"] =
         [
             ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
             ("Width", 120f), ("Height", 32f), ("Text", "Botão"),
+            ("Texture", ""), ("HoverTexture", ""), ("PressedTexture", ""),
             ("Color", "#3A3860FF"), ("HoverColor", "#4A4880FF"), ("PressedColor", "#2A2850FF"),
             ("TextColor", "#FFFFFFFF"),
         ],

@@ -84,17 +84,18 @@ public sealed class UIManager
                 Height = GetF("Height", 100f),
                 Color = GetS("Color", "#000000AA"),
             },
-            "UiButton" => new UiButton
+            "UiButton" => BuildButton(new UiButton
             {
-                Width = GetF("Width", 120f),
-                Height = GetF("Height", 32f),
                 Text = GetS("Text"),
                 Color = GetS("Color", "#3A3860FF"),
                 HoverColor = GetS("HoverColor", "#4A4880FF"),
                 PressedColor = GetS("PressedColor", "#2A2850FF"),
                 TextColor = GetS("TextColor", "#FFFFFFFF"),
+                TexturePath = GetS("Texture"),
+                HoverTexturePath = GetS("HoverTexture"),
+                PressedTexturePath = GetS("PressedTexture"),
                 OnClick = json.TryGetProperty("OnClick", out var onClick) ? EventAction.ParseList(onClick) : [],
-            },
+            }, GetF("Width"), GetF("Height"), assets),
             "UiTextInput" => new UiTextInput
             {
                 Width = GetF("Width", 200f),
@@ -128,6 +129,23 @@ public sealed class UIManager
         element.AnchorY = GetS("AnchorY", "Top");
         return element;
     }
+
+    /// <summary>Resolve as imagens do botão e o tamanho: Width/Height ausentes (ou 0) herdam o
+    /// tamanho da imagem — mesma regra do UiImage — e caem nos 120x32 de sempre quando o botão
+    /// não tem imagem nenhuma.</summary>
+    private static UiButton BuildButton(UiButton button, float width, float height, AssetManager assets)
+    {
+        button.Texture = LoadOptional(button.TexturePath, assets);
+        button.HoverTexture = LoadOptional(button.HoverTexturePath, assets);
+        button.PressedTexture = LoadOptional(button.PressedTexturePath, assets);
+
+        button.Width = width > 0f ? width : button.Texture?.Width ?? 120f;
+        button.Height = height > 0f ? height : button.Texture?.Height ?? 32f;
+        return button;
+    }
+
+    private static Texture2D? LoadOptional(string? path, AssetManager assets)
+        => string.IsNullOrEmpty(path) ? null : assets.LoadTexture(path);
 
     private static UiImage BuildImage(string texturePath, float width, float height, string color, AssetManager assets)
     {
@@ -445,11 +463,32 @@ public sealed class UIManager
 
                     case UiButton button:
                     {
-                        var position = ResolvePosition(button, new Vector2(button.Width, button.Height), screenWidth, screenHeight);
-                        string bg = button.Pressed ? button.PressedColor
-                            : button.Hovered ? button.HoverColor
-                            : button.Color;
-                        batch.DrawRect(position, new Vector2(button.Width, button.Height), Color.FromHex(bg));
+                        var size = new Vector2(button.Width, button.Height);
+                        var position = ResolvePosition(button, size, screenWidth, screenHeight);
+
+                        if (button.Texture is not null)
+                        {
+                            // Botão com imagem: a imagem substitui o retângulo colorido. Sem
+                            // imagem própria pro estado, o feedback vem de tinta (clarear no
+                            // hover, escurecer no clique) — um botão que não reage ao dedo passa
+                            // a impressão de travado, e exigir três PNGs pra isso seria demais.
+                            var texture = button.Pressed ? button.PressedTexture ?? button.Texture
+                                : button.Hovered ? button.HoverTexture ?? button.Texture
+                                : button.Texture;
+
+                            var tint = button.Pressed && button.PressedTexture is null ? new Color(0.78f, 0.78f, 0.78f)
+                                : button.Hovered && button.HoverTexture is null ? new Color(1.12f, 1.12f, 1.12f)
+                                : Color.White;
+
+                            batch.Draw(texture, position, size, Vector2.Zero, 0f, tint);
+                        }
+                        else
+                        {
+                            string bg = button.Pressed ? button.PressedColor
+                                : button.Hovered ? button.HoverColor
+                                : button.Color;
+                            batch.DrawRect(position, size, Color.FromHex(bg));
+                        }
 
                         if (font is not null && button.Text.Length > 0)
                         {

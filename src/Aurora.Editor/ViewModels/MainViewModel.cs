@@ -1072,14 +1072,18 @@ public sealed class MainViewModel : ViewModelBase
         OpenScene(file.FullPath);
     }
 
-    /// <summary>Aplica a textura no SpriteRenderer (ou Tilemap) da entidade selecionada.</summary>
+    /// <summary>Aplica a textura no SpriteRenderer (ou Tilemap, UiImage, UiButton) da entidade
+    /// selecionada — os dois últimos porque numa tela de UI não existe SpriteRenderer nenhum pra
+    /// receber a imagem.</summary>
     public void ApplyTextureToSelection(AssetViewModel asset)
     {
         var textureProperty = SelectedEntity?.Sprite?.Text("Texture")
-            ?? SelectedEntity?.Tilemap?.Text("Texture");
+            ?? SelectedEntity?.Tilemap?.Text("Texture")
+            ?? SelectedEntity?.Component("UiImage")?.Text("Texture")
+            ?? SelectedEntity?.Component("UiButton")?.Text("Texture");
         if (textureProperty is null)
         {
-            Status = "Selecione uma entidade com SpriteRenderer ou Tilemap para aplicar a textura.";
+            Status = "Selecione uma entidade com SpriteRenderer, Tilemap, UiImage ou UiButton para aplicar a textura.";
             return;
         }
 

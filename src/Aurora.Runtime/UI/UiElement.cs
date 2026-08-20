@@ -123,6 +123,24 @@ public sealed class UiButton : UiElement
     public string TextColor = "#FFFFFFFF";
     public List<EventAction> OnClick = [];
 
+    /// <summary>Imagem do botão, caminho relativo à pasta de Assets (igual <see cref="UiImage"/>).
+    /// Vazio = botão desenhado com Color/HoverColor/PressedColor, como sempre foi; preenchido =
+    /// a imagem substitui o retângulo colorido (as três cores passam a ser ignoradas, o Text
+    /// continua sendo desenhado por cima). Width/Height em 0 herdam o tamanho da imagem.</summary>
+    public string? TexturePath;
+
+    /// <summary>Imagem usada com o mouse em cima. Vazio = usa <see cref="TexturePath"/> clareado.</summary>
+    public string? HoverTexturePath;
+
+    /// <summary>Imagem usada enquanto o botão está apertado. Vazio = usa <see cref="TexturePath"/>
+    /// escurecido.</summary>
+    public string? PressedTexturePath;
+
+    // Texturas resolvidas no Load (não serializadas) — ver UIManager.BuildButton.
+    internal Texture2D? Texture;
+    internal Texture2D? HoverTexture;
+    internal Texture2D? PressedTexture;
+
     // Estado de runtime (não serializado) — atualizado por UIManager.Update.
     internal bool Hovered;
     internal int? OwnerTouchId;

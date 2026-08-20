@@ -400,8 +400,18 @@ public sealed class SceneCanvas : Control
                         "UiBar"    => (100f, 12f),
                         _          => (100f, 100f), // UiPanel
                     };
-                    float width = comp.GetFloat("Width", defaultWidth);
-                    float height = comp.GetFloat("Height", defaultHeight);
+                    double width = comp.GetFloat("Width", defaultWidth);
+                    double height = comp.GetFloat("Height", defaultHeight);
+
+                    // Botão com imagem e Width/Height zerados herda o tamanho do PNG
+                    // (UIManager.BuildButton) — mesma regra do UiImage.
+                    if (comp.Type == "UiButton" && (width <= 0 || height <= 0))
+                    {
+                        var buttonBitmap = ResolveTexture(comp.GetString("Texture"));
+                        if (width <= 0) width = buttonBitmap?.Size.Width ?? defaultWidth;
+                        if (height <= 0) height = buttonBitmap?.Size.Height ?? defaultHeight;
+                    }
+
                     double left = ResolveAnchorAxis(anchorX, x, screenWidth, width);
                     double top = ResolveAnchorAxis(anchorY, y, screenHeight, height);
                     yield return new UiElementView(entity, comp, comp.Type, ToCanvas(left, top, width, height), "");
@@ -596,9 +606,23 @@ public sealed class SceneCanvas : Control
 
                 default:
                 {
-                    var bg = ParseEngineColor(element.Component.GetString("Color"), Color.FromArgb(255, 58, 56, 96));
-                    context.FillRectangle(new SolidColorBrush(bg), rect);
-                    context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.25), 1), rect);
+                    // UiButton com Texture: a imagem substitui o retângulo colorido, igual ao
+                    // runtime (UIManager.Draw). Sem textura (ou com caminho quebrado) cai no
+                    // retângulo de sempre, pra caixa de clique continuar visível no editor.
+                    var buttonBitmap = element.Kind == "UiButton"
+                        ? ResolveTexture(element.Component.GetString("Texture"))
+                        : null;
+
+                    if (buttonBitmap is not null)
+                    {
+                        context.DrawImage(buttonBitmap, new Rect(buttonBitmap.Size), rect);
+                    }
+                    else
+                    {
+                        var bg = ParseEngineColor(element.Component.GetString("Color"), Color.FromArgb(255, 58, 56, 96));
+                        context.FillRectangle(new SolidColorBrush(bg), rect);
+                        context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.25), 1), rect);
+                    }
 
                     if (element.Kind == "UiButton")
                     {
