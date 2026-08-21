@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Aurora.Editor.Views.ProjectSettingsWindow"
+        Width="520" Height="640" WindowStartupLocation="CenterOwner"
+        Background="#F2F4F7"
+        Title="Configurações do Projeto">
+
+  <DockPanel>
+
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Padding="10,8">
+      <Button Content="Fechar" FontSize="12" Padding="14,4"
+              HorizontalAlignment="Right" Click="OnClose"/>
+    </Border>
+
+    <ScrollViewer Padding="12,10">
+      <StackPanel Spacing="10">
+
+        <!-- Assets Root -->
+        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+          <StackPanel Spacing="4">
+            <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{Binding AssetsRootDisplay}" FontSize="11"
+                         TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                         ToolTip.Tip="{Binding AssetsRootDisplay}"/>
+              <Button Grid.Column="1" Content="Alterar…" FontSize="11"
+                      Padding="6,2" Margin="4,0,0,0" Click="OnChangeAssetsRoot"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Projeto: caminho do executável/csproj para o botão Play -->
+        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+          <StackPanel Spacing="4">
+            <TextBlock Text="PROJETO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding GameProjectPath}" FontSize="11" Padding="4,3"
+                       Watermark=".csproj, pasta ou .exe do jogo…" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="…" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                      Click="OnBrowseGameProject"/>
+            </Grid>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              No Main() do jogo: game.ParseArgs(args); e em OnLoad(): LoadScene(BootScene ?? "default.json");
+            </TextBlock>
+          </StackPanel>
+        </Border>
+
+        <!-- Tela de referência (UI) -->
+        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+          <StackPanel Spacing="4">
+            <TextBlock Text="TELA DE REFERÊNCIA (UI)" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            <Grid ColumnDefinitions="*,Auto,*,Auto,Auto">
+              <TextBox Text="{Binding DesignWidth}" FontSize="11" Padding="6,3"/>
+              <TextBlock Grid.Column="1" Text="×" VerticalAlignment="Center" Margin="5,0" Opacity="0.6" FontSize="11"/>
+              <TextBox Grid.Column="2" Text="{Binding DesignHeight}" FontSize="11" Padding="6,3"/>
+              <TextBlock Grid.Column="3" Text="fonte" VerticalAlignment="Center" Margin="8,0,4,0" Opacity="0.6" FontSize="11"/>
+              <TextBox Grid.Column="4" Text="{Binding UiFontSize}" FontSize="11" Padding="6,3" Width="46"/>
+            </Grid>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              Tamanho de tela que o viewport usa pra desenhar a moldura e resolver AnchorX/AnchorY,
+              e o tamanho de fonte usado pra medir UiText. Precisa bater com o código do jogo:
+              game.DesignResolution e Assets.LoadFont(..., 22f). Diferente = menu montado aqui cai
+              noutro lugar no jogo.
+            </TextBlock>
+          </StackPanel>
+        </Border>
+
+        <!-- Orientação Android -->
+        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+          <StackPanel Spacing="4">
+            <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"
+                      FontSize="11" HorizontalAlignment="Stretch"/>
+            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+              Landscape/Portrait não giram nunca. Sensor* giram com o aparelho — testado sem crash
+              num device Android 14 real, mas pode variar por aparelho; se crashar ao girar, volte
+              pra Landscape. Usado por "Exportar Android…".
+            </TextBlock>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+
+  </DockPanel>
+</Window>

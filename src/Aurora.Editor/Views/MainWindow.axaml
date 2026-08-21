@@ -358,6 +358,8 @@
       <MenuItem Header="_Editar">
         <MenuItem Header="_Desfazer" Click="OnUndo" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}"/>
         <MenuItem Header="_Refazer" Click="OnRedo" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}"/>
+        <Separator/>
+        <MenuItem Header="_Configurações do Projeto…" Click="OnOpenProjectSettings"/>
       </MenuItem>
     </Menu>
 
@@ -611,61 +613,14 @@
 
       <!-- Inspector -->
       <DockPanel Grid.Column="4">
-        <TextBlock DockPanel.Dock="Top" Text="INSPECTOR" Margin="10,8" FontSize="11"
-                   FontWeight="Bold" Opacity="0.5"/>
-
-        <!-- Assets Root — visível quando há uma cena aberta -->
-        <Border DockPanel.Dock="Top" Background="#EDF2FA" Padding="8,6" Margin="0,0,0,2"
-                IsVisible="{Binding HasDocument}">
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-            <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"
-                       Grid.ColumnSpan="2" Margin="0,0,0,3"/>
-            <TextBlock Grid.Row="1" Text="{Binding AssetsRootDisplay}" FontSize="11"
-                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                       ToolTip.Tip="{Binding AssetsRootDisplay}"/>
-            <Button Grid.Row="1" Grid.Column="1" Content="Alterar…" FontSize="11"
-                    Padding="6,2" Margin="4,0,0,0" Click="OnChangeAssetsRoot"/>
-          </Grid>
-        </Border>
-
-        <!-- Projeto: caminho do executável/csproj para o botão Play -->
-        <Border DockPanel.Dock="Top" Background="#EDF2FA" Padding="8,6" Margin="0,0,0,4"
-                IsVisible="{Binding HasDocument}">
-          <StackPanel Spacing="4">
-            <TextBlock Text="PROJETO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBox Text="{Binding GameProjectPath}" FontSize="11" Padding="4,3"
-                       Watermark=".csproj, pasta ou .exe do jogo…" VerticalAlignment="Center"/>
-              <Button Grid.Column="1" Content="…" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                      Click="OnBrowseGameProject"/>
-            </Grid>
-            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
-              No Main() do jogo: game.ParseArgs(args); e em OnLoad(): LoadScene(BootScene ?? "default.json");
-            </TextBlock>
-            <TextBlock Text="TELA DE REFERÊNCIA (UI)" FontSize="10" FontWeight="Bold" Opacity="0.5" Margin="0,4,0,0"/>
-            <Grid ColumnDefinitions="*,Auto,*,Auto,Auto">
-              <TextBox Text="{Binding DesignWidth}" FontSize="11" Padding="6,3"/>
-              <TextBlock Grid.Column="1" Text="×" VerticalAlignment="Center" Margin="5,0" Opacity="0.6" FontSize="11"/>
-              <TextBox Grid.Column="2" Text="{Binding DesignHeight}" FontSize="11" Padding="6,3"/>
-              <TextBlock Grid.Column="3" Text="fonte" VerticalAlignment="Center" Margin="8,0,4,0" Opacity="0.6" FontSize="11"/>
-              <TextBox Grid.Column="4" Text="{Binding UiFontSize}" FontSize="11" Padding="6,3" Width="46"/>
-            </Grid>
-            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
-              Tamanho de tela que o viewport usa pra desenhar a moldura e resolver AnchorX/AnchorY,
-              e o tamanho de fonte usado pra medir UiText. Precisa bater com o código do jogo:
-              game.DesignResolution e Assets.LoadFont(..., 22f). Diferente = menu montado aqui cai
-              noutro lugar no jogo.
-            </TextBlock>
-            <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5" Margin="0,4,0,0"/>
-            <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"
-                      FontSize="11" HorizontalAlignment="Stretch"/>
-            <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
-              Landscape/Portrait não giram nunca. Sensor* giram com o aparelho — testado sem crash
-              num device Android 14 real, mas pode variar por aparelho; se crashar ao girar, volte
-              pra Landscape. Usado por "Exportar Android…".
-            </TextBlock>
-          </StackPanel>
-        </Border>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="10,6,6,6">
+          <TextBlock Text="INSPECTOR" VerticalAlignment="Center" FontSize="11"
+                     FontWeight="Bold" Opacity="0.5"/>
+          <Button Grid.Column="1" Content="⚙" FontSize="13" Padding="7,2"
+                  Background="Transparent" BorderThickness="0"
+                  Click="OnOpenProjectSettings"
+                  ToolTip.Tip="Configurações do projeto (assets root, projeto do jogo, tela de referência, orientação Android)"/>
+        </Grid>
         <ScrollViewer>
           <StackPanel Margin="10,0,10,10" DataContext="{Binding SelectedEntity}"
                       IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">

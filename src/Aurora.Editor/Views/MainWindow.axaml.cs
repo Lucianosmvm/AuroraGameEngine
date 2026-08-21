@@ -289,22 +289,24 @@ public partial class MainWindow : Window
 
     private void OnRedo(object? sender, RoutedEventArgs e) => ViewModel.Redo();
 
-    private async Task PickAssetsRootAsync()
+    /// <summary>Abre (ou traz pra frente) a janela de Configurações do Projeto. Uma só instância,
+    /// porque abrir duas deixaria os mesmos campos editáveis em dois lugares.</summary>
+    private void OnOpenProjectSettings(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        if (_projectSettings is not null)
         {
-            Title = "Selecione a pasta raiz de assets",
-            AllowMultiple = false,
-        });
-
-        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path)
-        {
-            ViewModel.ChangeAssetsRoot(path);
-            Scene.ClearTextureCache();
+            _projectSettings.Activate();
+            return;
         }
+
+        var window = new ProjectSettingsWindow(ViewModel);
+        window.AssetsRootChanged += () => Scene.ClearTextureCache();
+        window.Closed += (_, _) => _projectSettings = null;
+        _projectSettings = window;
+        window.Show(this);
     }
 
-    private void OnChangeAssetsRoot(object? sender, RoutedEventArgs e) => _ = PickAssetsRootAsync();
+    private ProjectSettingsWindow? _projectSettings;
 
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
 
@@ -360,24 +362,6 @@ public partial class MainWindow : Window
     }
 
     private void OnExportAndroid(object? sender, RoutedEventArgs e) => _ = PickAndExportAndroidAsync();
-
-    private async Task PickGameProjectAsync()
-    {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Selecione o .csproj ou executável do jogo",
-            FileTypeFilter =
-            [
-                new FilePickerFileType("Projeto C# ou executável") { Patterns = ["*.csproj", "*.exe", "*.dll"] },
-                new FilePickerFileType("Todos os arquivos") { Patterns = ["*"] },
-            ],
-        });
-
-        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
-            ViewModel.GameProjectPath = path;
-    }
-
-    private void OnBrowseGameProject(object? sender, RoutedEventArgs e) => _ = PickGameProjectAsync();
 
     private void OnRefreshAssets(object? sender, RoutedEventArgs e)
     {
