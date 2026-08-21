@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Aurora.Editor.Views.ScriptTemplatePickerWindow"
+        Width="420" Height="360" WindowStartupLocation="CenterOwner"
+        CanResize="False" Background="#F2F4F7"
+        Title="Novo Script">
+
+  <DockPanel Margin="12">
+
+    <TextBlock DockPanel.Dock="Top" Text="Escolha o template do script" FontSize="12"
+               Opacity="0.65" Margin="0,0,0,8"/>
+
+    <Border DockPanel.Dock="Bottom" Margin="0,10,0,0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6">
+        <Button Content="Cancelar" FontSize="12" Padding="14,4" Click="OnCancel"/>
+        <Button Content="Criar" FontSize="12" Padding="18,4" Click="OnCreate" IsDefault="True"/>
+      </StackPanel>
+    </Border>
+
+    <ListBox x:Name="TemplateList" ItemsSource="{Binding ScriptTemplateOptions}"
+             SelectedItem="{Binding SelectedScriptTemplate}"
+             DoubleTapped="OnTemplateDoubleTapped">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="0,2">
+            <TextBlock Text="{Binding DisplayName}" FontSize="12"/>
+            <TextBlock Text="{Binding DefaultClassName, StringFormat='Scripts/{0}.cs'}"
+                       FontSize="10" Opacity="0.45"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+  </DockPanel>
+</Window>

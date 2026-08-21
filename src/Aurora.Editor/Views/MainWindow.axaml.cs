@@ -423,13 +423,17 @@ public partial class MainWindow : Window
 
     private void OnRefreshScriptFiles(object? sender, RoutedEventArgs e) => ViewModel.ReloadScripts();
 
-    /// <summary>"+ Novo…" do painel SCRIPTS: abre o editor de código interno já com o template
-    /// escolhido. O arquivo nasce no Salvar da própria janela (Scripts/&lt;Classe&gt;.cs), que
-    /// também registra o [SceneScript] na hora — sem dialog de arquivo, sem editor externo e sem
-    /// esperar build pra poder anexar numa entidade.</summary>
-    private void OnNewScript(object? sender, RoutedEventArgs e)
+    /// <summary>"+ Novo…" do painel SCRIPTS: pergunta o template numa janelinha e abre o editor de
+    /// código interno já com ele. O arquivo nasce no Salvar da própria janela
+    /// (Scripts/&lt;Classe&gt;.cs), que também registra o [SceneScript] na hora — sem dialog de
+    /// arquivo, sem editor externo e sem esperar build pra poder anexar numa entidade.</summary>
+    private async Task PickTemplateAndOpenEditorAsync()
     {
         if (ViewModel.Document is null)
+            return;
+
+        bool create = await new ScriptTemplatePickerWindow(ViewModel).ShowDialog<bool>(this);
+        if (!create)
             return;
 
         string scriptsDir = ViewModel.ScriptsDirPath;
@@ -438,6 +442,8 @@ public partial class MainWindow : Window
 
         OpenScriptEditor(null);
     }
+
+    private void OnNewScript(object? sender, RoutedEventArgs e) => _ = PickTemplateAndOpenEditorAsync();
 
     /// <summary>"Carregar…": abre um .cs existente no editor interno (começa na pasta Scripts do
     /// projeto, mas aceita qualquer caminho — abrir de fora serve pra copiar/colar código pronto

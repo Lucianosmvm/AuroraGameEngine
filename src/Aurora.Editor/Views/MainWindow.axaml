@@ -467,10 +467,7 @@
                     ToolTip.Tip="Abre um .cs existente no editor de código interno"/>
             <Button DockPanel.Dock="Right" Content="+ Novo…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
                     Click="OnNewScript" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Abre o editor de código interno já com o template selecionado — salva em Scripts/ e registra o script na hora"/>
-            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding ScriptTemplateOptions}"
-                      SelectedItem="{Binding SelectedScriptTemplate}"
-                      FontSize="11" Width="150" Margin="0,0,4,0" IsEnabled="{Binding HasDocument}"/>
+                    ToolTip.Tip="Escolhe um template e abre o editor de código interno — salva em Scripts/ e registra o script na hora"/>
             <TextBlock Text="SCRIPTS" FontSize="11" FontWeight="Bold" Opacity="0.5"
                        VerticalAlignment="Center"/>
           </DockPanel>

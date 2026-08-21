@@ -11,7 +11,8 @@ public static class ScriptTemplates
 {
     public sealed record Template(string Id, string DisplayName, string DefaultClassName, string Source)
     {
-        /// <summary>ComboBox do painel SCRIPTS não usa ItemTemplate — renderiza via ToString().</summary>
+        /// <summary>Fallback de exibição — o seletor do "+ Novo…" usa ItemTemplate, mas manter o
+        /// ToString() evita que um binding solto renderize o nome do record.</summary>
         public override string ToString() => DisplayName;
     }
 
