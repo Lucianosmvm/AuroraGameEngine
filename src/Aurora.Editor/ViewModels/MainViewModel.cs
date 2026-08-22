@@ -763,19 +763,54 @@ public sealed class MainViewModel : ViewModelBase
         int imported = 0;
         foreach (string source in sourcePaths)
         {
-            string ext = Path.GetExtension(source);
-            string destDir = ImportSubfolders.TryGetValue(ext, out var subfolder)
-                ? Path.Combine(_document.AssetsRoot, subfolder)
-                : _document.AssetsRoot;
-
-            Directory.CreateDirectory(destDir);
-            string destPath = UniquePath(Path.Combine(destDir, Path.GetFileName(source)));
-            File.Copy(source, destPath);
+            CopyIntoAssets(source);
             imported++;
         }
 
         ReloadAssets();
         Status = imported == 1 ? "1 asset importado." : $"{imported} assets importados.";
+    }
+
+    /// <summary>
+    /// Preenchido pela janela (ela é quem tem o seletor de arquivo do sistema): abre o diálogo,
+    /// traz o arquivo pra dentro do projeto se ele veio de fora e devolve o caminho relativo à
+    /// raiz de assets. Null = cancelou. É o que os campos de textura do inspector chamam.
+    /// </summary>
+    public Func<Task<string?>>? PickTextureFromDisk { get; set; }
+
+    /// <summary>
+    /// Caminho relativo (com '/') de um arquivo qualquer do disco, copiando pra pasta de assets
+    /// quando ele está fora dela — escolher um PNG que mora em Downloads tem que virar um asset
+    /// do projeto, senão o jogo não acha a textura ao rodar fora do editor.
+    /// </summary>
+    public string? EnsureAssetInProject(string absolutePath)
+    {
+        if (_document is null || !File.Exists(absolutePath))
+            return null;
+
+        string root = Path.GetFullPath(_document.AssetsRoot);
+        string full = Path.GetFullPath(absolutePath);
+
+        if (full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return Path.GetRelativePath(root, full).Replace('\\', '/');
+
+        string copied = CopyIntoAssets(full);
+        ReloadAssets();
+        Status = $"'{Path.GetFileName(full)}' importado para os assets do projeto.";
+        return Path.GetRelativePath(root, copied).Replace('\\', '/');
+    }
+
+    /// <summary>Copia um arquivo pra subpasta de assets do tipo dele e devolve o caminho final.</summary>
+    private string CopyIntoAssets(string source)
+    {
+        string destDir = ImportSubfolders.TryGetValue(Path.GetExtension(source), out var subfolder)
+            ? Path.Combine(_document!.AssetsRoot, subfolder)
+            : _document!.AssetsRoot;
+
+        Directory.CreateDirectory(destDir);
+        string destPath = UniquePath(Path.Combine(destDir, Path.GetFileName(source)));
+        File.Copy(source, destPath);
+        return destPath;
     }
 
     private static string UniquePath(string path)

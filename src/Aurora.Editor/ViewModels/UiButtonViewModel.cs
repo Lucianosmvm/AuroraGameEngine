@@ -15,7 +15,7 @@ public sealed class UiButtonViewModel : ComponentViewModel
 
     public ObservableCollection<EventActionViewModel> Actions { get; } = [];
 
-    public UiButtonViewModel(JsonObject node, MainViewModel? owner = null) : base(node)
+    public UiButtonViewModel(JsonObject node, MainViewModel? owner = null) : base(node, owner)
     {
         _node = node;
         _owner = owner;

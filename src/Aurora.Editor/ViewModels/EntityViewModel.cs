@@ -20,7 +20,8 @@ public sealed class EntityViewModel : ViewModelBase
 
     // UiText/UiImage/UiBar/UiPanel/UiButton só existem no sistema UIManager (telas de HUD/menu,
     // coordenadas de pixel de tela, sem câmera) — não são IComponent do SceneSerializer normal.
-    // Numa entidade de cena comum eles travam o load do jogo (componente não registrado).
+    // Numa entidade de cena comum o SceneSerializer ignora o componente com aviso no console e
+    // o elemento nunca aparece; por isso a lista só é oferecida em documento de tela de UI.
     private static readonly string[] UiComponentTypes =
         ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiJoystick"];
 
@@ -457,9 +458,9 @@ public sealed class EntityViewModel : ViewModelBase
         node["Type"]?.GetValue<string>() switch
         {
             "EventTrigger" => new EventTriggerViewModel(node, _owner),
-            "Animator"     => new AnimatorViewModel(node),
+            "Animator"     => new AnimatorViewModel(node, _owner),
             "UiButton"     => new UiButtonViewModel(node, _owner),
-            _              => new ComponentViewModel(node),
+            _              => new ComponentViewModel(node, _owner),
         };
 
     private void AddVm(ComponentViewModel vm)

@@ -18,6 +18,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        // O seletor de arquivo do sistema mora na janela (é ela que tem o StorageProvider), mas
+        // quem precisa dele é o campo de textura lá no inspector — a VM guarda só o gancho.
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is MainViewModel vm)
+                vm.PickTextureFromDisk = PickTextureAsync;
+        };
+
         // Arrastar asset para o canvas: só vira drag depois de 8px de movimento,
         // senão o clique de seleção na lista seria engolido.
         AssetList.AddHandler(PointerPressedEvent, (_, e) =>
@@ -398,6 +406,46 @@ public partial class MainWindow : Window
     }
 
     private void OnImportAssets(object? sender, RoutedEventArgs e) => _ = PickAndImportAssetsAsync();
+
+    /// <summary>
+    /// Escolhe uma imagem para um campo de textura do inspector. Começa na pasta de assets do
+    /// projeto; se o arquivo escolhido estiver fora dela, é copiado pra dentro — senão a cena
+    /// guardaria um caminho que só existe nesta máquina e o jogo não acharia a textura.
+    /// Devolve o caminho relativo pronto pra gravar na cena (null = cancelou ou deu erro).
+    /// </summary>
+    private async Task<string?> PickTextureAsync()
+    {
+        var startFolder = string.IsNullOrEmpty(ViewModel.AssetsRootDisplay)
+            ? null
+            : await StorageProvider.TryGetFolderFromPathAsync(ViewModel.AssetsRootDisplay);
+
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Escolher textura",
+            AllowMultiple = false,
+            SuggestedStartLocation = startFolder,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("Imagem") { Patterns = ["*.png", "*.jpg", "*.jpeg"] },
+                new FilePickerFileType("Todos os arquivos") { Patterns = ["*"] },
+            ],
+        });
+
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path)
+            return null;
+
+        try
+        {
+            string? relative = ViewModel.EnsureAssetInProject(path);
+            Scene.ClearTextureCache();       // arquivo novo (ou substituído) precisa ser relido
+            return relative;
+        }
+        catch (Exception ex)
+        {
+            ViewModel.Status = $"Erro ao usar a imagem: {ex.Message}";
+            return null;
+        }
+    }
 
     private void OnAssetDoubleTapped(object? sender, TappedEventArgs e)
     {

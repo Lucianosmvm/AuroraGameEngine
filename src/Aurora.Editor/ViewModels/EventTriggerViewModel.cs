@@ -20,7 +20,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 
     public ObservableCollection<EventActionViewModel> Actions { get; } = [];
 
-    public EventTriggerViewModel(JsonObject node, MainViewModel? owner = null) : base(node)
+    public EventTriggerViewModel(JsonObject node, MainViewModel? owner = null) : base(node, owner)
     {
         _triggerNode = node;
         _owner = owner;

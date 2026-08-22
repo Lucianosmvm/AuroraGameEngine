@@ -292,6 +292,38 @@ Intensity float 1
 Enabled bool true
 ```
 
+### `NetworkIdentity` — entidade sincronizada pela rede (multiplayer LAN)
+```csharp
+NetId    ushort  0       // id da entidade na sala, igual em todas as máquinas (0 = ainda não registrada)
+OwnerId  byte    0       // jogador dono (0 = host). Dono é quem manda na posição
+PrefabId byte    0       // receita do NetSpawnRegistry que recria a entidade nas outras máquinas
+                         // 0 = não recriável: tem que já existir na cena dos dois lados
+IsMine   bool    false   // true quando ESTA máquina é a dona — preenchido pelo NetSyncSystem
+```
+
+Só entidade com este componente entra no snapshot da rede: o cenário (tilemap, decoração) é
+igual em todas as máquinas porque cada uma carrega o mesmo JSON, e mandá-lo pela rede seria
+desperdício. Ele **não** aparece no "+Add Componente" do editor — quem adiciona é o código
+que cria a entidade em rede (`NetSpawnRegistry.Register`) ou o `NetSyncSystem`, ao registrar
+uma entidade que já estava na cena.
+
+O uso num script é quase sempre uma linha só, pra não mover o boneco dos outros jogadores:
+
+```csharp
+public override void Update(float deltaTime)
+{
+    if (Get<NetworkIdentity>() is { IsMine: false })
+        return;      // esta cópia é espelho de outra máquina — quem decide é ela
+
+    // ...movimento normal daqui pra baixo...
+}
+```
+
+Sessão, salas e spawn ficam em `Game.Net` (`StartHost`, `Join`, `Peers`, `PlayerJoined`,
+`Sync.Prefabs.Register`) — scripts não têm `Game` direto, então isso mora no seu
+`Game.OnLoad`/`OnUpdate`. Passo a passo e jogo de teste completo:
+[GUIA-JOGO-COOP.md](GUIA-JOGO-COOP.md).
+
 ---
 
 ## 5. `InputManager`
@@ -314,7 +346,7 @@ ActiveTouches  IReadOnlyList<(int Id, Vector2 Position)>   // Android
 
 ---
 
-## 6. Sistemas de RPG (todos em `Game`, precisam injeção manual no script)
+## 6. Sistemas do jogo (moram no `Game`, alcançáveis pelo `World?.X` — ver 6.6)
 
 ### 6.1 `GameState` — variáveis e switches globais (estilo RPG Maker)
 ```csharp
@@ -369,6 +401,118 @@ Find<T>(screenId, elementName) -> T?   // ex.: ler UiJoystick.Value do código
 Telas de UI (JSON com `"UI": true`) são independentes da cena de gameplay — trocar de cena
 (`ChangeScene`) não esconde HUD sozinho, precisa `HideUI`/`ShowUI` explícito.
 
+O `screenId` é o nome do arquivo sem extensão (`ui/hud.json` → `"hud"`), e o `elementName` é
+o **nome da entidade** na tela, não o do componente.
+
+#### Elementos de tela
+
+Na tela de UI do editor eles aparecem como componentes ("+Add Componente" mostra só a lista
+de UI quando o documento é uma tela), mas em runtime não são `IComponent`: o `UIManager`
+carrega o JSON e monta objetos `UiElement`. Por isso **Ui\* numa cena normal de gameplay não
+funciona** — o `SceneSerializer` não conhece esses tipos, então ignora o componente com um
+aviso no console (`[SceneSerializer] Componente 'UiText' … não registrado — ignorado`) e o
+elemento simplesmente não aparece. Se um HUD sumiu, é o primeiro lugar para olhar.
+
+Todos herdam quatro campos:
+
+```csharp
+Name     string  ""       // nome da entidade — é por ele que o Find<T> acha o elemento
+X / Y    float   0        // pixel de tela; o significado depende do anchor
+AnchorX  string  "Left"   // Left = X é a borda esquerda | Center = deslocamento do centro | Right = da borda direita
+AnchorY  string  "Top"    // Top | Center | Bottom
+```
+
+Âncora não é detalhe: com `Left/Top` a coordenada só fica certa na resolução em que você
+autorou. Menu que precisa funcionar em qualquer tela usa `Center`; HUD grudado em canto usa
+o canto correspondente.
+
+```csharp
+// UiText — texto. Aceita tokens resolvidos a cada frame:
+//   {Vida} = variável do GameState | {Item:Poção} = quantidade no inventário | {Quest:Mina} = estágio
+Text      string  ""
+Color     string  "#FFFFFFFF"
+Scale     float   1
+MaxWidth  float   0        // 0 = sem quebra automática; >0 = largura em pixels antes de quebrar
+
+// UiImage — ícone/imagem estática
+Texture   string  ""       // caminho dentro de Assets (no código o campo chama TexturePath)
+Width     float   0        // 0 = tamanho natural da imagem
+Height    float   0
+Color     string  "#FFFFFFFF"
+
+// UiBar — barra de progresso lendo uma variável do GameState (0..Max)
+Width     float   100
+Height    float   12
+Variable  string  ""       // nome da variável do GameState (ex.: "Vida")
+Max       float   100
+FillColor string  "#40C040FF"
+BackColor string  "#303030FF"
+
+// UiPanel — retângulo sólido (fundo de janela/menu)
+Width     float   100
+Height    float   100
+Color     string  "#000000AA"
+
+// UiButton — clicável no mouse e no toque
+Width          float   120
+Height         float   32      // Width/Height em 0 com Texture preenchida herdam o tamanho da imagem
+Text           string  ""
+Color          string  "#3A3860FF"
+HoverColor     string  "#4A4880FF"
+PressedColor   string  "#2A2850FF"
+TextColor      string  "#FFFFFFFF"
+Texture        string  ""      // preenchida, substitui o retângulo colorido (as 3 cores passam a ser ignoradas)
+HoverTexture   string  ""      // vazio = a Texture clareada
+PressedTexture string  ""      // vazio = a Texture escurecida
+OnClick        ação[]  []      // mesmo vocabulário de ações do EventTrigger (seção 7)
+// estado, só leitura em runtime:
+Clicked        bool            // true só no frame do clique/toque
+Pressed        bool            // true enquanto está segurado (bom pra "segura pra acelerar")
+
+// UiJoystick — analógico virtual (toque no Android, clique-e-arraste no desktop)
+Radius     float    70
+BaseColor  string   "#FFFFFF2E"
+KnobColor  string   "#FFFFFF66"
+Value      Vector2          // direção normalizada * intensidade (0..1); zero quando ninguém toca
+
+// UiTextInput — campo digitável (ex.: "entrar por IP"). Não está no "+Add Componente":
+// por enquanto só escrevendo o componente na mão no JSON da tela.
+Width            float   200
+Height           float   32
+Text             string  ""      // conteúdo; escreva aqui pra preencher por código
+Placeholder      string  ""      // texto em cinza quando vazio
+MaxLength        int     32
+Allowed          string  ""      // caracteres aceitos; vazio = todos (ex.: "0123456789." pra IP)
+Color            string  "#20203CFF"
+FocusColor       string  "#2A2A55FF"
+TextColor        string  "#FFFFFFFF"
+PlaceholderColor string  "#8888A8FF"
+CaretColor       string  "#FFFFFFFF"
+// estado, só leitura em runtime:
+Focused          bool            // com o cursor (só um campo por vez)
+Submitted        bool            // Enter apertado neste frame
+```
+
+Botão, joystick e campo de texto guardam estado de **um frame** (`Clicked`, `Submitted`) —
+leia todo frame no `Update`, como se lê `WasKeyPressed`:
+
+```csharp
+var ui = World?.UI;
+
+if (ui?.Find<UiButton>("hud", "BotaoAtaque")?.Clicked == true)
+    Atacar();
+
+if (ui?.Find<UiJoystick>("hud", "Direcional") is { } stick)
+    Get<Transform>()!.Position += stick.Value * Speed * deltaTime;
+
+if (ui?.Find<UiTextInput>("menu", "CampoIp") is { Submitted: true } campo)
+    Conectar(campo.Text);
+```
+
+`OnClick` resolve o caso comum sem código (trocar de cena, mostrar mensagem, tocar som);
+`Clicked`/`Pressed` existem pro que o vocabulário de ações não faz — chamar um método
+específico do seu script.
+
 ### 6.6 Acessando os sistemas — `World?.X`
 
 `Behavior` ganha `World` de graça (setado automaticamente ao adicionar a entidade), e o
@@ -410,6 +554,43 @@ PlayerEntityName  string  "Player"   // entidade cuja Transform.Position é salv
 ```
 Salva `GameState` (vars+switches) + `Inventory` + `Quests` + posição do `Player`. Disparado
 via ação `Save` de `EventTrigger`, ou chamando `Game.Save.Save()` direto.
+
+### 6.8 `AudioManager` — som e música (`Game.Audio`, `World?.Audio`)
+```csharp
+Play(path, volume = 1, pitch = 1)          // efeito one-shot; pitch de 0.1 a 4
+PlayMusic(path, loop = true, volume = 1)   // canal de música: substitui a faixa anterior
+StopMusic() / PauseMusic() / ResumeMusic()
+Preload(path) -> AudioClip?                // carrega antes da hora (evita engasgo no primeiro Play)
+MasterVolume  float  1     // 0..1, multiplica música e efeitos
+MusicVolume   float  1     // 0..1, vale na hora, inclusive na faixa que já está tocando
+SfxVolume     float  1     // 0..1, vale a partir do próximo Play
+IsAvailable   bool         // false quando não há dispositivo de áudio: tudo vira no-op silencioso
+```
+
+Formatos: **WAV** e **OGG** nos dois métodos. A diferença está em como cada um é carregado —
+`PlayMusic` com `.ogg` toca em streaming (só alguns décimos de segundo decodificados por vez),
+enquanto WAV é carregado inteiro na memória. Para efeito curto tanto faz; para trilha de
+música, use `.ogg`.
+
+Caminhos são relativos à pasta de assets, iguais aos de textura (`"audio/espada.wav"`).
+
+```csharp
+public override void OnDamaged(float amount, Entity? source)
+{
+    World?.Audio?.Play("audio/dano.wav", volume: 0.8f);
+
+    // Variar o pitch a cada golpe tira a repetição de som de metralhadora:
+    World?.Audio?.Play("audio/espada.wav", pitch: 0.9f + Random.Shared.NextSingle() * 0.2f);
+}
+```
+
+Sem código, o mesmo está no `EventTrigger` como as ações `PlaySound`, `PlayMusic` e
+`StopMusic` (seção 7) — é o caminho normal pra música de fase (ação `PlaySound`/`PlayMusic`
+num gatilho `SceneStart`).
+
+Volume de configuração é o `MasterVolume`/`MusicVolume`/`SfxVolume`: guarde o valor escolhido
+numa variável do `GameState` e reaplique no início da cena, porque eles não são salvos junto
+com o save do jogo.
 
 ---
 
@@ -681,13 +862,22 @@ UiText
 | Achar todas de um tipo | `World?.Query<T>()` |
 | Salvar jogo | `World?.Save?.Save(slot)` / ação `Save` |
 | Pausar | `World.Paused = true` / ação `SetPause` |
+| Tocar efeito | `World?.Audio?.Play("audio/x.wav")` / ação `PlaySound` |
+| Tocar música | `World?.Audio?.PlayMusic("audio/tema.ogg")` / ação `PlayMusic` |
+| Volume | `World?.Audio?.MasterVolume/MusicVolume/SfxVolume = 0..1` |
+| Ler botão da HUD | `World?.UI?.Find<UiButton>("hud", "Atk")?.Clicked` (ou `.Pressed`) |
+| Ler joystick de toque | `World?.UI?.Find<UiJoystick>("hud", "Dir")?.Value` |
+| Mostrar/esconder HUD | `World?.UI?.Show("hud")` / `Hide` / `Toggle` |
+| Só mover o meu boneco (rede) | `if (Get<NetworkIdentity>() is { IsMine: false }) return;` |
 
 Referência de arquivos-fonte, se quiser ler o código de verdade:
 - `src/Aurora.Runtime/Ecs/Behavior.cs`, `Entity.cs`, `World.cs`
 - `src/Aurora.Runtime/Ecs/Components/*.cs`
 - `src/Aurora.Runtime/Input/InputManager.cs`
 - `src/Aurora.Runtime/GameState.cs`, `InventoryManager.cs`, `QuestManager.cs`
-- `src/Aurora.Runtime/UI/DialogueSystem.cs`, `UIManager.cs`, `UiElement.cs`
+- `src/Aurora.Runtime/UI/DialogueSystem.cs`, `UIManager.cs`, `UiElement.cs`, `UiScreen.cs`
+- `src/Aurora.Runtime/Audio/AudioManager.cs`
+- `src/Aurora.Runtime/Net/NetSession.cs`, `NetSyncSystem.cs`, `NetSpawnRegistry.cs`
 - `src/Aurora.Runtime/Events/EventTrigger.cs`, `EventSystem.cs`
 - `src/Aurora.Runtime/Saves/SaveManager.cs`
 - `src/Aurora.Runtime/Scenes/SceneScriptAttribute.cs`, `SceneSerializer.cs`

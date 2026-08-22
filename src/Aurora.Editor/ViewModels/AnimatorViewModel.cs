@@ -12,7 +12,7 @@ public sealed class AnimatorViewModel : ComponentViewModel
     public ObservableCollection<AnimatorTransitionViewModel> Transitions { get; } = [];
     public ICommand AddTransitionCommand { get; }
 
-    public AnimatorViewModel(JsonObject node) : base(node)
+    public AnimatorViewModel(JsonObject node, MainViewModel? owner = null) : base(node, owner)
     {
         AddClipCommand = new RelayCommand(AddClip);
         AddTransitionCommand = new RelayCommand(AddTransition);

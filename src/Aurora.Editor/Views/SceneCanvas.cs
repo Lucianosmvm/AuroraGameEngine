@@ -492,6 +492,42 @@ public sealed class SceneCanvas : Control
     private static Color ParseEngineColor(string? hex, Color fallback)
         => Aurora.Editor.Models.EngineColor.Parse(hex, fallback);
 
+    /// <summary>
+    /// Desenha um SpriteRenderer com a cor do componente, como o <c>World.Render</c> faz:
+    /// sem textura é um retângulo pintado com a Color (não um placeholder fixo), com textura
+    /// a Color entra como tinta.
+    ///
+    /// <para>A tinta aqui é aproximação: o runtime multiplica textura × cor no shader e o
+    /// <see cref="DrawingContext"/> não tem blend de multiplicação. O alpha é exato
+    /// (opacidade) e o matiz é pintado por cima recortado pela silhueta da imagem — chega
+    /// perto o bastante para decidir a cor no editor, que é para o que o preview serve.</para>
+    /// </summary>
+    private void DrawSprite(DrawingContext context, Bitmap? bitmap, Rect rect, Color tint)
+    {
+        if (bitmap is null)
+        {
+            // Cor 100% transparente não desenharia nada e a entidade ficaria impossível de
+            // achar/clicar no editor — contorno tracejado mantém ela selecionável.
+            if (tint.A == 0)
+                context.DrawRectangle(
+                    new Pen(new SolidColorBrush(Colors.Magenta, 0.8), 1 / _zoom) { DashStyle = DashStyle.Dash },
+                    rect);
+            else
+                context.FillRectangle(new SolidColorBrush(tint), rect);
+
+            return;
+        }
+
+        using var _ = context.PushOpacity(tint.A / 255.0);
+        context.DrawImage(bitmap, new Rect(bitmap.Size), rect);
+
+        if (tint is { R: 255, G: 255, B: 255 })
+            return;                          // branco = sem tinta (caso mais comum)
+
+        using var mask = context.PushOpacityMask(new ImageBrush(bitmap) { Stretch = Stretch.Fill }, rect);
+        context.FillRectangle(new SolidColorBrush(Color.FromRgb(tint.R, tint.G, tint.B), 0.55), rect);
+    }
+
     /// <summary>Contorno da tela do jogo (resolução de referência) com o resto do viewport
     /// escurecido — sem essa moldura não dá pra saber, olhando o editor, onde é "a borda da
     /// tela" que os Anchor Right/Bottom/Center usam como referência.</summary>
@@ -553,8 +589,11 @@ public sealed class SceneCanvas : Control
                 {
                     var bitmap = ResolveTexture(element.Component.GetString("Texture"));
                     if (bitmap is not null)
-                        context.DrawImage(bitmap, new Rect(bitmap.Size), rect);
+                        DrawSprite(context, bitmap, rect,
+                            ParseEngineColor(element.Component.GetString("Color"), Colors.White));
                     else
+                        // Sem textura o runtime não desenha nada; o placeholder existe só pra
+                        // dar onde clicar enquanto a imagem não foi escolhida.
                         context.DrawRectangle(new SolidColorBrush(Colors.Magenta, 0.35),
                             new Pen(new SolidColorBrush(Colors.Magenta, 0.8), 1), rect);
                     break;
@@ -656,11 +695,9 @@ public sealed class SceneCanvas : Control
                 using (context.PushTransform(sprite.LocalToScreen))
                 using (context.PushOpacity(ghost ? 0.25 : 1.0))
                 {
-                    var bitmap = ResolveTexture(sprite.Entity.Sprite?.GetString("Texture"));
-                    if (bitmap is not null)
-                        context.DrawImage(bitmap, new Rect(bitmap.Size), sprite.LocalRect);
-                    else
-                        context.FillRectangle(Brushes.Magenta, sprite.LocalRect);
+                    var component = sprite.Entity.Sprite;
+                    DrawSprite(context, ResolveTexture(component?.GetString("Texture")), sprite.LocalRect,
+                        ParseEngineColor(component?.GetString("Color"), Colors.White));
                 }
 
                 if (ghost)

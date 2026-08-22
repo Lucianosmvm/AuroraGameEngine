@@ -156,6 +156,9 @@ public class ComponentViewModel : ViewModelBase
     public string Type { get; }
     public List<PropertyViewModel> Properties { get; } = [];
 
+    /// <summary>Janela principal, quando o componente foi criado com contexto (ver construtor).</summary>
+    protected MainViewModel? Owner { get; }
+
     /// <summary>Definido por EntityViewModel para componentes removíveis (todos exceto Transform).</summary>
     public ICommand? RemoveCommand { get; internal set; }
 
@@ -163,8 +166,11 @@ public class ComponentViewModel : ViewModelBase
 
     protected void RaiseEdited(string tag) => Edited?.Invoke($"{Type}.{tag}");
 
-    public ComponentViewModel(JsonObject node)
+    /// <param name="owner">Janela principal — de onde vêm a lista de assets e o seletor de
+    /// arquivo usados pelos campos de textura. Null em testes e em VMs sem contexto.</param>
+    public ComponentViewModel(JsonObject node, MainViewModel? owner = null)
     {
+        Owner = owner;
         Node = node;
         Type = node["Type"]?.GetValue<string>() ?? "?";
 
@@ -208,6 +214,7 @@ public class ComponentViewModel : ViewModelBase
             bool flag => new BoolPropertyViewModel(Node, name, flag),
             string text when EnumFields.TryGetValue(name, out var options) => new EnumPropertyViewModel(Node, name, text, options),
             string text when IsColorField(name, text) => new ColorPropertyViewModel(Node, name, text),
+            string when IsTextureField(name) => new TexturePropertyViewModel(Node, name, Owner),
             _ => new TextPropertyViewModel(Node, name, (string)fallback),
         };
         property.Edited += tag => Edited?.Invoke($"{Type}.{tag}");
@@ -225,6 +232,15 @@ public class ComponentViewModel : ViewModelBase
         => fallback.StartsWith('#')
            || (Node[name]?.GetValueKind() == JsonValueKind.String
                && EngineColor.TryParse(Node[name]!.GetValue<string>(), out _));
+
+    /// <summary>
+    /// Campo que guarda caminho de imagem — abre o seletor de assets em vez de caixa de texto.
+    /// Pega `Texture` (SpriteRenderer, Tilemap, UiImage, UiButton) e as variantes do botão
+    /// (`HoverTexture`, `PressedTexture`), inclusive num script seu que tenha campo terminado
+    /// em "Texture".
+    /// </summary>
+    private static bool IsTextureField(string name)
+        => name.EndsWith("Texture", StringComparison.OrdinalIgnoreCase);
 
     public NumberPropertyViewModel? Number(string name)
         => Properties.OfType<NumberPropertyViewModel>().FirstOrDefault(p => p.Name == name);

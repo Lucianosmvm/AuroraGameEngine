@@ -33,6 +33,65 @@
       </Grid>
     </DataTemplate>
 
+    <!-- Textura: miniatura clicável abre a lista de assets do projeto + "procurar no computador" -->
+    <DataTemplate DataType="{x:Type vm:TexturePropertyViewModel}">
+      <Grid ColumnDefinitions="90,Auto,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+
+        <Button Grid.Column="1" Padding="3" Margin="0,0,4,0" AutomationProperties.Name="Escolher textura"
+                ToolTip.Tip="Escolher imagem">
+          <Panel Width="26" Height="20">
+            <Image Source="{Binding Preview}" Stretch="Uniform"
+                   IsVisible="{Binding HasPreview}"/>
+            <TextBlock Text="🖼" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Opacity="0.55" IsVisible="{Binding !HasPreview}"/>
+          </Panel>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <StackPanel Width="300" Spacing="8">
+                <TextBlock Text="Imagens do projeto" FontWeight="SemiBold" FontSize="12"/>
+
+                <ScrollViewer MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding Assets}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                Padding="6,3" Margin="0,1" Background="Transparent"
+                                AutomationProperties.Name="{Binding RelativePath}"
+                                Command="{Binding $parent[ItemsControl].DataContext.PickCommand}"
+                                CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Image Source="{Binding Thumbnail}" Width="28" Height="28" Stretch="Uniform"/>
+                            <TextBlock Text="{Binding RelativePath}" VerticalAlignment="Center" FontSize="12"/>
+                          </StackPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+
+                <Grid ColumnDefinitions="*,Auto">
+                  <Button Content="Procurar no computador…" HorizontalAlignment="Stretch" FontSize="12"
+                          AutomationProperties.Name="Procurar no computador"
+                          Command="{Binding BrowseCommand}"/>
+                  <Button Grid.Column="1" Content="Limpar" Margin="6,0,0,0" FontSize="12"
+                          Command="{Binding ClearCommand}"/>
+                </Grid>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <TextBox Grid.Column="2" Text="{Binding Value}" FontSize="12" Padding="6,4"
+                 Watermark="sprites/exemplo.png"/>
+
+        <TextBlock Grid.Column="2" Text="⚠" FontSize="14" Foreground="#D68A00"
+                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
+                   IsVisible="{Binding IsMissing}"
+                   ToolTip.Tip="Este arquivo não está na pasta de assets do projeto"/>
+      </Grid>
+    </DataTemplate>
+
     <!-- Cor: a amostra abre a paleta nomeada + opacidade; o hex continua editável ao lado -->
     <DataTemplate DataType="{x:Type vm:ColorPropertyViewModel}">
       <Grid ColumnDefinitions="90,Auto,*" Margin="0,2">

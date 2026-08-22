@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using System.Windows.Input;
 using Aurora.Editor.Models;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -184,6 +185,88 @@ public sealed class SwatchChoiceViewModel
     public ICommand Command { get; }
     public IBrush Brush => Swatch.Brush;
     public string Label => Swatch.Label;
+}
+
+/// <summary>
+/// Propriedade de textura (Texture, HoverTexture, PressedTexture…): mostra a imagem atual e
+/// abre a lista de assets do projeto para escolher, com um atalho para procurar um arquivo no
+/// computador — que é copiado para a pasta de assets na hora.
+///
+/// <para>O valor continua sendo o caminho relativo à raiz de assets ("sprites/player.png"),
+/// que é o que o runtime carrega. Digitar à mão continua funcionando; o campo de texto está
+/// lá do lado.</para>
+/// </summary>
+public sealed class TexturePropertyViewModel : PropertyViewModel
+{
+    private readonly MainViewModel? _owner;
+
+    public TexturePropertyViewModel(JsonObject component, string name, MainViewModel? owner)
+        : base(component, name)
+    {
+        _owner = owner;
+        PickCommand = new RelayCommand(parameter =>
+        {
+            if (parameter is AssetViewModel asset)
+                Value = asset.RelativePath;
+        });
+        ClearCommand = new RelayCommand(() => Value = "");
+        BrowseCommand = new RelayCommand(() => _ = BrowseAsync());
+    }
+
+    public string Value
+    {
+        get => Component[Name]?.GetValue<string>() ?? "";
+        set
+        {
+            if (Value == value)
+                return;
+
+            if (string.IsNullOrEmpty(value))
+                Component.Remove(Name);
+            else
+                Component[Name] = value;
+
+            Raise(nameof(Value));
+            Raise(nameof(Preview));
+            Raise(nameof(HasPreview));
+            Raise(nameof(IsMissing));
+            NotifyEdited();
+        }
+    }
+
+    /// <summary>Texturas já dentro do projeto (painel ASSETS) — a lista do seletor.</summary>
+    public IEnumerable<AssetViewModel> Assets => _owner?.Assets ?? [];
+
+    /// <summary>Recebe o <see cref="AssetViewModel"/> clicado na lista.</summary>
+    public ICommand PickCommand { get; }
+
+    public ICommand ClearCommand { get; }
+
+    /// <summary>Abre o seletor de arquivo do sistema (a janela é quem tem o StorageProvider).</summary>
+    public ICommand BrowseCommand { get; }
+
+    public Bitmap? Preview => Find(Value)?.Thumbnail;
+
+    public bool HasPreview => Preview is not null;
+
+    /// <summary>Campo preenchido com um caminho que não existe na pasta de assets — quase
+    /// sempre erro de digitação, e no jogo vira exceção de textura não encontrada.</summary>
+    public bool IsMissing => !string.IsNullOrEmpty(Value) && Find(Value) is null;
+
+    private AssetViewModel? Find(string path)
+        => string.IsNullOrEmpty(path)
+            ? null
+            : _owner?.Assets.FirstOrDefault(a => string.Equals(a.RelativePath, path, StringComparison.OrdinalIgnoreCase));
+
+    private async Task BrowseAsync()
+    {
+        if (_owner?.PickTextureFromDisk is not { } pick)
+            return;
+
+        string? relative = await pick();
+        if (!string.IsNullOrEmpty(relative))
+            Value = relative;
+    }
 }
 
 public sealed class TextPropertyViewModel : PropertyViewModel
