@@ -9,6 +9,7 @@
     <Project Path="samples/Aurora.Sandbox.Android/Aurora.Sandbox.Android.csproj" />
     <Project Path="samples/Aurora.Sandbox.Core/Aurora.Sandbox.Core.csproj" />
     <Project Path="samples/Aurora.Sandbox/Aurora.Sandbox.csproj" />
+    <Project Path="samples/Aurora.SlandSurvivor/Aurora.SlandSurvivor.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Aurora.Editor/Aurora.Editor.csproj" />

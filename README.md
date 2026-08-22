@@ -57,6 +57,24 @@ As fases são cenas JSON comuns — abra no editor com
 O passo a passo (física, colisão, montagem da cena, regras de level design) está em
 [docs/GUIA-JOGO-PLATAFORMA.md](docs/GUIA-JOGO-PLATAFORMA.md).
 
+### Sandbox de mundo procedural (estilo Terraria)
+
+```bash
+dotnet run --project samples/Aurora.SlandSurvivor
+```
+
+Mundo de 1200x300 tiles gerado por ruído — colinas, biomas (floresta/deserto/tundra),
+cavernas, veios de minério por profundidade, lagos, árvores e ruínas subterrâneas —, com
+mineração e construção bloco a bloco, iluminação propagada (céu + tochas), ciclo dia/noite,
+inimigos que só aparecem no escuro, fabricação e save. Não usa nenhum arquivo de arte: o
+tileset e os personagens são pintados em código.
+
+**A/D** movem, **Espaço** pula, **botão esquerdo** cava ou golpeia, **botão direito** coloca
+bloco, **1–0** escolhem o item, **Tab** abre a mochila, **C** a fabricação, **F5/F9** salvam
+e carregam. `--seed 12345` repete um mundo específico e `--smoke` roda a verificação
+automatizada (geração, física, mineração, construção, luz, combate e save). O passo a passo
+está em [docs/GUIA-JOGO-SANDBOX.md](docs/GUIA-JOGO-SANDBOX.md).
+
 ### Jogo coop de teste (LAN, PC e Android)
 
 ```bash
@@ -119,6 +137,7 @@ src/Aurora.Runtime      Núcleo da engine (sem dependência de editor/UI desktop
                         NetRpcSystem, NetBrowser/NetLobby, canal confiável, protocolo UDP
 samples/Aurora.Sandbox  Demo jogável da Fase 1
 samples/Aurora.Platformer   Demo de plataforma 2D com duas fases (referência)
+samples/Aurora.SlandSurvivor Sandbox de mundo procedural estilo Terraria
 samples/Aurora.Coop.Core    Jogo coop de teste do multiplayer (desktop + Android)
 tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```

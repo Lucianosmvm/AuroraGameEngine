@@ -72,3 +72,6 @@ jobs:
 
       - name: Build Platformer
         run: dotnet build samples/Aurora.Platformer/Aurora.Platformer.csproj -c Release
+
+      - name: Build Sland Survivor
+        run: dotnet build samples/Aurora.SlandSurvivor/Aurora.SlandSurvivor.csproj -c Release
