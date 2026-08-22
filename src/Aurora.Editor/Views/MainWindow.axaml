@@ -33,6 +33,52 @@
       </Grid>
     </DataTemplate>
 
+    <!-- Cor: a amostra abre a paleta nomeada + opacidade; o hex continua editável ao lado -->
+    <DataTemplate DataType="{x:Type vm:ColorPropertyViewModel}">
+      <Grid ColumnDefinitions="90,Auto,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+
+        <Button Grid.Column="1" Padding="3" Margin="0,0,4,0" ToolTip.Tip="{Binding ColorName}"
+                AutomationProperties.Name="Escolher cor">
+          <Border Background="{Binding Preview}" Width="26" Height="16"
+                  BorderBrush="#99A0AA" BorderThickness="1" CornerRadius="2"/>
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+              <StackPanel Width="290" Spacing="8">
+                <TextBlock Text="{Binding ColorName}" FontWeight="SemiBold" FontSize="12"/>
+
+                <ItemsControl ItemsSource="{Binding Choices}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Width="33" Height="26" Margin="1" Padding="0"
+                              Background="{Binding Brush}" BorderBrush="#99A0AA" BorderThickness="1"
+                              ToolTip.Tip="{Binding Label}" AutomationProperties.Name="{Binding Label}"
+                              Command="{Binding Command}"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Grid ColumnDefinitions="Auto,*,44">
+                  <TextBlock Text="Opacidade" VerticalAlignment="Center" FontSize="12" Opacity="0.7"/>
+                  <Slider Grid.Column="1" Margin="8,0" Minimum="0" Maximum="100"
+                          Value="{Binding Opacity}"/>
+                  <TextBlock Grid.Column="2" Text="{Binding OpacityText}" VerticalAlignment="Center"
+                             FontSize="12" HorizontalAlignment="Right"/>
+                </Grid>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <TextBox Grid.Column="2" Text="{Binding Value}" FontSize="12" Padding="6,4"/>
+      </Grid>
+    </DataTemplate>
+
     <!-- Animator: campos básicos + lista de clipes -->
     <DataTemplate DataType="{x:Type vm:AnimatorViewModel}">
       <Panel Margin="0,0,0,6">

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -206,11 +207,24 @@ public class ComponentViewModel : ViewModelBase
             float number => new NumberPropertyViewModel(Node, name, number),
             bool flag => new BoolPropertyViewModel(Node, name, flag),
             string text when EnumFields.TryGetValue(name, out var options) => new EnumPropertyViewModel(Node, name, text, options),
+            string text when IsColorField(name, text) => new ColorPropertyViewModel(Node, name, text),
             _ => new TextPropertyViewModel(Node, name, (string)fallback),
         };
         property.Edited += tag => Edited?.Invoke($"{Type}.{tag}");
         Properties.Add(property);
     }
+
+    /// <summary>
+    /// Decide se o campo abre o seletor de cores em vez de uma caixa de texto: vale para os
+    /// campos dos esquemas nativos cujo padrão é hex (Color, TextColor, ColorStart…) e para
+    /// qualquer campo de script cujo valor no JSON seja um hex válido — assim um
+    /// <c>public string Cor = "#FF0000FF"</c> num script seu também ganha a paleta, sem
+    /// precisar chamar o campo de "Color".
+    /// </summary>
+    private bool IsColorField(string name, string fallback)
+        => fallback.StartsWith('#')
+           || (Node[name]?.GetValueKind() == JsonValueKind.String
+               && EngineColor.TryParse(Node[name]!.GetValue<string>(), out _));
 
     public NumberPropertyViewModel? Number(string name)
         => Properties.OfType<NumberPropertyViewModel>().FirstOrDefault(p => p.Name == name);

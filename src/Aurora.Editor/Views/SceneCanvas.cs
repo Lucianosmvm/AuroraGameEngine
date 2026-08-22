@@ -490,27 +490,7 @@ public sealed class SceneCanvas : Control
     /// <summary>Converte hex "#RRGGBB"/"#RRGGBBAA" (convenção do engine, alpha por último) —
     /// Avalonia.Media.Color.Parse espera alpha primeiro, não dá pra reusar direto.</summary>
     private static Color ParseEngineColor(string? hex, Color fallback)
-    {
-        if (hex is null)
-            return fallback;
-
-        string value = hex.TrimStart('#');
-        if (value.Length != 6 && value.Length != 8)
-            return fallback;
-
-        try
-        {
-            byte r = Convert.ToByte(value[..2], 16);
-            byte g = Convert.ToByte(value[2..4], 16);
-            byte b = Convert.ToByte(value[4..6], 16);
-            byte a = value.Length == 8 ? Convert.ToByte(value[6..8], 16) : (byte)255;
-            return Color.FromArgb(a, r, g, b);
-        }
-        catch (FormatException)
-        {
-            return fallback;
-        }
-    }
+        => Aurora.Editor.Models.EngineColor.Parse(hex, fallback);
 
     /// <summary>Contorno da tela do jogo (resolução de referência) com o resto do viewport
     /// escurecido — sem essa moldura não dá pra saber, olhando o editor, onde é "a borda da

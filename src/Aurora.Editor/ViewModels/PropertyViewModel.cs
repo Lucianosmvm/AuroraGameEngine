@@ -1,5 +1,8 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using System.Windows.Input;
+using Aurora.Editor.Models;
+using Avalonia.Media;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -83,6 +86,104 @@ public sealed class NumberPropertyViewModel : PropertyViewModel
         Raise(nameof(Value));
         Raise(nameof(Text));
     }
+}
+
+/// <summary>
+/// Propriedade de cor — qualquer campo guardado como hex do engine ("#RRGGBBAA"). Mostra a
+/// cor atual num quadradinho que abre a paleta nomeada, com a opacidade num controle
+/// separado, e mantém o campo de texto para quem já sabe o hex.
+///
+/// <para>Existe porque o inspector tratava cor como texto livre: para deixar um botão azul
+/// era preciso saber de cabeça (ou procurar na internet) o hexadecimal.</para>
+/// </summary>
+public sealed class ColorPropertyViewModel : PropertyViewModel
+{
+    private readonly string _fallback;
+
+    public ColorPropertyViewModel(JsonObject component, string name, string fallback)
+        : base(component, name)
+    {
+        _fallback = string.IsNullOrWhiteSpace(fallback) ? "#FFFFFFFF" : fallback;
+
+        // Cada quadradinho já nasce com o comando desta propriedade. Custa 40 objetos por
+        // campo de cor e evita o botão do template ter que procurar a propriedade subindo a
+        // árvore visual de dentro do popup — que é onde binding de flyout costuma quebrar.
+        Choices = [.. ColorPalette.Swatches.Select(swatch => new SwatchChoiceViewModel(swatch, () => Apply(swatch)))];
+    }
+
+    /// <summary>Hex cru, do jeito que vai para o JSON. Continua editável à mão.</summary>
+    public string Value
+    {
+        get => Component[Name]?.GetValue<string>() ?? _fallback;
+        set
+        {
+            if (Value == value)
+                return;
+
+            Component[Name] = value;
+            RaiseAll();
+            NotifyEdited();
+        }
+    }
+
+    /// <summary>As cores da paleta, cada uma com o comando que a aplica neste campo.</summary>
+    public IReadOnlyList<SwatchChoiceViewModel> Choices { get; }
+
+    /// <summary>Cor atual já convertida (branco quando o texto não é hex válido).</summary>
+    public Color Color => EngineColor.Parse(Value, Colors.White);
+
+    public IBrush Preview => new SolidColorBrush(Color);
+
+    /// <summary>Nome da cor quando ela está na paleta; senão, o próprio hex.</summary>
+    public string ColorName => ColorPalette.NameOf(Color) ?? EngineColor.ToHex(Color);
+
+    /// <summary>Opacidade em porcentagem — o canal alpha do hex em linguagem de gente.</summary>
+    public double Opacity
+    {
+        get => Math.Round(Color.A / 255.0 * 100.0);
+        set
+        {
+            byte alpha = (byte)Math.Clamp(Math.Round(value / 100.0 * 255.0), 0, 255);
+            if (alpha == Color.A)
+                return;
+
+            Component[Name] = EngineColor.WithAlpha(Color, alpha);
+            RaiseAll();
+            NotifyEdited();
+        }
+    }
+
+    public string OpacityText => $"{Opacity:0}%";
+
+    /// <summary>Escolha na paleta: troca a cor e só mexe na opacidade se o swatch trouxer a dele.</summary>
+    private void Apply(ColorSwatch swatch)
+        => Value = EngineColor.WithAlpha(swatch.Color, swatch.CarriesAlpha ? swatch.Color.A : Color.A);
+
+    private void RaiseAll()
+    {
+        Raise(nameof(Value));
+        Raise(nameof(Color));
+        Raise(nameof(Preview));
+        Raise(nameof(ColorName));
+        Raise(nameof(Opacity));
+        Raise(nameof(OpacityText));
+    }
+}
+
+/// <summary>Um quadradinho da paleta dentro de um campo de cor: o que desenhar, o texto da
+/// dica (que também é o nome lido por leitor de tela) e o comando que aplica a cor.</summary>
+public sealed class SwatchChoiceViewModel
+{
+    public SwatchChoiceViewModel(ColorSwatch swatch, Action apply)
+    {
+        Swatch = swatch;
+        Command = new RelayCommand(apply);
+    }
+
+    public ColorSwatch Swatch { get; }
+    public ICommand Command { get; }
+    public IBrush Brush => Swatch.Brush;
+    public string Label => Swatch.Label;
 }
 
 public sealed class TextPropertyViewModel : PropertyViewModel

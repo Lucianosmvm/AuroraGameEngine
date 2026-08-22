@@ -32,6 +32,9 @@ dotnet run --project src/Aurora.Editor -- samples/Aurora.Sandbox.Core/Assets/sce
 - **Hierarquia** (esquerda): seleciona entidades
 - **Cena** (centro): arrastar move a entidade; botão do meio/direito = pan; scroll = zoom
 - **Inspector** (direita): edita Transform, SpriteRenderer e mostra componentes de script
+- **Campos de cor**: o quadradinho ao lado do hex abre uma paleta de 40 cores com nome
+  ("Vermelho", "Céu", "Terra"…) e um controle de opacidade — não precisa saber hexadecimal.
+  O campo de texto continua aceitando `#RRGGBBAA` para quem prefere digitar
 - **Ctrl+S** salva de volta no JSON — componentes que o editor não conhece são preservados intactos
 
 ## Rodando a demo
