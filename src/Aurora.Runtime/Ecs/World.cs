@@ -1,6 +1,7 @@
 using System.Numerics;
 using Aurora.Runtime;
 using Aurora.Runtime.AI;
+using Aurora.Runtime.Assets;
 using Aurora.Runtime.Audio;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Graphics;
@@ -32,6 +33,16 @@ public sealed class World
     public UIManager? UI { get; internal set; }
     public AudioManager? Audio { get; internal set; }
     public SaveManager? Save { get; internal set; }
+
+    /// <summary>Carregador de assets do jogo — <c>World.Assets?.LoadTexture("sprites/slash.png")</c>.
+    /// É cacheado por caminho, então chamar todo ataque não recarrega o PNG. Sem isso um script
+    /// só conseguiria desenhar textura que alguém tivesse injetado nele na mão pelo Game.</summary>
+    public AssetManager? Assets { get; internal set; }
+
+    /// <summary>A câmera do jogo. Serve pra converter clique do mouse em ponto do mundo
+    /// (<c>World.Camera.ScreenToWorld(World.Input.MousePosition)</c>) — sem ela um script
+    /// precisaria receber a Camera2D injetada na mão pelo Game.</summary>
+    public Camera2D? Camera { get; internal set; }
 
     private readonly Dictionary<Type, Dictionary<int, IComponent>> _stores = new();
     private readonly Dictionary<int, string> _names = new();
@@ -375,6 +386,7 @@ public sealed class World
             UpdateNavAgents(deltaTime);
             ProcessCollisions();
             UpdateParticles(deltaTime);
+            UpdateTilemapAnimations(deltaTime);
             UpdateHealth(deltaTime);
 
             _updating = false;
@@ -498,6 +510,26 @@ public sealed class World
                 particle.Position += particle.Velocity * deltaTime;
                 emitter.Particles[i] = particle;
             }
+        }
+    }
+
+    /// <summary>Avança o relógio de animação de cada Tilemap animado (água, lava, tocha).
+    /// O tempo é acumulado no componente, não no World: assim uma camada nova entra no ciclo
+    /// no frame dela e dá pra zerar/sincronizar uma camada só.</summary>
+    private void UpdateTilemapAnimations(float deltaTime)
+    {
+        foreach (var (_, map) in Query<Tilemap>())
+        {
+            if (map.AnimationFrames <= 1 || map.AnimationFrameDuration <= 0f)
+                continue;
+
+            map.AnimationTime += deltaTime;
+
+            // Volta pro começo do ciclo em vez de crescer pra sempre: em float, depois de
+            // algumas horas de jogo o incremento de um frame some na precisão e a água trava.
+            float cycle = map.AnimationFrameDuration * map.AnimationFrames;
+            if (map.AnimationTime >= cycle)
+                map.AnimationTime %= cycle;
         }
     }
 
@@ -1035,13 +1067,13 @@ public sealed class World
         {
             for (int x = firstX; x <= lastX; x++)
             {
-                int index = map.Tiles[y * map.Width + x];
+                int index = map.ResolveTile(map.Tiles[y * map.Width + x]);
                 if (index < 0)
                     continue;
 
                 var position = transform.Position + new Vector2(x * cellWidth, y * cellHeight);
                 batch.Draw(map.Tileset!, position, cellSize, Vector2.Zero, 0f,
-                    Color.White, map.SourceRect(index));
+                    map.Color, map.SourceRect(index));
             }
         }
     }

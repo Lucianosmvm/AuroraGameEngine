@@ -13,7 +13,10 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ Carregamento de texturas (PNG/JPG via StbImageSharp) com cache
 - ✅ Assets abstraídos por `IAssetSource`: pasta no desktop, APK no Android
 - ✅ Cenas em JSON (`scenes/*.json`) com registro extensível de componentes
-- ✅ Tilemaps com culling e 1 draw call por mapa; pintura no editor
+- ✅ Tilemaps com culling e 1 draw call por mapa; pintura no editor, tint por camada,
+  tiles animados por linha de frame e `Autotile()` de máscara de borda
+- ✅ **Líquidos** (`LiquidTileset`): tileset de água/lava/sangue/pântano gerado em código,
+  com margem, canto arredondado e animação — sem arte externa e sem shader
 - ✅ Variáveis e switches globais (`GameState`) com save/load em JSON
 - ✅ Eventos visuais (`EventTrigger`): gatilhos SceneStart/PlayerTouch/SwitchOn e
   ações SetVariable, SetSwitch, Teleport, Destroy, Wait, ShowMessage
@@ -234,6 +237,90 @@ O `Animator` atualiza o `SourceRect` do `SpriteRenderer` automaticamente a cada 
   ]
 }
 ```
+
+## Scripts: mover, atacar no mouse e instanciar efeito
+
+Todo script herda `Behavior` e é anexado a uma entidade. Componentes da própria entidade vêm
+de `Get<T>()`; os sistemas do jogo (input, câmera, assets, som, UI, save) vêm de `World?.X`,
+injetados automaticamente.
+
+```csharp
+[SceneScript]
+public sealed class PlayerAttack : Behavior
+{
+    public float Cooldown = 0.35f;
+
+    public override void Update(float deltaTime)
+    {
+        var input = World?.Input;
+        if (input is null || !input.WasMouseClicked(MouseButton.Left)) return;
+
+        // Mouse vem em pixel de TELA — a câmera converte pra mundo.
+        var alvo = World!.Camera!.ScreenToWorld(input.MousePosition);
+        var direcao = Vector2.Normalize(alvo - Get<Transform>()!.Position);
+
+        // Instancia o corte girado pra direção, com Animator de clipe único (Loop = false).
+        // ...
+    }
+}
+```
+
+Tutorial detalhado — movimento em 8 direções, mira do mouse, cooldown, instanciar a animação
+do golpe na direção em que o player olha, dano e os erros mais comuns:
+[docs/TUTORIAL-SCRIPTS-PLAYER.md](docs/TUTORIAL-SCRIPTS-PLAYER.md). Os scripts rodando estão
+em `samples/Aurora.Farm/Scripts/` (`PlayerAttack.cs`, `AttackEffect.cs`) — clique com o botão
+esquerdo no sample da fazenda.
+
+Referência completa da API de script: [docs/REFERENCIA-SCRIPTS-RPG.md](docs/REFERENCIA-SCRIPTS-RPG.md).
+
+Para aprender construindo em vez de copiar: [docs/TUTORIAL-ATAQUE-INIMIGO.md](docs/TUTORIAL-ATAQUE-INIMIGO.md)
+monta o golpe no clique e o inimigo perseguidor em 14 passos, cada um rodando na tela — do
+primeiro `Console.WriteLine` até spawner com teto de inimigos vivos.
+
+## RPG survivor completo (um guia só)
+
+Movimento, ataque, construção, fabricação, água, vida, stamina, moedas, itens e inimigos —
+todos os sistemas de um RPG de sobrevivência top-down costurados num documento só, com os
+scripts prontos e o contrato de nomes (variáveis do `GameState` e itens do `InventoryManager`)
+que faz HUD, craft, drop e save conversarem:
+[docs/GUIA-RPG-SURVIVOR.md](docs/GUIA-RPG-SURVIVOR.md).
+
+## Água, lava e sangue (tiles de líquido animados)
+
+`LiquidTileset` pinta em código o tileset de um líquido — 16 colunas de máscara de borda ×
+N linhas de frame — e o `Tilemap` sabe usar os dois eixos: `Autotile()` escolhe a máscara de
+cada célula pelos vizinhos, `AnimationFrames` faz a linha girar sozinha.
+
+```csharp
+var pond = World.CreateEntity("Lagoa");
+pond.Add(new Transform(new Vector2(400f, -160f)));
+
+var water = pond.Add(new Tilemap
+{
+    Tileset = Assets.LoadTexture("tilesets/water.png"),
+    TileWidth = 32, TileHeight = 32, Width = 12, Height = 12,
+    Layer = 1,                                   // acima do terreno, abaixo dos personagens
+    AnimationFrames = 4, AnimationFrameDuration = 0.18f,
+    AnimationColumns = LiquidTileset.Columns,
+});
+
+water.Fill(2, 2, 8, 8, 0);                       // marque as células molhadas
+water.Autotile(outsideIsFilled: false);          // margem, canto e miolo saem daqui
+```
+
+Presets: `LiquidStyle.Water()`, `ShallowWater()`, `Lava()`, `Blood()`, `Swamp()`. Pra gerar
+um PNG novo (que aparece na paleta do editor):
+
+```csharp
+LiquidTileset.SavePng("Assets/tilesets/agua_tropical.png", style);
+```
+
+Os cinco tilesets prontos estão em `samples/Aurora.Farm/Assets/tilesets/`, e a lagoa do
+sample da fazenda (`BuildPond` em `FarmGame.cs`) é o exemplo rodando.
+
+Guia completo — margem, colisão, dano de lava, respingo de sangue com partícula e o que a
+engine ainda **não** faz (sombra projetada, shader de refração):
+[docs/GUIA-AGUA-LAVA-SANGUE.md](docs/GUIA-AGUA-LAVA-SANGUE.md).
 
 ## Áudio
 

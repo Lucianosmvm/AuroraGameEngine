@@ -2,7 +2,10 @@
 
 Este documento é a referência do que dá pra usar dentro de um script `[SceneScript]` (a
 classe que herda `Behavior`). Pra um tutorial passo a passo de como montar um jogo do zero,
-veja `docs/GUIA-JOGO-BASE.md` — este arquivo aqui é consulta, não tutorial.
+veja `docs/GUIA-JOGO-BASE.md` — este arquivo aqui é consulta, não tutorial. Pra um jogo de
+sobrevivência inteiro (mover, atacar, construir, fabricar, água, vida, stamina, moedas, itens
+e inimigos) com todos esses sistemas já ligados entre si:
+[GUIA-RPG-SURVIVOR.md](GUIA-RPG-SURVIVOR.md).
 
 ## 0. Criando um script pelo editor
 
@@ -517,9 +520,9 @@ específico do seu script.
 
 `Behavior` ganha `World` de graça (setado automaticamente ao adicionar a entidade), e o
 próprio `World` carrega referências pra `Input`/`State`/`Inventory`/`Quests`/`Dialogue`/`UI`/
-`Audio`/`Save` desde o primeiro frame (`Game.HandleLoad` popula isso 1x, antes de qualquer
-cena carregar). Não precisa de propriedade pública nem de injeção manual em `Game.OnUpdate`
-— só usa direto:
+`Audio`/`Save`/`Camera`/`Assets` desde o primeiro frame (`Game.HandleLoad` popula isso 1x,
+antes de qualquer cena carregar). Não precisa de propriedade pública nem de injeção manual
+em `Game.OnUpdate` — só usa direto:
 
 ```csharp
 public override void Update(float dt)
@@ -530,6 +533,12 @@ public override void Update(float dt)
 
     World?.Inventory?.Add("Gold", 10);
     World?.Dialogue?.ShowMessage("Oi!");
+
+    // Câmera: converter clique do mouse em ponto do mundo (mira, seleção, ataque).
+    var alvo = World?.Camera?.ScreenToWorld(input.MousePosition);
+
+    // Assets: carregar textura por caminho de dentro do script (cacheado por caminho).
+    var corte = World?.Assets?.LoadTexture("sprites/slash.png");
 }
 ```
 

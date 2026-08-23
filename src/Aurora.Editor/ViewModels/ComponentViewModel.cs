@@ -28,7 +28,11 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Texture", ""), ("TileWidth", 16f), ("TileHeight", 16f),
             ("Width", 0f), ("Height", 0f), ("Layer", 0f),
+            ("Color", "#FFFFFFFF"),
             ("SolidTiles", ""),   // índices separados por vírgula, ex: "1, 3, 5"
+            // Tileset com linhas de frame (água/lava do LiquidTileset): AnimationFrames = nº
+            // de linhas, AnimationColumns = largura de uma linha (0 = linha cheia do tileset).
+            ("AnimationFrames", 1f), ("AnimationFrameDuration", 0.15f), ("AnimationColumns", 0f),
         ],
         ["Animator"] =
         [

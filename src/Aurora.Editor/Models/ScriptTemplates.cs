@@ -33,6 +33,7 @@ public static class ScriptTemplates
         => template.Source.Replace("__NAMESPACE__", @namespace).Replace("__CLASSNAME__", className);
 
     private const string EmptySource = """
+        using System.Numerics;
         using Aurora.Runtime.Ecs;
         using Aurora.Runtime.Ecs.Components;
         using Aurora.Runtime.Scenes;
@@ -190,6 +191,7 @@ public static class ScriptTemplates
         """;
 
     private const string ItemSource = """
+        using System.Numerics;
         using Aurora.Runtime.Ecs;
         using Aurora.Runtime.Ecs.Components;
         using Aurora.Runtime.Scenes;

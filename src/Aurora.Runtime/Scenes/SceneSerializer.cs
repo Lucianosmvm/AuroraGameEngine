@@ -176,7 +176,13 @@ public sealed class SceneSerializer
 
         foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            if (!ScriptableFieldTypes.Contains(prop.PropertyType) || !prop.CanRead || !prop.CanWrite
+            // Setter precisa ser PÚBLICO: "{ get; private set; }" é estado de runtime que o
+            // script publica pra outros lerem (IsAttacking, CurrentSpeed), não campo de cena.
+            // Sem esta checagem eles vazavam pro JSON e apareciam no Inspector — e o parser de
+            // texto do editor, que sempre exigiu "get; set;", discordava do runtime.
+            if (!ScriptableFieldTypes.Contains(prop.PropertyType)
+                || prop.GetMethod is not { IsPublic: true }
+                || prop.SetMethod is not { IsPublic: true }
                 || prop.GetIndexParameters().Length > 0)
                 continue;
             result.Add(new ScriptMember(prop.Name, prop.PropertyType,
@@ -349,7 +355,13 @@ public sealed class SceneSerializer
                     Width = GetInt(json, "Width", 0),
                     Height = GetInt(json, "Height", 0),
                     Layer = GetInt(json, "Layer", 0),
+                    AnimationFrames = GetInt(json, "AnimationFrames", 1),
+                    AnimationFrameDuration = GetFloat(json, "AnimationFrameDuration", 0.15f),
+                    AnimationColumns = GetInt(json, "AnimationColumns", 0),
                 };
+
+                if (json.TryGetProperty("Color", out var tint))
+                    map.Color = Color.FromHex(tint.GetString()!);
 
                 if (json.TryGetProperty("Texture", out var texture))
                 {
@@ -392,6 +404,17 @@ public sealed class SceneSerializer
                 json.WriteNumber("Height", map.Height);
                 if (map.Layer != 0)
                     json.WriteNumber("Layer", map.Layer);
+
+                if (map.Color.ToHex() != "#FFFFFFFF")
+                    json.WriteString("Color", map.Color.ToHex());
+
+                if (map.AnimationFrames > 1)
+                {
+                    json.WriteNumber("AnimationFrames", map.AnimationFrames);
+                    json.WriteNumber("AnimationFrameDuration", map.AnimationFrameDuration);
+                    if (map.AnimationColumns > 0)
+                        json.WriteNumber("AnimationColumns", map.AnimationColumns);
+                }
 
                 if (map.SolidTiles.Count > 0)
                     json.WriteString("SolidTiles",

@@ -99,6 +99,9 @@ public sealed class FarmGame : Game
             SpawnDecor("sprites/fence.png", new Vector2(x, mapOrigin.Y + MapHeight * TileSize + 26));
         }
 
+        // --- Lagoa de água animada, a leste da lavoura.
+        BuildPond(new Vector2(mapOrigin.X + MapWidth * TileSize + 80f, -160f));
+
         // --- Jogador.
         var player = World.CreateEntity("Player");
         player.Add(new Transform(Vector2.Zero));
@@ -110,10 +113,67 @@ public sealed class FarmGame : Game
             GrownTexture = Assets.LoadTexture("sprites/crop_grown.png"),
         });
 
+        // Ataque no clique do mouse: instancia o corte animado na direção do cursor.
+        // Ver docs/TUTORIAL-SCRIPTS-PLAYER.md.
+        player.Add(new PlayerAttack());
+
         // --- Câmera segue o jogador.
         var camera = World.CreateEntity("MainCamera");
         camera.Add(new Transform(Vector2.Zero));
         camera.Add(new CameraController { Follow = "Player", FollowSpeed = 6f, Zoom = 1f, ViewWidth = 1280, ViewHeight = 720 });
+    }
+
+    /// <summary>
+    /// Lagoa de água animada: uma camada de <see cref="Tilemap"/> por cima do terreno, com o
+    /// tileset gerado pelo <see cref="LiquidTileset"/> (16 colunas de máscara × 4 linhas de
+    /// frame). O desenho da lagoa é só "marque as células molhadas"; quem escolhe margem,
+    /// canto e miolo é o <c>Autotile()</c>, e quem faz a água mexer é o <c>AnimationFrames</c>.
+    /// </summary>
+    private void BuildPond(Vector2 origin)
+    {
+        // Metade do tile do terreno: a margem da água ganha o dobro de resolução sem precisar
+        // redesenhar a lavoura inteira numa grade mais fina.
+        const int Cell = TileSize / 2;
+        const int Width = 12, Height = 12;
+
+        var pond = World.CreateEntity("Lagoa");
+        pond.Add(new Transform(origin));
+
+        var water = pond.Add(new Tilemap
+        {
+            // Gerado por LiquidTileset.SavePng() — o mesmo PNG aparece na paleta do editor.
+            // Pra gerar em runtime, sem asset: LiquidTileset.CreateTexture(Gl, LiquidStyle.Water()).
+            Tileset = Assets.LoadTexture("tilesets/water.png"),
+            TileWidth = Cell,
+            TileHeight = Cell,
+            Width = Width,
+            Height = Height,
+            Layer = 1,                     // acima do terreno (0), abaixo das árvores (5) e do jogador (10)
+            AnimationFrames = 4,
+            AnimationFrameDuration = 0.18f,
+            AnimationColumns = LiquidTileset.Columns,
+        });
+
+        // Contorno oval amassado — pinte com qualquer índice >= 0, o Autotile reescreve tudo.
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                float dx = (x - 5.5f) / 5.2f, dy = (y - 5.5f) / 5.0f;
+                float r = dx * dx + dy * dy
+                          + 0.12f * MathF.Sin(x * 1.9f) + 0.12f * MathF.Cos(y * 2.3f);
+                if (r < 1f)
+                    water.SetTile(x, y, 0);
+            }
+        }
+
+        // outsideIsFilled: false — a lagoa acaba dentro do mapa, então a borda da grade é
+        // margem de verdade (com true, um oceano que encosta na borda não ganharia espuma ali).
+        water.Autotile(outsideIsFilled: false);
+
+        // As 16 máscaras são todas água: o jogador contorna a lagoa em vez de atravessar.
+        for (int mask = 0; mask <= LiquidTileset.Center; mask++)
+            water.SolidTiles.Add(mask);
     }
 
     private void SpawnDecor(string texturePath, Vector2 position, bool solid = false, Vector2? colliderSize = null)

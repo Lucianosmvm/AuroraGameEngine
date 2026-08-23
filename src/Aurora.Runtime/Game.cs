@@ -214,6 +214,8 @@ public abstract class Game : IDisposable
         World.UI = UI;
         World.Audio = Audio;
         World.Save = Save;
+        World.Camera = Camera;
+        World.Assets = Assets;
 
         // Só aqui, e não no construtor: a sincronização precisa do World já apontando pros
         // sistemas do Game, porque as fábricas de prefab montam entidades completas (sprite,

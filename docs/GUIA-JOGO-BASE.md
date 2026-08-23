@@ -11,6 +11,11 @@ passos abaixo mostram exatamente onde clicar no Inspector pra chegar no mesmo re
 Trechos marcados **testado** foram verificados nesta sessão (rodando o jogo de verdade, ou em
 device Android real via `adb`); o resto segue o comportamento já documentado no código-fonte.
 
+Quer especificamente um **RPG survivor** (construção, fabricação, stamina, sede, ondas de
+inimigos, drops)? Esses sistemas estão montados e ligados entre si em
+[GUIA-RPG-SURVIVOR.md](GUIA-RPG-SURVIVOR.md) — use este guia aqui para menu, cena, pausa e
+build, e aquele para o gameplay.
+
 ---
 
 ## 0. Pré-requisitos
