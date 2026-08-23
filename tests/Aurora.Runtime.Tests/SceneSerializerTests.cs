@@ -362,6 +362,71 @@ public class SceneSerializerTests
     }
 
     [Fact]
+    public void ComponentesDeGameplayFazemRoundtripPelosNomesDosCampos()
+    {
+        // Registro reflexivo: o nome do campo É o nome no JSON. Este teste é o que percebe se
+        // alguém renomear um campo de componente e quebrar as cenas já salvas.
+        var world = new World();
+        var player = world.CreateEntity("Player");
+        player.Add(new TopDownController { Speed = 210f, JoystickName = "MoveStick", FlipSpriteByDirection = false });
+        player.Add(new AttackSpawner { Prefab = "prefabs/corte.json", AimMode = "Mouse", DirectionSnap = 8, Cooldown = 0.2f });
+
+        var slime = world.CreateEntity("Slime");
+        slime.Add(new ContactDamage { Damage = 14f, TargetPrefix = "Player", Knockback = 30f });
+        slime.Add(new AutoMotion { RotateSpeedDegrees = 45f, BobAmplitude = 6f });
+        slime.Add(new Lifetime { Seconds = 3f, DestroyOnAnimationEnd = true });
+        slime.Add(new FollowTarget { TargetName = "Player", OffsetX = 5f, FollowSpeed = 80f });
+
+        var destino = Roundtrip(world);
+
+        var controller = Achar(destino, "Player").Get<TopDownController>()!;
+        Assert.Equal(210f, controller.Speed, Tolerance);
+        Assert.Equal("MoveStick", controller.JoystickName);
+        Assert.False(controller.FlipSpriteByDirection);
+
+        var attack = Achar(destino, "Player").Get<AttackSpawner>()!;
+        Assert.Equal("prefabs/corte.json", attack.Prefab);
+        Assert.Equal("Mouse", attack.AimMode);
+        Assert.Equal(8, attack.DirectionSnap);
+
+        var contact = Achar(destino, "Slime").Get<ContactDamage>()!;
+        Assert.Equal(14f, contact.Damage, Tolerance);
+        Assert.Equal("Player", contact.TargetPrefix);
+        Assert.Equal(30f, contact.Knockback, Tolerance);
+
+        Assert.Equal(45f, Achar(destino, "Slime").Get<AutoMotion>()!.RotateSpeedDegrees, Tolerance);
+        Assert.True(Achar(destino, "Slime").Get<Lifetime>()!.DestroyOnAnimationEnd);
+        Assert.Equal(80f, Achar(destino, "Slime").Get<FollowTarget>()!.FollowSpeed, Tolerance);
+    }
+
+    [Fact]
+    public void EstadoDeRuntimeDosComponentesNaoVazaProJson()
+    {
+        // Facing/Velocity/Age/CooldownRemaining são "{ get; private set; }" — leitura pra HUD e
+        // script, não campo de cena. Se vazassem, apareceriam no inspector como se fossem
+        // autoráveis e o editor mostraria um valor que o jogo sobrescreve no primeiro frame.
+        var world = new World();
+        world.CreateEntity("Player").Add(new TopDownController());
+
+        string json = new SceneSerializer().Save("Teste", new SceneContext { World = world });
+
+        Assert.DoesNotContain("Facing", json);
+        Assert.DoesNotContain("Velocity", json);
+    }
+
+    [Fact]
+    public void NavAgentGuardaOFollowNaCena()
+    {
+        var world = new World();
+        world.CreateEntity("Slime").Add(new NavAgent { Follow = "Player", FollowRange = 400f });
+
+        var agent = Achar(Roundtrip(world), "Slime").Get<NavAgent>()!;
+
+        Assert.Equal("Player", agent.Follow);
+        Assert.Equal(400f, agent.FollowRange, Tolerance);
+    }
+
+    [Fact]
     public void ComponenteSemWriterNaoAparaNoSave()
     {
         // RecordingBehavior não tem [SceneScript] nem registro manual — não deve virar JSON,
@@ -375,5 +440,53 @@ public class SceneSerializerTests
 
         Assert.NotNull(Achar(destino, "Player").Get<Transform>());
         Assert.Null(Achar(destino, "Player").Get<RecordingBehavior>());
+    }
+
+    [Fact]
+    public void SizeDoSpriteSobreviveAoRoundtrip()
+    {
+        var world = new World();
+        world.CreateEntity("Slime").Add(new SpriteRenderer { Size = new Vector2(28f, 14f) });
+
+        var sprite = Achar(Roundtrip(world), "Slime").Get<SpriteRenderer>()!;
+
+        Assert.NotNull(sprite.Size);
+        Assert.Equal(28f, sprite.Size!.Value.X, Tolerance);
+        Assert.Equal(14f, sprite.Size!.Value.Y, Tolerance);
+    }
+
+    [Fact]
+    public void SpriteSemSizeContinuaComTamanhoNatural()
+    {
+        // Size null não é "size zero": quer dizer desenhar no tamanho da textura. Se o
+        // roundtrip materializasse um Vector2.Zero aqui, todo sprite salvo pelo editor sem
+        // tamanho explícito sumiria da tela ao recarregar.
+        var world = new World();
+        world.CreateEntity("Slime").Add(new SpriteRenderer { Layer = 3 });
+
+        Assert.Null(Achar(Roundtrip(world), "Slime").Get<SpriteRenderer>()!.Size);
+    }
+
+    [Theory]
+    [InlineData(28f, 0f)]
+    [InlineData(0f, 28f)]
+    [InlineData(0f, 0f)]
+    public void SizeComEixoZeradoNoJsonViraTamanhoNatural(float sizeX, float sizeY)
+    {
+        // Campo em branco no inspector do editor chega aqui como 0. Virar um lado de tamanho
+        // zero deixaria o sprite invisível sem nenhum erro explicando; "natural" é o que o
+        // autor da cena quis dizer ao não preencher.
+        string json = $$"""
+            {
+              "Scene": "Teste",
+              "Objects": [ { "Name": "Slime", "Components": [
+                { "Type": "SpriteRenderer", "SizeX": {{sizeX}}, "SizeY": {{sizeY}} } ] } ]
+            }
+            """;
+
+        var world = new World();
+        new SceneSerializer().Load(json, new SceneContext { World = world });
+
+        Assert.Null(Achar(world, "Slime").Get<SpriteRenderer>()!.Size);
     }
 }

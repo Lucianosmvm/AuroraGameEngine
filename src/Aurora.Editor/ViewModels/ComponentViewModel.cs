@@ -19,9 +19,14 @@ public class ComponentViewModel : ViewModelBase
         [
             ("X", 0f), ("Y", 0f), ("Rotation", 0f), ("ScaleX", 1f), ("ScaleY", 1f),
         ],
+        // SizeX/SizeY: tamanho de desenho em pixels de mundo, independente da resolução do PNG
+        // (um slime de 178x150 cabe em 28x28 sem redimensionar o arquivo). Os dois em 0 = tamanho
+        // natural da textura, mesma convenção de Width/Height do UiImage — e como o ScaleX/ScaleY
+        // do Transform multiplica o resultado, os dois continuam funcionando juntos.
         ["SpriteRenderer"] =
         [
-            ("Texture", ""), ("Layer", 0f), ("OriginX", 0.5f), ("OriginY", 0.5f),
+            ("Texture", ""), ("Layer", 0f), ("SizeX", 0f), ("SizeY", 0f),
+            ("OriginX", 0.5f), ("OriginY", 0.5f),
             ("FlipX", false), ("FlipY", false), ("Visible", true), ("Color", "#FFFFFFFF"),
         ],
         ["Tilemap"] =
@@ -142,10 +147,62 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Color", "#000028FF"), ("Intensity", 0.3f), ("Enabled", true),
         ],
-        // NavAgent: alvo é setado em código (SetTarget), só Speed/ArriveThreshold são autoráveis na cena.
+        // NavAgent: com Follow preenchido persegue aquela entidade sozinho (inimigo atrás do
+        // jogador, sem script); vazio, o destino vem de SetTarget() em código.
         ["NavAgent"] =
         [
             ("Speed", 100f), ("ArriveThreshold", 4f),
+            ("Follow", ""), ("RepathInterval", 0.25f), ("FollowRange", 0f),
+        ],
+        // Andar do jogador visto de cima. JoystickScreen/JoystickName ligam num UiJoystick da
+        // HUD pro mesmo personagem funcionar no celular; AnimatorSpeedParameter alimenta a
+        // transição parado↔andando do Animator.
+        ["TopDownController"] =
+        [
+            ("Speed", 100f), ("UseKeyboard", true),
+            ("JoystickScreen", ""), ("JoystickName", ""),
+            ("FlipSpriteByDirection", true), ("AnimatorSpeedParameter", "Speed"),
+            ("Enabled", true),
+        ],
+        // Ataque: instancia Prefab a Distance na direção da mira, respeitando Cooldown. Corpo-a-
+        // corpo ou tiro é decidido pelo prefab (Animator+Lifetime vs Projectile), não aqui.
+        // AimMode: "Facing" (pra onde anda) | "Mouse". DirectionSnap trava em N direções iguais.
+        ["AttackSpawner"] =
+        [
+            ("Prefab", ""), ("Cooldown", 0.35f), ("Distance", 24f),
+            ("AimMode", "Facing"), ("DirectionSnap", 0f),
+            ("TriggerKey", ""), ("TriggerMouse", false),
+            ("TriggerUiScreen", ""), ("TriggerUiButton", ""),
+            ("RotateSpawn", true), ("AttachToAttacker", true), ("ProjectileSpeed", 0f),
+            ("Enabled", true),
+        ],
+        // Machuca quem encostar enquanto o contato durar. TargetPrefix vazio pega qualquer
+        // entidade com Health — ponha "Player" num inimigo pra ele não machucar os colegas.
+        ["ContactDamage"] =
+        [
+            ("Damage", 10f), ("Interval", 1f), ("TargetPrefix", ""),
+            ("Knockback", 0f), ("DestroySelfOnHit", false),
+            ("Enabled", true),
+        ],
+        // Cola a posição na de outra entidade. FollowSpeed 0 gruda instantâneo.
+        ["FollowTarget"] =
+        [
+            ("TargetName", "Player"), ("OffsetX", 0f), ("OffsetY", 0f),
+            ("FollowSpeed", 0f), ("DestroyWhenTargetGone", false),
+            ("Enabled", true),
+        ],
+        // Se destrói sozinho: por tempo e/ou no fim da animação sem loop.
+        ["Lifetime"] =
+        [
+            ("Seconds", 2f), ("DestroyOnAnimationEnd", false),
+            ("Enabled", true),
+        ],
+        // Movimento decorativo: gira e/ou balança sozinho. Os dois efeitos somam.
+        ["AutoMotion"] =
+        [
+            ("RotateSpeedDegrees", 0f),
+            ("BobAmplitude", 0f), ("BobSpeed", 1f), ("BobAngleDegrees", 90f),
+            ("Enabled", true),
         ],
     };
 

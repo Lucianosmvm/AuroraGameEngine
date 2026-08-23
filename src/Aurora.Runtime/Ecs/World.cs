@@ -44,6 +44,39 @@ public sealed class World
     /// precisaria receber a Camera2D injetada na mão pelo Game.</summary>
     public Camera2D? Camera { get; internal set; }
 
+    /// <summary>
+    /// Como instanciar um prefab. Delegate em vez de referência direta ao SceneSerializer
+    /// porque Scenes já depende de Ecs — apontar de volta fecharia o ciclo entre as duas
+    /// camadas. O Game liga isso no HandleLoad; use <see cref="Spawn(string, Vector2)"/>.
+    /// </summary>
+    internal Func<string, Vector2?, Entity?>? PrefabFactory { get; set; }
+
+    /// <summary>
+    /// Instancia um prefab (arquivo .json com "Components" na raiz, salvo pelo painel PREFABS
+    /// do editor) na posição pedida, e devolve a entidade nova. Null se o arquivo não existe ou
+    /// está inválido — o erro vai pro console e o jogo segue, mesma política do load de cena.
+    ///
+    /// <para>É o mesmo caminho que a ação de evento <c>Spawn</c> usa, então um inimigo nascido
+    /// por script e um nascido por evento saem idênticos.</para>
+    /// </summary>
+    public Entity? Spawn(string prefabPath, Vector2 position) => SpawnAt(prefabPath, position);
+
+    /// <summary>Instancia o prefab onde ele foi salvo — mantém o Transform gravado no arquivo.</summary>
+    public Entity? Spawn(string prefabPath) => SpawnAt(prefabPath, null);
+
+    private Entity? SpawnAt(string prefabPath, Vector2? position)
+    {
+        if (PrefabFactory is null)
+        {
+            Console.Error.WriteLine(
+                $"[World] Spawn('{prefabPath}') ignorado: o mundo não está ligado a um Game " +
+                "(PrefabFactory nula). Em teste, use SceneSerializer.LoadEntity direto.");
+            return null;
+        }
+
+        return PrefabFactory(prefabPath, position);
+    }
+
     private readonly Dictionary<Type, Dictionary<int, IComponent>> _stores = new();
     private readonly Dictionary<int, string> _names = new();
     private readonly HashSet<int> _alive = new();
@@ -404,7 +437,35 @@ public sealed class World
         CompactBehaviors();
     }
 
-    /// <summary>Nasce/envelhece/mata partículas de todo ParticleEmitter vivo.</summary>
+    /// <summary>
+    /// Reaponta o destino de um NavAgent com <see cref="NavAgent.Follow"/> pra posição atual da
+    /// entidade perseguida, no ritmo do RepathInterval.
+    /// </summary>
+    private void RetargetFollower(Transform transform, NavAgent agent, float deltaTime)
+    {
+        agent.RepathTimer -= deltaTime;
+        if (agent.RepathTimer > 0f)
+            return;
+
+        agent.RepathTimer = MathF.Max(0.05f, agent.RepathInterval);
+
+        if (!TryFind(agent.Follow, out var target) || target.Get<Transform>() is not { } targetTransform)
+        {
+            agent.Stop();
+            return;
+        }
+
+        if (agent.FollowRange > 0f
+            && Vector2.DistanceSquared(transform.Position, targetTransform.Position)
+               > agent.FollowRange * agent.FollowRange)
+        {
+            agent.Stop();
+            return;
+        }
+
+        agent.SetTarget(targetTransform.Position);
+    }
+
     /// <summary>
     /// Move todo NavAgent com alvo definido: calcula caminho (A* se houver tilemap com
     /// SolidTiles, reto senão) na primeira vez e avança waypoint a waypoint.
@@ -413,6 +474,9 @@ public sealed class World
     {
         foreach (var (_, transform, agent) in Query<Transform, NavAgent>())
         {
+            if (agent.Follow.Length > 0)
+                RetargetFollower(transform, agent, deltaTime);
+
             if (!agent.HasTarget)
                 continue;
 

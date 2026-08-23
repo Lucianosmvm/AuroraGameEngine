@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -199,35 +200,68 @@ public sealed class SceneSerializer
         var root = document.RootElement;
 
         foreach (var objectElement in root.GetProperty("Objects").EnumerateArray())
+            ReadEntity(objectElement, context);
+    }
+
+    /// <summary>
+    /// Instancia UM prefab: o mesmo formato de objeto usado dentro de "Objects", mas salvo
+    /// sozinho num arquivo — <c>{ "Name": ..., "Components": [...] }</c>, sem "Objects". É o que
+    /// o painel PREFABS do editor grava, e o que a ação de evento <c>Spawn</c> carrega em jogo.
+    ///
+    /// <para><paramref name="position"/> sobrescreve o Transform gravado no arquivo (o prefab
+    /// guarda a posição de onde foi salvo, que não tem nada a ver com onde ele vai nascer). Se o
+    /// prefab não tiver Transform, um é criado — entidade sem Transform não aparece na tela nem
+    /// colide, e um prefab spawnado sempre quer estar em algum lugar.</para>
+    /// </summary>
+    public Entity LoadEntity(string json, SceneContext context, Vector2? position = null)
+    {
+        using var document = JsonDocument.Parse(json);
+        var entity = ReadEntity(document.RootElement, context);
+
+        if (position is { } spawnPoint)
         {
-            string name = objectElement.TryGetProperty("Name", out var nameProp)
-                ? nameProp.GetString() ?? "Entity"
-                : "Entity";
-
-            var entity = context.World.CreateEntity(name);
-
-            if (!objectElement.TryGetProperty("Components", out var components))
-                continue;
-
-            foreach (var componentElement in components.EnumerateArray())
-            {
-                string typeName = componentElement.GetProperty("Type").GetString()
-                    ?? throw new InvalidDataException($"Componente sem 'Type' na entidade '{name}'.");
-
-                if (!_readers.TryGetValue(typeName, out var reader))
-                {
-                    // Não derruba o load da cena inteira por um componente não registrado
-                    // (ex: UiText/UiButton/UiPanel/UiBar/UiImage só existem em telas de UI,
-                    // carregadas via UIManager.Load — não são IComponent aqui) — loga e pula.
-                    Console.Error.WriteLine(
-                        $"[SceneSerializer] Componente '{typeName}' (entidade '{name}') não registrado — ignorado. " +
-                        $"Registrados: {string.Join(", ", _readers.Keys)}");
-                    continue;
-                }
-
-                entity.Add(reader(componentElement, context));
-            }
+            var transform = entity.Get<Transform>();
+            if (transform is null)
+                entity.Add(new Transform(spawnPoint));
+            else
+                transform.Position = spawnPoint;
         }
+
+        return entity;
+    }
+
+    /// <summary>Lê um objeto de cena (nome + componentes) e cria a entidade correspondente.</summary>
+    private Entity ReadEntity(JsonElement objectElement, SceneContext context)
+    {
+        string name = objectElement.TryGetProperty("Name", out var nameProp)
+            ? nameProp.GetString() ?? "Entity"
+            : "Entity";
+
+        var entity = context.World.CreateEntity(name);
+
+        if (!objectElement.TryGetProperty("Components", out var components))
+            return entity;
+
+        foreach (var componentElement in components.EnumerateArray())
+        {
+            string typeName = componentElement.GetProperty("Type").GetString()
+                ?? throw new InvalidDataException($"Componente sem 'Type' na entidade '{name}'.");
+
+            if (!_readers.TryGetValue(typeName, out var reader))
+            {
+                // Não derruba o load da cena inteira por um componente não registrado
+                // (ex: UiText/UiButton/UiPanel/UiBar/UiImage só existem em telas de UI,
+                // carregadas via UIManager.Load — não são IComponent aqui) — loga e pula.
+                Console.Error.WriteLine(
+                    $"[SceneSerializer] Componente '{typeName}' (entidade '{name}') não registrado — ignorado. " +
+                    $"Registrados: {string.Join(", ", _readers.Keys)}");
+                continue;
+            }
+
+            entity.Add(reader(componentElement, context));
+        }
+
+        return entity;
     }
 
     /// <summary>Serializa todas as entidades do mundo para JSON.</summary>
@@ -280,6 +314,7 @@ public sealed class SceneSerializer
         RegisterGlobalTint();
         RegisterNavAgent();
         RegisterNetworkIdentity();
+        RegisterGameplayComponents();
         Register<Transform>("Transform",
             static (json, _) => new Transform
             {
@@ -316,6 +351,17 @@ public sealed class SceneSerializer
                 if (json.TryGetProperty("Color", out var color))
                     sprite.Color = Color.FromHex(color.GetString()!);
 
+                // Size é nullable e a ausência tem significado próprio: null = tamanho natural
+                // da textura. Ausente OU zero em qualquer eixo conta como natural — mesma
+                // convenção de UiImage/UiButton (UIManager.ParseElement). Não é preciosismo: no
+                // inspector do editor um campo em branco vale 0, então tratar 0 como tamanho
+                // real deixaria o sprite com lado zero — invisível na tela, sem erro nenhum
+                // apontando o motivo.
+                float sizeX = GetFloat(json, "SizeX", 0f);
+                float sizeY = GetFloat(json, "SizeY", 0f);
+                if (sizeX > 0f && sizeY > 0f)
+                    sprite.Size = new(sizeX, sizeY);
+
                 if (json.TryGetProperty("Texture", out var texture))
                 {
                     string path = texture.GetString()!;
@@ -333,6 +379,14 @@ public sealed class SceneSerializer
                     json.WriteString("Texture", path);
                 if (s.Layer != 0)
                     json.WriteNumber("Layer", s.Layer);
+                // Espelha o reader: só um tamanho com os dois eixos positivos é persistível.
+                // Um eixo zerado seria lido de volta como "tamanho natural", então gravá-lo
+                // faria o save mentir sobre o que o load vai produzir.
+                if (s.Size is { X: > 0f, Y: > 0f } size)
+                {
+                    json.WriteNumber("SizeX", size.X);
+                    json.WriteNumber("SizeY", size.Y);
+                }
                 if (s.Origin.X != 0.5f || s.Origin.Y != 0.5f)
                 {
                     json.WriteNumber("OriginX", s.Origin.X);
@@ -817,13 +871,38 @@ public sealed class SceneSerializer
             {
                 Speed = GetFloat(json, "Speed", 100f),
                 ArriveThreshold = GetFloat(json, "ArriveThreshold", 4f),
+                Follow = GetString(json, "Follow", ""),
+                RepathInterval = GetFloat(json, "RepathInterval", 0.25f),
+                FollowRange = GetFloat(json, "FollowRange", 0f),
             },
             static (json, component, _) =>
             {
                 var a = (NavAgent)component;
                 if (a.Speed != 100f) json.WriteNumber("Speed", a.Speed);
                 if (a.ArriveThreshold != 4f) json.WriteNumber("ArriveThreshold", a.ArriveThreshold);
+                if (a.Follow.Length > 0) json.WriteString("Follow", a.Follow);
+                if (a.RepathInterval != 0.25f) json.WriteNumber("RepathInterval", a.RepathInterval);
+                if (a.FollowRange != 0f) json.WriteNumber("FollowRange", a.FollowRange);
             });
+    }
+
+    /// <summary>
+    /// Componentes de jogo prontos (movimento, ataque, tempo de vida, dano no contato…), que
+    /// existem justamente pra um jogo comum não precisar de script nenhum.
+    ///
+    /// <para>Registro reflexivo, o mesmo dos <see cref="SceneScriptAttribute"/>: todos os campos
+    /// autoráveis deles são float/int/bool/string, então um reader/writer escrito à mão pra cada
+    /// seria dezenas de linhas que o compilador não checa contra o componente — renomear um
+    /// campo passaria batido e viraria bug de save. Aqui, o nome do campo É o nome no JSON.</para>
+    /// </summary>
+    private void RegisterGameplayComponents()
+    {
+        RegisterReflective(typeof(TopDownController), nameof(TopDownController));
+        RegisterReflective(typeof(AttackSpawner), nameof(AttackSpawner));
+        RegisterReflective(typeof(ContactDamage), nameof(ContactDamage));
+        RegisterReflective(typeof(FollowTarget), nameof(FollowTarget));
+        RegisterReflective(typeof(Lifetime), nameof(Lifetime));
+        RegisterReflective(typeof(AutoMotion), nameof(AutoMotion));
     }
 
     public static float GetFloat(JsonElement json, string name, float fallback)

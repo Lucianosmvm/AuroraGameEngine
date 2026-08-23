@@ -22,4 +22,10 @@
     <ProjectReference Include="..\..\src\Aurora.Editor\Aurora.Editor.csproj" />
   </ItemGroup>
 
+  <!-- Fonte de referência das medições. Copiada pra saída em vez de lida de um caminho
+       relativo ao repositório: assim o teste não depende de onde a build coloca os binários. -->
+  <ItemGroup>
+    <Content Include="Assets\DejaVuSans.ttf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

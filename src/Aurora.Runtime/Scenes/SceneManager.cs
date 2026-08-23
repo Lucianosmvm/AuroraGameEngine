@@ -35,6 +35,15 @@ public sealed class SceneManager
     /// <summary>True durante o fade de transição; behaviors continuam rodando.</summary>
     public bool IsTransitioning => _phase != Phase.None;
 
+    /// <summary>
+    /// Disparado depois que a cena terminou de ser montada no <see cref="World"/>, com o
+    /// caminho carregado. É o gancho pra criar entidades por código: carregar uma cena chama
+    /// <see cref="World.Clear"/>, então tudo que não está no .json morre na troca — o que
+    /// nasce no <c>OnLoad</c> do jogo só sobrevive até a primeira transição. Não dispara se o
+    /// load falhou.
+    /// </summary>
+    public event Action<string>? SceneLoaded;
+
     internal SceneManager(World world, SceneSerializer serializer,
         EventSystem events, DialogueSystem dialogue, AssetManager assets)
     {
@@ -124,6 +133,12 @@ public sealed class SceneManager
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[SceneManager] Falha ao carregar cena '{path}': {ex.Message}");
+            return;
         }
+
+        // Fora do try de propósito: exceção de um assinante é bug do jogo, não falha de load.
+        // Deixar cair no catch acima esconderia o stack real atrás da mensagem errada — e
+        // ainda marcaria como "cena carregada com erro" uma cena que subiu inteira.
+        SceneLoaded?.Invoke(path);
     }
 }

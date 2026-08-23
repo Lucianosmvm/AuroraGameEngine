@@ -16,19 +16,10 @@ public sealed class TrueTypeMetricsTests
 
     private static TrueTypeMetrics Font()
     {
-        string path = Path.Combine(RepoRoot(), "samples", "Aurora.Sandbox.Core", "Assets", "fonts", "DejaVuSans.ttf");
+        string path = Path.Combine(AppContext.BaseDirectory, "Assets", "DejaVuSans.ttf");
         var font = TrueTypeMetrics.FromFile(path);
         Assert.NotNull(font);
         return font;
-    }
-
-    private static string RepoRoot()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-            if (File.Exists(Path.Combine(dir.FullName, "Aurora.slnx")))
-                return dir.FullName;
-
-        throw new DirectoryNotFoundException("Aurora.slnx não encontrado a partir do diretório de saída.");
     }
 
     private static void AssertClose(double expected, double actual, double tolerance = 0.05)

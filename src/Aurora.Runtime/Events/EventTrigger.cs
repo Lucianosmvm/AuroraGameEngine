@@ -6,11 +6,12 @@ namespace Aurora.Runtime.Events;
 /// <summary>Uma ação de um evento. Campos usados dependem de <see cref="Type"/> (ver EventSystem).</summary>
 public sealed class EventAction
 {
-    /// <summary>SetVariable | SetSwitch | Teleport | Destroy | Wait | ShowMessage | AddItem |
-    /// RemoveItem | SetQuestStage | AdvanceQuest | ...</summary>
+    /// <summary>SetVariable | SetSwitch | Teleport | Destroy | Spawn | Wait | ShowMessage |
+    /// AddItem | RemoveItem | SetQuestStage | AdvanceQuest | ...</summary>
     public string Type = "";
 
-    /// <summary>Nome da variável/switch/item/quest, ou da entidade alvo (null = a própria entidade do evento).</summary>
+    /// <summary>Nome da variável/switch/item/quest, da entidade alvo (null = a própria entidade
+    /// do evento), ou o caminho do prefab em Spawn.</summary>
     public string? Name;
 
     /// <summary>SetVariable: "Set" (padrão) ou "Add".</summary>

@@ -1,16 +1,4 @@
 <Solution>
-  <Folder Name="/samples/">
-    <Project Path="samples/Aurora.Coop/Aurora.Coop.csproj" />
-    <Project Path="samples/Aurora.Coop.Android/Aurora.Coop.Android.csproj" />
-    <Project Path="samples/Aurora.Coop.Core/Aurora.Coop.Core.csproj" />
-    <Project Path="samples/Aurora.Farm/Aurora.Farm.csproj" />
-    <Project Path="samples/Aurora.Farm.Android/Aurora.Farm.Android.csproj" />
-    <Project Path="samples/Aurora.Platformer/Aurora.Platformer.csproj" />
-    <Project Path="samples/Aurora.Sandbox.Android/Aurora.Sandbox.Android.csproj" />
-    <Project Path="samples/Aurora.Sandbox.Core/Aurora.Sandbox.Core.csproj" />
-    <Project Path="samples/Aurora.Sandbox/Aurora.Sandbox.csproj" />
-    <Project Path="samples/Aurora.SlandSurvivor/Aurora.SlandSurvivor.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Aurora.Editor/Aurora.Editor.csproj" />
     <Project Path="src/Aurora.Runtime/Aurora.Runtime.csproj" />

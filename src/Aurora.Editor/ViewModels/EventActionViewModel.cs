@@ -21,7 +21,7 @@ public sealed class EventActionViewModel : ViewModelBase
     [
         "Wait", "SetVariable", "SetSwitch",
         "ShowMessage", "ShowChoice",
-        "Teleport", "Destroy",
+        "Teleport", "Destroy", "Spawn",
         "Damage", "Heal",
         "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
@@ -51,10 +51,13 @@ public sealed class EventActionViewModel : ViewModelBase
     {
         "ChangeScene" => _owner?.SceneFiles.Select(s => s.Name) ?? [],
         "ShowUI" or "HideUI" or "ToggleUI" => _owner?.UiScreens.Select(s => System.IO.Path.GetFileNameWithoutExtension(s.Name)) ?? [],
+        // Spawn lista os prefabs pelo caminho relativo a Assets — é literalmente a string que o
+        // runtime passa pro AssetManager, então escolher da lista não tem como digitar errado.
+        "Spawn" => _owner?.Prefabs.Select(p => p.RelativePath) ?? [],
         _ => [],
     };
 
-    public bool ShowNamePicker => ActionType is "ChangeScene" or "ShowUI" or "HideUI" or "ToggleUI";
+    public bool ShowNamePicker => ActionType is "ChangeScene" or "ShowUI" or "HideUI" or "ToggleUI" or "Spawn";
     public bool ShowNameText => ShowName && !ShowNamePicker;
 
     public string ActionType
@@ -86,6 +89,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetVariable" or "SetSwitch" => "Variável",
         "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" or "SetActive" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
+        "Spawn" => "Prefab",
         "AddItem" or "RemoveItem" => "Item",
         "SetQuestStage" or "AdvanceQuest" => "Quest",
         "ShowUI" or "HideUI" or "ToggleUI" => "Tela UI",
@@ -209,6 +213,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
         "Teleport"       => "Move uma entidade pra posição X,Y",
         "Destroy"        => "Remove uma entidade da cena",
+        "Spawn"          => "Instancia um prefab; X,Y é o deslocamento a partir de quem disparou o evento",
         "Damage"         => "Aplica dano numa entidade com Health (ignora se invencível/i-frames)",
         "Heal"           => "Cura uma entidade com Health, sem passar do Max",
         "Quit"           => "Fecha o jogo",
@@ -233,7 +238,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     // Visibility — recalculated when ActionType changes
     public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
-        or "Damage" or "Heal"
+        or "Spawn" or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
         or "ShowUI" or "HideUI" or "ToggleUI";
@@ -241,7 +246,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause";
-    public bool ShowXY => ActionType == "Teleport";
+    public bool ShowXY => ActionType is "Teleport" or "Spawn";
     public bool ShowSeconds => ActionType == "Wait";
     public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";
     public bool ShowOptions => ActionType == "ShowChoice";

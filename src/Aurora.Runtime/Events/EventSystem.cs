@@ -242,6 +242,17 @@ public sealed class EventSystem
                 ResolveTarget(self, action.Name)?.Destroy();
                 break;
 
+            case "Spawn" when action.Name is not null:
+            {
+                // X/Y são deslocamento a partir de quem disparou o evento: assim o MESMO arquivo
+                // de prefab serve pra quantos pontos de spawn a cena tiver, sem editar o prefab
+                // nem duplicá-lo. Num gatilho sem entidade de origem a origem é (0,0), então
+                // X/Y viram posição absoluta — os dois usos saem da mesma conta.
+                var origin = self?.Get<Transform>()?.Position ?? Vector2.Zero;
+                _world.Spawn(action.Name, origin + new Vector2(action.X, action.Y));
+                break;
+            }
+
             case "Damage":
                 if (ResolveTarget(self, action.Name) is { } damageTarget)
                     _world.Damage(damageTarget, action.Value, self);

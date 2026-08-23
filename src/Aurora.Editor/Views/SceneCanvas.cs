@@ -186,8 +186,19 @@ public sealed class SceneCanvas : Control
                 continue;
 
             var bitmap = ResolveTexture(sprite.GetString("Texture"));
-            double width = (bitmap?.Size.Width ?? 32) * Math.Abs(transform.GetFloat("ScaleX", 1f));
-            double height = (bitmap?.Size.Height ?? 32) * Math.Abs(transform.GetFloat("ScaleY", 1f));
+
+            // Espelha World.Render: SizeX/SizeY substituem o tamanho natural da textura (os dois
+            // precisam ser positivos — zero quer dizer "natural", igual no SceneSerializer), e o
+            // ScaleX/ScaleY do Transform multiplica os dois casos. Sem isso o canvas mostraria o
+            // PNG no tamanho do arquivo enquanto o jogo desenha no tamanho pedido.
+            float sizeX = sprite.GetFloat("SizeX", 0f);
+            float sizeY = sprite.GetFloat("SizeY", 0f);
+            bool hasSize = sizeX > 0f && sizeY > 0f;
+
+            double baseWidth = hasSize ? sizeX : bitmap?.Size.Width ?? 32;
+            double baseHeight = hasSize ? sizeY : bitmap?.Size.Height ?? 32;
+            double width = baseWidth * Math.Abs(transform.GetFloat("ScaleX", 1f));
+            double height = baseHeight * Math.Abs(transform.GetFloat("ScaleY", 1f));
             if (width < 0.01 || height < 0.01)
                 continue;
 

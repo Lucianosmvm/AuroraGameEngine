@@ -217,6 +217,23 @@ public abstract class Game : IDisposable
         World.Camera = Camera;
         World.Assets = Assets;
 
+        // World.Spawn("prefabs/slime.json", pos) e a ação de evento Spawn passam por aqui.
+        // Erro de arquivo/JSON não derruba o jogo: loga e devolve null, mesma política do
+        // load de cena — um prefab com nome errado não pode matar o frame inteiro.
+        World.PrefabFactory = (path, position) =>
+        {
+            try
+            {
+                return Scenes.LoadEntity(Assets.LoadText(path),
+                    new Scenes.SceneContext { World = World, Assets = Assets }, position);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Game] Falha ao instanciar prefab '{path}': {ex.Message}");
+                return null;
+            }
+        };
+
         // Só aqui, e não no construtor: a sincronização precisa do World já apontando pros
         // sistemas do Game, porque as fábricas de prefab montam entidades completas (sprite,
         // áudio, script) na hora que um jogador entra.
