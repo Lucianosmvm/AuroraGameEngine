@@ -43,6 +43,13 @@ public sealed class EventSystem
     /// <summary>Quando presente, a ação UseItem acha a ficha do item e roda o efeito dela.</summary>
     public Database.ItemDatabase? Items { get; set; }
 
+    /// <summary>Quando presente, a ação CallEvent acha a sequência cadastrada, e os eventos de
+    /// disparo automático (por switch) são varridos a cada <see cref="Update"/>.</summary>
+    public Database.CommonEventDatabase? CommonEvents { get; set; }
+
+    /// <summary>Quando presente, as ações AddStatus/RemoveStatus acham a ficha do efeito.</summary>
+    public Database.StatusDatabase? Status { get; set; }
+
     /// <summary>Quando presente, ações SetQuestStage/AdvanceQuest e gatilho QuestStageAtLeast operam aqui.</summary>
     public QuestManager? Quests { get; set; }
 
@@ -146,6 +153,8 @@ public sealed class EventSystem
             }
         }
 
+        UpdateAutomaticEvents();
+
         _sceneStartFired = true;
     }
 
@@ -219,10 +228,10 @@ public sealed class EventSystem
         _    => MathF.Abs(actual - value) < 1e-6f,   // "==" default
     };
 
-    /// <summary>Executa ações imediatamente, sem entidade "dona" — usado por UiButton.OnClick.
-    /// Wait é ignorado (clique é síncrono) e "Self"/null não resolve a nenhuma entidade;
-    /// ações que miram entidade (Teleport, Destroy, PlayAnimation…) precisam de Name explícito.</summary>
-    public void RunActions(IEnumerable<EventAction> actions)
+    /// <summary>Executa ações imediatamente — usado por UiButton.OnClick e pela ação CallEvent.
+    /// Wait é ignorado (clique é síncrono) e, sem <paramref name="self"/>, "Self"/null não
+    /// resolve a nenhuma entidade: ações que miram entidade precisam de Name explícito.</summary>
+    public void RunActions(IEnumerable<EventAction> actions, Entity? self = null)
     {
         // Lista materializada e cursor por índice (em vez de foreach) porque If/Else/EndIf
         // desviam o fluxo — o botão de HUD tem que condicionar igual a um evento de cena.
@@ -248,11 +257,11 @@ public sealed class EventSystem
 
             try
             {
-                ExecuteWithChance(null, action);
+                ExecuteWithChance(self, action);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[EventSystem] Falha na ação de UiButton '{action.Type}': {ex.Message}");
+                Console.Error.WriteLine($"[EventSystem] Falha na ação '{action.Type}': {ex.Message}");
             }
         }
     }
@@ -537,6 +546,50 @@ public sealed class EventSystem
                 break;
             }
 
+            // Uma sequência cadastrada no banco, rodando aqui como se estivesse escrita no lugar
+            // da chamada — inclusive com o mesmo "self", pra um evento comum poder mirar "Self" e
+            // servir a qualquer entidade que o chame.
+            case "CallEvent" when action.Name is not null:
+                CallCommonEvent(action.Name, self);
+                break;
+
+            // Name = id do status, Text = alvo (vazio = quem disparou; #etiqueta = o grupo),
+            // Seconds = duração diferente da cadastrada (0 = usa a da ficha).
+            case "AddStatus" when action.Name is not null:
+                foreach (var target in ResolveTargets(self, action, action.Text))
+                {
+                    // Cria o componente na hora: exigir que toda entidade que PODE ser envenenada
+                    // já nasça com um Status vazio seria cadastro obrigatório em todo prefab do
+                    // jogo pra um efeito que talvez nunca aconteça.
+                    var status = target.Get<Status>() ?? target.Add(new Status());
+                    status.Apply(action.Name, action.Seconds);
+                }
+                break;
+
+            case "RemoveStatus" when action.Name is not null:
+                foreach (var target in ResolveTargets(self, action, action.Text))
+                    target.Get<Status>()?.Remove(action.Name);
+                break;
+
+            // Name = ids à venda separados por vírgula, Text = variável do dinheiro (vazio =
+            // "Ouro"), Op = Buy/Sell/Both, Value = fração paga na venda (0 = metade).
+            case "OpenShop" when action.Name is not null:
+            {
+                if (Dialogue is null || Inventory is null || Items is null)
+                {
+                    Console.Error.WriteLine(
+                        "[EventSystem] OpenShop precisa de diálogo, inventário e banco de itens — " +
+                        "a loja não abriu.");
+                    break;
+                }
+
+                var goods = action.Name.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries
+                                                        | StringSplitOptions.TrimEntries);
+                _shop ??= new ShopSystem(Dialogue, Inventory, Items, _state);
+                _shop.Open(goods, action.Text ?? "", action.Op ?? "Buy", action.Value);
+                break;
+            }
+
             case "RemoveItem" when action.Name is not null:
                 Inventory?.Remove(action.Name, (int)action.Value);
                 break;
@@ -639,6 +692,77 @@ public sealed class EventSystem
         }
     }
 
+    // Ids em execução agora. Evento comum pode chamar outro (é metade da utilidade), mas um que
+    // chame a si mesmo — direto ou por um ciclo A→B→A — encheria a pilha e derrubaria o jogo com
+    // StackOverflow, que é o único erro de .NET que nem try/catch segura. Aqui o ciclo vira um
+    // aviso e a chamada é ignorada.
+    private readonly HashSet<string> _runningEvents = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Criada na primeira loja aberta e reusada depois. Jogo sem loja nunca instancia.</summary>
+    private ShopSystem? _shop;
+
+    /// <summary>Ids automáticos que já dispararam com o switch ligado. Sai da lista quando o
+    /// switch desliga — é o que faz "OnSwitchOn" ser uma borda e não um laço.</summary>
+    private readonly HashSet<string> _firedAutomatic = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Roda um evento comum pelo id. Não faz nada (com aviso) se o id não existe.</summary>
+    public void CallCommonEvent(string id, Entity? self = null)
+    {
+        if (CommonEvents?.Get(id) is not { } definition)
+        {
+            Console.Error.WriteLine($"[EventSystem] CallEvent: evento comum '{id}' não está no banco.");
+            return;
+        }
+
+        if (!_runningEvents.Add(definition.Id))
+        {
+            Console.Error.WriteLine(
+                $"[EventSystem] CallEvent: '{definition.Id}' chama a si mesmo (direta ou " +
+                $"indiretamente). A chamada de dentro foi ignorada pra não travar o jogo.");
+            return;
+        }
+
+        try
+        {
+            RunActions(definition.Actions, self);
+        }
+        finally
+        {
+            _runningEvents.Remove(definition.Id);
+        }
+    }
+
+    /// <summary>
+    /// Eventos comuns com disparo automático, uma passada por frame. <c>OnSwitchOn</c> dispara na
+    /// borda de subida do switch; <c>WhileSwitchOn</c> dispara enquanto ele estiver ligado.
+    /// </summary>
+    private void UpdateAutomaticEvents()
+    {
+        if (CommonEvents is not { Automatic.Count: > 0 })
+            return;
+
+        foreach (var definition in CommonEvents.Automatic)
+        {
+            bool on = _state.GetSwitch(definition.Switch);
+
+            if (!on)
+            {
+                _firedAutomatic.Remove(definition.Id);
+                continue;
+            }
+
+            if (definition.Trigger.Equals("WhileSwitchOn", StringComparison.OrdinalIgnoreCase))
+            {
+                CallCommonEvent(definition.Id);
+                continue;
+            }
+
+            // OnSwitchOn: só na borda.
+            if (_firedAutomatic.Add(definition.Id))
+                CallCommonEvent(definition.Id);
+        }
+    }
+
     private Entity? ResolveTarget(Entity? self, string? name)
     {
         if (name is null || name.Equals("Self", StringComparison.OrdinalIgnoreCase))
@@ -661,9 +785,11 @@ public sealed class EventSystem
     /// <para><see cref="EventAction.Radius"/> corta pela distância até quem disparou. Vale pras
     /// três formas, mas só muda alguma coisa na do meio.</para>
     /// </summary>
-    private List<Entity> ResolveTargets(Entity? self, EventAction action)
+    private List<Entity> ResolveTargets(Entity? self, EventAction action, string? selector = null)
     {
-        string? name = action.Name;
+        // selector separado do Name porque nem toda ação usa Name pro alvo: em AddStatus o Name é
+        // o id do efeito e o alvo mora no Text, do mesmo jeito que UseItem já fazia.
+        string? name = selector ?? action.Name;
 
         List<Entity> targets;
         if (name is not null && name.Length > 0 && name[0] == '#')

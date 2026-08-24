@@ -190,7 +190,8 @@ public sealed class PlatformerController : Behavior
 
         if (MathF.Abs(axis) > 0.001f)
         {
-            _velocity.X = MoveTowards(_velocity.X, axis * MoveSpeed, Acceleration * control * deltaTime);
+            _velocity.X = MoveTowards(_velocity.X, axis * MoveSpeed * (Get<Status>()?.SpeedMultiplier ?? 1f),
+                Acceleration * control * deltaTime);
 
             if (FlipSpriteByDirection && Get<SpriteRenderer>() is { } sprite)
                 sprite.FlipX = axis < 0f;

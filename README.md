@@ -23,6 +23,14 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ **Etiquetas** (`Tags`): grupo da entidade (`"inimigo, voador"`). Ações que miram entidade
   aceitam `#inimigo` no lugar do nome e atingem o grupo todo, com `Radius` opcional pra limitar
   ao redor de quem disparou
+- ✅ **Eventos comuns** (`database/common_events.json`): uma sequência de ações cadastrada por id
+  e chamada de qualquer cena, item ou botão de UI com a ação `CallEvent`. Pode disparar sozinha
+  por switch (`OnSwitchOn` / `WhileSwitchOn`)
+- ✅ **Status** (`database/status.json`): veneno, lentidão, blindagem — duração, dano por segundo,
+  multiplicador de velocidade e de dano recebido. Ações `AddStatus`/`RemoveStatus`, com alvo por
+  nome ou `#etiqueta`
+- ✅ **Loja** (ação `OpenShop`): compra e venda pela caixa de diálogo, usando o `Price` do banco de
+  itens. A moeda é uma variável do `GameState` escolhida por você — a engine não impõe "ouro"
 - ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações
   PlaySound/PlayMusic/StopMusic nos eventos visuais
 - ✅ **Animação de sprites**: componente `Animator` com clipes de sprite sheet, troca de clipe em runtime
@@ -150,6 +158,14 @@ samples/Aurora.SlandSurvivor Sandbox de mundo procedural estilo Terraria
 samples/Aurora.Coop.Core    Jogo coop de teste do multiplayer (desktop + Android)
 tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```
+
+## Nada disso é obrigatório
+
+Todo banco é opcional e carregado só se o arquivo existir: sem `database/`, o jogo roda exatamente
+como antes. Item, loja, status, quest e evento comum são ferramentas soltas — um jogo de
+plataforma pode usar só status (lentidão na lama) sem inventário nenhum, e um puzzle pode não usar
+nada disso. A engine é de ação 2D em geral, não de RPG: o que veio do RPG Maker foi a ideia de
+**dado editável em vez de código**, não o gênero.
 
 ## Formato de cena
 

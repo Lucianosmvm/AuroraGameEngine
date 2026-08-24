@@ -39,6 +39,10 @@ public sealed class World
     public Saves.SceneStateStore? SceneState { get; internal set; }
     public SaveManager? Save { get; internal set; }
 
+    /// <summary>Catálogo de efeitos de status (veneno, lentidão). O componente
+    /// <see cref="Components.Status"/> resolve os ids por aqui.</summary>
+    public Database.StatusDatabase? StatusDatabase { get; internal set; }
+
     /// <summary>Carregador de assets do jogo — <c>World.Assets?.LoadTexture("sprites/slash.png")</c>.
     /// É cacheado por caminho, então chamar todo ataque não recarrega o PNG. Sem isso um script
     /// só conseguiria desenhar textura que alguém tivesse injetado nele na mão pelo Game.</summary>
@@ -833,17 +837,37 @@ public sealed class World
         }
     }
 
-    /// <summary>Aplica dano a uma entidade com Health. Não faz nada se ela não tiver Health,
-    /// já estiver morta, ou estiver invencível (flag ou i-frames ativos). Retorna se o dano
-    /// foi aplicado de verdade. Ao zerar Current: notifica OnDeath e destrói (se DestroyOnDeath).</summary>
-    public bool Damage(Entity target, float amount, Entity? source = null)
+    /// <summary>
+    /// Aplica dano a uma entidade com Health. Não faz nada se ela não tiver Health, já estiver
+    /// morta, ou estiver invencível (flag ou i-frames ativos). Retorna se o dano foi aplicado de
+    /// verdade. Ao zerar Current: notifica OnDeath e destrói (se DestroyOnDeath).
+    ///
+    /// <para><paramref name="ignoreHitFrames"/> é pro dano contínuo (veneno): ele não deve ser
+    /// barrado pelos i-frames do último golpe nem, muito menos, CONCEDER i-frames — um veneno
+    /// tiquetaqueando renovaria a invulnerabilidade sem parar e deixaria o alvo imune a golpe de
+    /// verdade. A flag <c>Invulnerable</c> continua valendo: aquilo é "não pode ser ferido", e
+    /// vale pra qualquer fonte.</para>
+    /// </summary>
+    public bool Damage(Entity target, float amount, Entity? source = null, bool ignoreHitFrames = false)
     {
         var health = target.Get<Health>();
-        if (health is null || health.IsDead || health.Invulnerable || health.InvulnerabilityTimer > 0f || amount <= 0f)
+        if (health is null || health.IsDead || health.Invulnerable || amount <= 0f)
             return false;
 
+        if (!ignoreHitFrames && health.InvulnerabilityTimer > 0f)
+            return false;
+
+        // Vulnerável/blindado vem dos status ativos. Multiplicador 0 = imune àquele dano.
+        if (target.Get<Components.Status>() is { } status)
+        {
+            amount *= status.DamageTakenMultiplier;
+            if (amount <= 0f)
+                return false;
+        }
+
         health.Current = MathF.Max(0f, health.Current - amount);
-        health.InvulnerabilityTimer = health.InvulnerabilityAfterHit;
+        if (!ignoreHitFrames)
+            health.InvulnerabilityTimer = health.InvulnerabilityAfterHit;
         NotifyDamaged(target.Id, amount, source);
 
         if (health.Current <= 0f)

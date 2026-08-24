@@ -14,6 +14,10 @@
                      TextTrimming="CharacterEllipsis"/>
           <TextBlock Text="{Binding Spawns.Status}" FontSize="11" Opacity="0.6"
                      TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding CommonEvents.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding Status.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
         </StackPanel>
         <Button Grid.Column="1" Content="Salvar" FontSize="12" Padding="14,4"
                 Margin="0,0,6,0" Click="OnSave"/>
@@ -287,6 +291,175 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- ==================== EVENTOS COMUNS ==================== -->
+      <TabItem Header="Eventos Comuns" FontSize="12">
+        <DockPanel DataContext="{Binding CommonEvents}">
+
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0"
+                  BorderBrush="{DynamicResource EditorBorder}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Evento" FontSize="11" Padding="8,2" Command="{Binding AddCommand}"/>
+                <Button Content="Duplicar" FontSize="11" Padding="8,2" Command="{Binding DuplicateCommand}"
+                        IsEnabled="{Binding HasSelection}"
+                        ToolTip.Tip="Copia o evento inteiro, com as ações"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Events}" SelectedItem="{Binding Selected}"
+                       Background="Transparent" FontSize="12">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Summary}" FontSize="10" Opacity="0.45"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <ScrollViewer Padding="12,10" IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="10">
+
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6" DataContext="{Binding Selected}">
+                  <TextBlock Text="EVENTO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Id" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Id}" FontSize="12" Padding="6,4"
+                             Watermark="abrir_bau, morrer, tutorial_pulo…"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="12" Padding="6,4"
+                             Watermark="rótulo pro editor (opcional)"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Dispara" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding Triggers}" SelectedItem="{Binding Trigger}"
+                              FontSize="12" HorizontalAlignment="Stretch"/>
+                  </Grid>
+                  <TextBlock Text="{Binding TriggerHint}" FontSize="10" Opacity="0.45" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="90,*" IsVisible="{Binding ShowSwitch}">
+                    <TextBlock Text="Switch" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Switch}" FontSize="12" Padding="6,4"
+                             Watermark="nome do switch que liga o disparo"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="AÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="+ ação" FontSize="11" Padding="8,2"
+                            Command="{Binding AddActionCommand}"/>
+                  </Grid>
+                  <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+                    A mesma lista de ações dos eventos de cena. Chame de qualquer lugar com a ação
+                    "CallEvent". Wait é ignorado aqui — a sequência roda de uma vez.
+                  </TextBlock>
+                  <ItemsControl ItemsSource="{Binding Actions}"/>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- ==================== STATUS ==================== -->
+      <TabItem Header="Status" FontSize="12">
+        <DockPanel DataContext="{Binding Status}">
+
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0"
+                  BorderBrush="{DynamicResource EditorBorder}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Status" FontSize="11" Padding="8,2" Command="{Binding AddCommand}"/>
+                <Button Content="Duplicar" FontSize="11" Padding="8,2" Command="{Binding DuplicateCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}"
+                       Background="Transparent" FontSize="12">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Summary}" FontSize="10" Opacity="0.45"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <ScrollViewer Padding="12,10" IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="10" DataContext="{Binding Selected}">
+
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="FICHA" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Id" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Id}" FontSize="12" Padding="6,4"
+                             Watermark="veneno, lento, blindado…"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="12" Padding="6,4"
+                             Watermark="nome exibido (opcional)"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Ícone" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Icon}" FontSize="12" Padding="6,4"
+                             Watermark="sprites/icones/veneno.png — a HUD do jogo é quem desenha"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="EFEITO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Duração (s)" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding DurationText}" FontSize="12" Padding="6,4"
+                             Watermark="0 = permanente até remover"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Dano/s" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding DamagePerSecondText}" FontSize="12" Padding="6,4"/>
+                  </Grid>
+                  <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap"
+                             Text="Positivo machuca (veneno), negativo cura (regeneração)."/>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Velocidade" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding SpeedMultiplierText}" FontSize="12" Padding="6,4"
+                             Watermark="1 = não mexe; 0.5 = lentidão"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="110,*">
+                    <TextBlock Text="Dano recebido" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding DamageTakenMultiplierText}" FontSize="12" Padding="6,4"
+                             Watermark="1 = normal; 2 = vulnerável; 0 = imune"/>
+                  </Grid>
+                  <CheckBox Content="Reaplicar renova a duração" IsChecked="{Binding RefreshOnReapply}"
+                            FontSize="12"/>
                 </StackPanel>
               </Border>
 

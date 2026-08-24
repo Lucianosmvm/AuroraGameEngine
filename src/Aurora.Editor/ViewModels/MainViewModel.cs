@@ -1188,6 +1188,14 @@ public sealed class MainViewModel : ViewModelBase
     public string SpawnTablePath =>
         _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "spawns.json");
 
+    /// <summary>Eventos comuns do projeto (Assets/database/common_events.json).</summary>
+    public string CommonEventPath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "common_events.json");
+
+    /// <summary>Efeitos de status do projeto (Assets/database/status.json).</summary>
+    public string StatusPath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "status.json");
+
     // ---------- Sugestões pros campos que apontam pra algo do projeto ----------
     //
     // Tudo aqui é calculado na hora, não cacheado: o inspector fica aberto enquanto entidades
@@ -1219,6 +1227,13 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>Ids das tabelas de spawn cadastradas no banco.</summary>
     public IEnumerable<string> SpawnTableIds => ReadIds(SpawnTablePath, "Tables");
+
+    /// <summary>Ids dos eventos comuns cadastrados — pra ação CallEvent.</summary>
+    public IEnumerable<string> CommonEventIds => ReadIds(CommonEventPath, "Events");
+
+    /// <summary>Ids dos efeitos de status cadastrados — pras ações AddStatus/RemoveStatus e pro
+    /// campo Initial do componente Status.</summary>
+    public IEnumerable<string> StatusIds => ReadIds(StatusPath, "Status");
 
     /// <summary>Ids das telas de UI (nome do arquivo sem extensão) — é o que ShowUI/HideUI e os
     /// campos de joystick/botão esperam.</summary>

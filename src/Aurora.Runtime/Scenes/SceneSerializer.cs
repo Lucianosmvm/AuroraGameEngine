@@ -945,6 +945,7 @@ public sealed class SceneSerializer
         RegisterReflective(typeof(PatrolPath), nameof(PatrolPath));
         RegisterReflective(typeof(Weather), nameof(Weather));
         RegisterReflective(typeof(Tags), nameof(Tags));
+        RegisterReflective(typeof(Status), nameof(Status));
     }
 
     public static float GetFloat(JsonElement json, string name, float fallback)

@@ -27,7 +27,9 @@ public sealed class EventActionViewModel : ViewModelBase
         "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
         "ChangeScene", "Save", "Load", "NewGame", "Quit",
-        "AddItem", "RemoveItem", "UseItem",
+        "AddItem", "RemoveItem", "UseItem", "OpenShop",
+        "CallEvent",
+        "AddStatus", "RemoveStatus",
         "If", "Else", "EndIf",
         "SetQuestStage", "AdvanceQuest",
         "SetActive",
@@ -37,9 +39,12 @@ public sealed class EventActionViewModel : ViewModelBase
 
     /// <summary>Operadores do campo Op. If compara, SetVariable atribui — a mesma caixa serve os
     /// dois porque a ação já mandava no significado do campo.</summary>
-    public string[] OpTypes => ActionType == "If"
-        ? [">=", "<=", ">", "<", "==", "!="]
-        : ["Set", "Add"];
+    public string[] OpTypes => ActionType switch
+    {
+        "If" => [">=", "<=", ">", "<", "==", "!="],
+        "OpenShop" => ["Buy", "Sell", "Both"],
+        _ => ["Set", "Add"],
+    };
 
     /// <summary>O que o If compara. Guardado em "Text" — o campo já existia e estava livre pras
     /// ações de fluxo, então não custou nenhuma chave nova no JSON de cena.</summary>
@@ -59,6 +64,8 @@ public sealed class EventActionViewModel : ViewModelBase
     /// UI pelo id (nome do arquivo sem .json) — evita digitar caminho/extensão na mão.</summary>
     public IEnumerable<string> NamePickerOptions => ActionType switch
     {
+        "CallEvent" => _owner?.CommonEventIds ?? [],
+        "AddStatus" or "RemoveStatus" => _owner?.StatusIds ?? [],
         "ChangeScene" => _owner?.SceneFiles.Select(s => s.Name) ?? [],
         "ShowUI" or "HideUI" or "ToggleUI" => _owner?.UiScreens.Select(s => System.IO.Path.GetFileNameWithoutExtension(s.Name)) ?? [],
         // Spawn lista os prefabs pelo caminho relativo a Assets — é literalmente a string que o
@@ -71,7 +78,7 @@ public sealed class EventActionViewModel : ViewModelBase
     };
 
     public bool ShowNamePicker => ActionType is "ChangeScene" or "ShowUI" or "HideUI" or "ToggleUI"
-        or "Spawn" or "UseItem";
+        or "Spawn" or "UseItem" or "CallEvent" or "AddStatus" or "RemoveStatus";
 
     /// <summary>
     /// Sugestões do campo Nome quando ele é texto livre. Diferente do seletor acima: aqui o valor
@@ -87,7 +94,7 @@ public sealed class EventActionViewModel : ViewModelBase
             or "SetActive" => TagTargets.Concat(_owner?.EntityNames ?? []),
         "SetWeather" => _owner?.EntityNames ?? [],
         "PlaySound" or "PlayMusic" => _owner?.SoundAssets ?? [],
-        "AddItem" or "RemoveItem" => _owner?.ItemIds ?? [],
+        "AddItem" or "RemoveItem" or "OpenShop" => _owner?.ItemIds ?? [],
         _ => [],
     };
 
@@ -130,6 +137,9 @@ public sealed class EventActionViewModel : ViewModelBase
         "If" => "Nome",
         "AddItem" or "RemoveItem" => "Item",
         "SetQuestStage" or "AdvanceQuest" => "Quest",
+        "CallEvent" => "Evento",
+        "AddStatus" or "RemoveStatus" => "Status",
+        "OpenShop" => "À venda",
         "ShowUI" or "HideUI" or "ToggleUI" => "Tela UI",
         _ => "Falante",
     };
@@ -197,6 +207,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetQuestStage" => "Estágio",
         "AdvanceQuest" => "Incremento",
         "Damage" or "Heal" => "Quantidade",
+        "OpenShop" => "Venda (fração)",
         _ => "Valor",
     };
 
@@ -320,7 +331,13 @@ public sealed class EventActionViewModel : ViewModelBase
         }
     }
 
-    public string TextLabel => ActionType == "PlayAnimation" ? "Clipe" : "Texto";
+    public string TextLabel => ActionType switch
+    {
+        "PlayAnimation" => "Clipe",
+        "AddStatus" or "RemoveStatus" => "Alvo",
+        "OpenShop" => "Moeda",
+        _ => "Texto",
+    };
 
     public string ActionDescription => ActionType switch
     {
@@ -334,6 +351,10 @@ public sealed class EventActionViewModel : ViewModelBase
         "Spawn"          => "Instancia um prefab (ou sorteia de uma tabela de spawn); X,Y é o deslocamento a partir de quem disparou o evento",
         "SetWeather"     => "Troca o clima da cena — Nome é o tipo (Rain/Storm/Snow/Fog/Ash/None) e Valor a intensidade 0..1",
         "UseItem"        => "Usa um item do banco: roda o efeito dele e consome, se for consumível",
+        "OpenShop"       => "Abre a loja com os itens listados (separados por vírgula). Moeda = variável do dinheiro; Op = comprar, vender ou os dois",
+        "CallEvent"      => "Roda um evento comum do banco — a mesma sequência cadastrada uma vez e chamada de qualquer lugar",
+        "AddStatus"      => "Aplica um efeito de status (veneno, lentidão) no alvo. Segundos > 0 manda na duração cadastrada",
+        "RemoveStatus"   => "Tira um efeito de status do alvo",
         "If"             => "Só executa as ações seguintes se a condição for verdadeira (até o Else/EndIf)",
         "Else"           => "Caminho alternativo do If acima",
         "EndIf"          => "Fecha o bloco do If",
@@ -366,8 +387,9 @@ public sealed class EventActionViewModel : ViewModelBase
         or "Spawn" or "SetWeather" or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "UseItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
-        or "ShowUI" or "HideUI" or "ToggleUI" or "If";
-    public bool ShowOp => ActionType is "SetVariable" or "If";
+        or "ShowUI" or "HideUI" or "ToggleUI" or "If"
+        or "OpenShop" or "CallEvent" or "AddStatus" or "RemoveStatus";
+    public bool ShowOp => ActionType is "SetVariable" or "If" or "OpenShop";
 
     /// <summary>Chance vale pra qualquer ação de verdade, mas não pras de fluxo: um If sorteado
     /// deixaria o Else e o EndIf órfãos e a sequência executaria os dois lados.</summary>
@@ -376,7 +398,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowSpawnPoint => ActionType == "ChangeScene";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "Load" or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage"
-        or "Heal" or "If" or "SetWeather";
+        or "Heal" or "If" or "SetWeather" or "OpenShop";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause" or "If";
     public bool ShowXY => ActionType is "Teleport" or "Spawn";
 
@@ -384,8 +406,9 @@ public sealed class EventActionViewModel : ViewModelBase
     /// meio mapa e o campo tem o que limitar.</summary>
     public bool ShowRadius => ActionType is "Damage" or "Heal" or "Destroy" or "Teleport"
         or "PlayAnimation" or "StopAnimation" or "SetActive";
-    public bool ShowSeconds => ActionType == "Wait";
-    public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";
+    public bool ShowSeconds => ActionType is "Wait" or "AddStatus";
+    public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation"
+        or "AddStatus" or "RemoveStatus" or "OpenShop";
     public bool ShowOptions => ActionType == "ShowChoice";
 
     private void RaiseVisibility()

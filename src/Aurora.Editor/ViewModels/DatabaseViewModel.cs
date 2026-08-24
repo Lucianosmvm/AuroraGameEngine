@@ -12,11 +12,15 @@ public sealed class DatabaseViewModel : ViewModelBase
 {
     public ItemDatabaseViewModel Items { get; }
     public SpawnTableEditorViewModel Spawns { get; }
+    public CommonEventEditorViewModel CommonEvents { get; }
+    public StatusEditorViewModel Status { get; }
 
     public DatabaseViewModel(MainViewModel owner)
     {
         Items = new ItemDatabaseViewModel(owner.ItemDatabasePath, owner);
         Spawns = new SpawnTableEditorViewModel(owner.SpawnTablePath, owner);
+        CommonEvents = new CommonEventEditorViewModel(owner.CommonEventPath, owner);
+        Status = new StatusEditorViewModel(owner.StatusPath);
     }
 
     /// <summary>Grava as duas abas. Se uma recusar (id repetido, por exemplo), a outra ainda é
@@ -25,5 +29,7 @@ public sealed class DatabaseViewModel : ViewModelBase
     {
         Items.Save();
         Spawns.Save();
+        CommonEvents.Save();
+        Status.Save();
     }
 }

@@ -78,7 +78,9 @@ public sealed class TopDownController : Behavior
         if (move.LengthSquared() > 1f)
             move = Vector2.Normalize(move);
 
-        Velocity = move * Speed;
+        // Status de lentidão/pressa entram aqui, num ponto só: multiplicar na velocidade final
+        // vale pra teclado e joystick de uma vez, e some sozinho quando o status expira.
+        Velocity = move * Speed * (Get<Status>()?.SpeedMultiplier ?? 1f);
 
         if (move.LengthSquared() > 0.0001f)
         {

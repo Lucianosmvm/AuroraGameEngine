@@ -67,6 +67,13 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Value", ""),
         ],
+        // Efeitos de status ativos. Só precisa ser autorado na cena quando a entidade JÁ NASCE
+        // com algum (chefe blindado, bicho de pântano envenenado) — as ações AddStatus criam o
+        // componente sozinhas em quem não tem.
+        ["Status"] =
+        [
+            ("Initial", ""),
+        ],
         // Ataque à distância — Velocity/Source são setados em código no spawn (não fazem
         // sentido numa cena estática), só aparecem os campos abaixo pra editar/prefab.
         ["Projectile"] =
@@ -443,6 +450,7 @@ public class ComponentViewModel : ViewModelBase
         ["ContactDamage.TargetPrefix"] = ("targets", "#etiqueta, ou prefixo de nome — vazio = qualquer um com Health"),
         ["Projectile.TargetPrefix"] = ("targets", "#etiqueta, ou prefixo de nome — vazio = qualquer um com Health"),
         ["Tags.Value"] = ("tags", "etiquetas separadas por vírgula (inimigo, voador) — mire com #inimigo nas ações"),
+        ["Status.Initial"] = ("status", "status com que já nasce, separados por vírgula — vazio = nenhum"),
 
         ["Spawner.Prefab"] = ("prefabs", "prefab ou id de tabela de spawn (sorteia entre vários)"),
         ["AttackSpawner.Prefab"] = ("prefabs", "prefab do golpe/projétil, ou id de tabela de spawn"),
@@ -488,6 +496,7 @@ public class ComponentViewModel : ViewModelBase
             // as duas porque quem preenche está escolhendo QUEM apanha, não que sintaxe usar.
             "targets" => () => (owner?.TagNames.Select(t => "#" + t) ?? []).Concat(owner?.EntityNames ?? []),
             "tags" => () => owner?.TagNames ?? [],
+            "status" => () => owner?.StatusIds ?? [],
             "prefabs" => () => owner?.PrefabOrTableNames ?? [],
             "uiScreens" => () => owner?.UiScreenIds ?? [],
             "uiElements" => () => owner?.UiElementNames ?? [],

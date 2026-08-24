@@ -80,6 +80,15 @@ public abstract class Game : IDisposable
     /// de <c>Assets/database/spawns.json</c>. Onde se escreve um prefab também se pode escrever o
     /// id de uma tabela.</summary>
     public Database.SpawnTableDatabase SpawnTables { get; } = new();
+
+    /// <summary>Eventos comuns: sequências de ações cadastradas por id, chamadas pela ação
+    /// CallEvent de qualquer cena, item ou botão de UI. Carregados de
+    /// <c>Assets/database/common_events.json</c>.</summary>
+    public Database.CommonEventDatabase CommonEvents { get; } = new();
+
+    /// <summary>Efeitos de status (veneno, lentidão, blindagem). Carregados de
+    /// <c>Assets/database/status.json</c>; aplicados pelas ações AddStatus/RemoveStatus.</summary>
+    public Database.StatusDatabase StatusDatabase { get; } = new();
     public DialogueSystem Dialogue { get; } = new();
     public UIManager UI { get; } = new();
     public EventSystem Events { get; }
@@ -95,6 +104,7 @@ public abstract class Game : IDisposable
         Events = new EventSystem(World, State)
         {
             Dialogue = Dialogue, Inventory = Inventory, Quests = Quests, UI = UI, Items = Items,
+            CommonEvents = CommonEvents, Status = StatusDatabase,
         };
     }
 
@@ -255,6 +265,13 @@ public abstract class Game : IDisposable
         World.Input = Input;
         World.State = State;
         World.SceneState = SceneState;
+        // Teto de pilha e tokens {ItemName:…} do UiText: os dois leem a ficha do item, e sem
+        // estas duas linhas os campos MaxStack/Name/Description/Price ficam cadastrados sem
+        // ninguém no jogo que os consulte.
+        Inventory.Database = Items;
+        UI.Items = Items;
+        World.StatusDatabase = StatusDatabase;
+
         World.Inventory = Inventory;
         World.Quests = Quests;
         World.Dialogue = Dialogue;
@@ -268,6 +285,8 @@ public abstract class Game : IDisposable
         // no JSON, porém, é avisado — silêncio aqui viraria "por que meu item não faz nada?".
         LoadDatabase(Database.ItemDatabase.DefaultPath, "itens", Items.Load);
         LoadDatabase(Database.SpawnTableDatabase.DefaultPath, "tabelas de spawn", SpawnTables.Load);
+        LoadDatabase(Database.CommonEventDatabase.DefaultPath, "eventos comuns", CommonEvents.Load);
+        LoadDatabase(Database.StatusDatabase.DefaultPath, "status", StatusDatabase.Load);
 
         // World.Spawn("prefabs/slime.json", pos) e a ação de evento Spawn passam por aqui.
         // Erro de arquivo/JSON não derruba o jogo: loga e devolve null, mesma política do

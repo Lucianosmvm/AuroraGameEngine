@@ -23,6 +23,16 @@ public sealed class UIManager
     private readonly Dictionary<string, UiScreen> _screens = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Regex TokenPattern = new(@"\{([^}]+)\}", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Catálogo de itens, pros tokens <c>{ItemName:id}</c>, <c>{ItemDesc:id}</c> e
+    /// <c>{ItemPrice:id}</c> do UiText. Null = os tokens caem no próprio id.
+    ///
+    /// <para>Propriedade e não parâmetro de <c>Draw</c> de propósito: a assinatura do Draw está
+    /// escrita no Game.cs de todo jogo já gerado por este editor, e mexer nela quebraria todos
+    /// eles pra ganhar nada.</para>
+    /// </summary>
+    public Database.ItemDatabase? Items { get; set; }
+
     /// <summary>Carrega (ou recarrega) uma tela a partir do arquivo. Fica visível por padrão.</summary>
     public UiScreen Load(string path, AssetManager assets)
     {
@@ -574,10 +584,26 @@ public sealed class UIManager
         return text.WrapResult;
     }
 
-    private static string Interpolate(string template, GameState state, InventoryManager? inventory, QuestManager? quests)
+    /// <summary>
+    /// Troca <c>{token}</c> pelo valor no texto de um UiText. Tokens:
+    /// <list type="bullet">
+    ///   <item><c>{Item:id}</c> — quantidade no inventário;</item>
+    ///   <item><c>{ItemName:id}</c>, <c>{ItemDesc:id}</c>, <c>{ItemPrice:id}</c> — campos da ficha
+    ///   do item no banco (os três existiam no cadastro sem nada no jogo que os lesse);</item>
+    ///   <item><c>{Quest:id}</c> — estágio da quest;</item>
+    ///   <item>qualquer outra coisa — variável do GameState.</item>
+    /// </list>
+    /// </summary>
+    private string Interpolate(string template, GameState state, InventoryManager? inventory, QuestManager? quests)
         => TokenPattern.Replace(template, match =>
         {
             string token = match.Groups[1].Value;
+            if (token.StartsWith("ItemName:", StringComparison.OrdinalIgnoreCase))
+                return Items?.DisplayName(token[9..]) ?? token[9..];
+            if (token.StartsWith("ItemDesc:", StringComparison.OrdinalIgnoreCase))
+                return Items?.Get(token[9..])?.Description ?? "";
+            if (token.StartsWith("ItemPrice:", StringComparison.OrdinalIgnoreCase))
+                return (Items?.Get(token[10..])?.Price ?? 0).ToString();
             if (token.StartsWith("Item:", StringComparison.OrdinalIgnoreCase))
                 return (inventory?.GetCount(token[5..]) ?? 0).ToString();
             if (token.StartsWith("Quest:", StringComparison.OrdinalIgnoreCase))
