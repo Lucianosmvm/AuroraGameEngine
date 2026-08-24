@@ -1185,6 +1185,21 @@ public sealed class MainViewModel : ViewModelBase
     public IEnumerable<string> EntityNames =>
         Entities.Select(e => e.Name).Where(n => n.Length > 0).Distinct().OrderBy(n => n);
 
+    /// <summary>
+    /// Etiquetas já usadas na cena aberta, sem o <c>#</c> — pro campo Tags.Value e pros campos de
+    /// alvo. Etiqueta não tem cadastro em lugar nenhum: ela existe por estar escrita em alguma
+    /// entidade, então a lista é varrida das próprias entidades. Prefabs ficam de fora porque a
+    /// etiqueta interessa é no que está na cena.
+    /// </summary>
+    public IEnumerable<string> TagNames =>
+        Entities.SelectMany(e => e.Components)
+            .Where(c => c.Type == "Tags")
+            .Select(c => c.GetString("Value") ?? "")
+            .SelectMany(v => v.Split([',', ' ', ';'], StringSplitOptions.RemoveEmptyEntries
+                                                    | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t);
+
     /// <summary>Prefabs do projeto MAIS os ids das tabelas de spawn: os dois valem no mesmo campo,
     /// então os dois têm que aparecer na mesma lista.</summary>
     public IEnumerable<string> PrefabOrTableNames =>

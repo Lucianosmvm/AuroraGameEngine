@@ -80,8 +80,12 @@ public sealed class EventActionViewModel : ViewModelBase
     /// </summary>
     public IEnumerable<string> NameSuggestions => ActionType switch
     {
+        // Ações que miram entidade listam as etiquetas ANTES dos nomes: "#inimigo" atinge o grupo
+        // todo, e é quase sempre o que se quer quando existe mais de um tipo do mesmo bicho —
+        // nome exato pega uma entidade só (a mais antiga viva com aquele nome).
         "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation"
-            or "SetActive" or "SetWeather" => _owner?.EntityNames ?? [],
+            or "SetActive" => TagTargets.Concat(_owner?.EntityNames ?? []),
+        "SetWeather" => _owner?.EntityNames ?? [],
         "PlaySound" or "PlayMusic" => _owner?.SoundAssets ?? [],
         "AddItem" or "RemoveItem" => _owner?.ItemIds ?? [],
         _ => [],
@@ -149,6 +153,39 @@ public sealed class EventActionViewModel : ViewModelBase
         {
             if (float.TryParse(value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out float f))
                 ValueFloat = f;
+        }
+    }
+
+    /// <summary>Etiquetas da cena com o <c>#</c> na frente — é a forma que o EventSystem
+    /// entende como "todos deste grupo".</summary>
+    private IEnumerable<string> TagTargets => (_owner?.TagNames ?? []).Select(t => "#" + t);
+
+    /// <summary>
+    /// Alcance em pixels a partir de quem disparou o evento. 0 = cena inteira. Só muda alguma
+    /// coisa quando o alvo é "#etiqueta": é o que faz um item de dano ser uma bomba em vez de
+    /// uma arma que limpa o mapa.
+    /// </summary>
+    public float RadiusFloat
+    {
+        get => _node["Radius"].AsFloat(0f);
+        set
+        {
+            float clamped = Math.Max(0f, value);
+            if (clamped <= 0f) _node.Remove("Radius");
+            else _node["Radius"] = clamped;
+            Raise();
+            Raise(nameof(RadiusText));
+            _onEdited();
+        }
+    }
+
+    public string RadiusText
+    {
+        get => RadiusFloat.ToString(CultureInfo.InvariantCulture);
+        set
+        {
+            if (float.TryParse(value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out float f))
+                RadiusFloat = f;
         }
     }
 
@@ -292,16 +329,16 @@ public sealed class EventActionViewModel : ViewModelBase
         "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
         "ShowMessage"    => "Mostra uma caixa de diálogo com texto",
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
-        "Teleport"       => "Move uma entidade pra posição X,Y",
-        "Destroy"        => "Remove uma entidade da cena",
+        "Teleport"       => "Move a entidade (ou o grupo #etiqueta) pra posição X,Y",
+        "Destroy"        => "Remove da cena a entidade — ou todas do grupo, com #etiqueta",
         "Spawn"          => "Instancia um prefab (ou sorteia de uma tabela de spawn); X,Y é o deslocamento a partir de quem disparou o evento",
         "SetWeather"     => "Troca o clima da cena — Nome é o tipo (Rain/Storm/Snow/Fog/Ash/None) e Valor a intensidade 0..1",
         "UseItem"        => "Usa um item do banco: roda o efeito dele e consome, se for consumível",
         "If"             => "Só executa as ações seguintes se a condição for verdadeira (até o Else/EndIf)",
         "Else"           => "Caminho alternativo do If acima",
         "EndIf"          => "Fecha o bloco do If",
-        "Damage"         => "Aplica dano numa entidade com Health (ignora se invencível/i-frames)",
-        "Heal"           => "Cura uma entidade com Health, sem passar do Max",
+        "Damage"         => "Aplica dano em quem tem Health (ignora se invencível/i-frames). Alvo #etiqueta pega o grupo todo; Alcance limita ao redor de quem disparou",
+        "Heal"           => "Cura quem tem Health, sem passar do Max. Alvo #etiqueta cura o grupo todo",
         "Quit"           => "Fecha o jogo",
         "PlayAnimation"  => "Troca o clipe ativo do Animator de uma entidade",
         "StopAnimation"  => "Para a animação ativa de uma entidade",
@@ -342,6 +379,11 @@ public sealed class EventActionViewModel : ViewModelBase
         or "Heal" or "If" or "SetWeather";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause" or "If";
     public bool ShowXY => ActionType is "Teleport" or "Spawn";
+
+    /// <summary>Alcance só aparece nas ações que miram entidade — é onde "#etiqueta" pode pegar
+    /// meio mapa e o campo tem o que limitar.</summary>
+    public bool ShowRadius => ActionType is "Damage" or "Heal" or "Destroy" or "Teleport"
+        or "PlayAnimation" or "StopAnimation" or "SetActive";
     public bool ShowSeconds => ActionType == "Wait";
     public bool ShowText => ActionType is "ShowMessage" or "ShowChoice" or "PlayAnimation";
     public bool ShowOptions => ActionType == "ShowChoice";
@@ -353,6 +395,7 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(ShowValue));
         Raise(nameof(ShowOn));
         Raise(nameof(ShowXY));
+        Raise(nameof(ShowRadius));
         Raise(nameof(ShowSeconds));
         Raise(nameof(ShowText));
         Raise(nameof(ShowOptions));

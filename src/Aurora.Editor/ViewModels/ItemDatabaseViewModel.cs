@@ -129,6 +129,7 @@ public sealed class ItemRowViewModel : ViewModelBase
 public sealed class ItemDatabaseViewModel : ViewModelBase
 {
     private readonly string _path;
+    private readonly MainViewModel? _owner;
     private JsonObject _root = new();
 
     public ObservableCollection<ItemRowViewModel> Items { get; } = [];
@@ -163,9 +164,12 @@ public sealed class ItemDatabaseViewModel : ViewModelBase
         private set { _status = value; Raise(); }
     }
 
-    public ItemDatabaseViewModel(string itemsJsonPath)
+    /// <summary>owner só serve pras sugestões dos campos das ações de efeito (entidades e
+    /// etiquetas da cena aberta, sons, itens) — o banco em si não depende do projeto.</summary>
+    public ItemDatabaseViewModel(string itemsJsonPath, MainViewModel? owner = null)
     {
         _path = itemsJsonPath;
+        _owner = owner;
         AddCommand = new RelayCommand(AddItem);
         RemoveCommand = new RelayCommand(RemoveSelected);
         AddEffectCommand = new RelayCommand(AddEffect);
@@ -269,7 +273,8 @@ public sealed class ItemDatabaseViewModel : ViewModelBase
                 Effects.Remove(vm);
                 MarkDirty();
                 Selected?.RaiseEffectSummary();
-            });
+            },
+            owner: _owner);
 
     private void AddEffect()
     {

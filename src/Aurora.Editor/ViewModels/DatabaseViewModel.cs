@@ -15,7 +15,7 @@ public sealed class DatabaseViewModel : ViewModelBase
 
     public DatabaseViewModel(MainViewModel owner)
     {
-        Items = new ItemDatabaseViewModel(owner.ItemDatabasePath);
+        Items = new ItemDatabaseViewModel(owner.ItemDatabasePath, owner);
         Spawns = new SpawnTableEditorViewModel(owner.SpawnTablePath, owner);
     }
 

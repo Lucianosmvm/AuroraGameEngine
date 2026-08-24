@@ -21,8 +21,9 @@ public sealed class ContactDamage : Behavior
     /// o alvo precisa sair e voltar pra levar de novo.</summary>
     public float Interval = 1f;
 
-    /// <summary>Só machuca entidade cujo nome comece com isto (sem diferenciar maiúsculas).
-    /// Vazio = qualquer entidade com <see cref="Health"/>. Use "Player" num inimigo pra ele não
+    /// <summary>Filtro de alvo (ver <see cref="Tags.Matches"/>): vazio = qualquer entidade com
+    /// <see cref="Health"/>; <c>#etiqueta</c> = só quem tem a etiqueta; qualquer outra coisa =
+    /// prefixo do nome, sem diferenciar maiúsculas. Use "Player" num inimigo pra ele não
     /// machucar os outros inimigos ao esbarrar.</summary>
     public string TargetPrefix = "";
 
@@ -86,8 +87,7 @@ public sealed class ContactDamage : Behavior
         if (World is null || target.Get<Health>() is null)
             return;
 
-        if (TargetPrefix.Length > 0
-            && !target.Name.StartsWith(TargetPrefix, StringComparison.OrdinalIgnoreCase))
+        if (!Tags.Matches(target, TargetPrefix))
             return;
 
         if (_nextHitAt.TryGetValue(target.Id, out float allowedAt) && _clock < allowedAt)

@@ -431,13 +431,17 @@ public sealed class EventSystem
                 // Leva os filhos junto (ver World.TeleportWithChildren): escrever Position direto
                 // moveria só o alvo, e o que estivesse preso nele ficaria pra trás pra sempre —
                 // o vínculo pai/filho preserva o encaixe, não o recalcula.
-                if (ResolveTarget(self, action.Name) is { } target && target.Get<Transform>() is not null)
-                    _world.TeleportWithChildren(target, new Vector2(action.X, action.Y));
+                foreach (var target in ResolveTargets(self, action))
+                {
+                    if (target.Get<Transform>() is not null)
+                        _world.TeleportWithChildren(target, new Vector2(action.X, action.Y));
+                }
                 break;
             }
 
             case "Destroy":
-                ResolveTarget(self, action.Name)?.Destroy();
+                foreach (var target in ResolveTargets(self, action))
+                    target.Destroy();
                 break;
 
             case "SetWeather" when action.Name is not null:
@@ -468,12 +472,12 @@ public sealed class EventSystem
             }
 
             case "Damage":
-                if (ResolveTarget(self, action.Name) is { } damageTarget)
+                foreach (var damageTarget in ResolveTargets(self, action))
                     _world.Damage(damageTarget, action.Value, self);
                 break;
 
             case "Heal":
-                if (ResolveTarget(self, action.Name) is { } healTarget)
+                foreach (var healTarget in ResolveTargets(self, action))
                     _world.Heal(healTarget, action.Value);
                 break;
 
@@ -586,18 +590,20 @@ public sealed class EventSystem
                 break;
 
             case "PlayAnimation" when action.Text is not null:
-                ResolveTarget(self, action.Name)?.Get<Animator>()?.Play(action.Text, restart: true);
+                foreach (var target in ResolveTargets(self, action))
+                    target.Get<Animator>()?.Play(action.Text, restart: true);
                 break;
 
             case "StopAnimation":
-                ResolveTarget(self, action.Name)?.Get<Animator>()?.Stop();
+                foreach (var target in ResolveTargets(self, action))
+                    target.Get<Animator>()?.Stop();
                 break;
 
             case "SetActive":
             {
                 // Liga/desliga efeitos sem remover o componente da cena (chuva, tocha, etc).
                 // Name = entidade alvo (null/"Self" = a própria), On = liga/desliga.
-                if (ResolveTarget(self, action.Name) is { } activeTarget)
+                foreach (var activeTarget in ResolveTargets(self, action))
                 {
                     var particles = activeTarget.Get<ParticleEmitter>();
                     if (particles is not null)
@@ -639,5 +645,48 @@ public sealed class EventSystem
             return self;
 
         return _world.TryFind(name, out var entity) ? entity : null;
+    }
+
+    /// <summary>
+    /// Alvos de uma ação. Três formas no campo Nome:
+    /// <list type="bullet">
+    ///   <item>vazio ou <c>Self</c> — a entidade que disparou o evento;</item>
+    ///   <item><c>#etiqueta</c> — TODAS as entidades com aquela etiqueta (ver
+    ///   <see cref="Tags"/>). É o que permite "dano em todo inimigo" sem uma ação por tipo de
+    ///   bicho: o nome de cada um continua sendo o que ele é (slimeazul, slime_de_gelo);</item>
+    ///   <item>qualquer outra coisa — nome exato, uma entidade só (a mais antiga viva com
+    ///   aquele nome), que é como as cenas antigas sempre funcionaram.</item>
+    /// </list>
+    ///
+    /// <para><see cref="EventAction.Radius"/> corta pela distância até quem disparou. Vale pras
+    /// três formas, mas só muda alguma coisa na do meio.</para>
+    /// </summary>
+    private List<Entity> ResolveTargets(Entity? self, EventAction action)
+    {
+        string? name = action.Name;
+
+        List<Entity> targets;
+        if (name is not null && name.Length > 0 && name[0] == '#')
+            targets = _world.FindByTag(name);
+        else if (ResolveTarget(self, name) is { } single)
+            targets = [single];
+        else
+            return [];
+
+        if (action.Radius <= 0f || targets.Count == 0)
+            return targets;
+
+        if (self?.Get<Transform>()?.Position is not { } origin)
+        {
+            Console.Error.WriteLine(
+                $"[EventSystem] {action.Type}: Radius {action.Radius} ignorado — o evento não tem " +
+                $"entidade de origem com Transform pra medir a distância.");
+            return targets;
+        }
+
+        float limit = action.Radius * action.Radius;
+        targets.RemoveAll(t => t.Get<Transform>() is not { } transform
+                               || Vector2.DistanceSquared(transform.Position, origin) > limit);
+        return targets;
     }
 }

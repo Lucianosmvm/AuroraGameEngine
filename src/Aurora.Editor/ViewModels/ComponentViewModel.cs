@@ -61,6 +61,12 @@ public class ComponentViewModel : ViewModelBase
             ("Max", 100f), ("Current", 100f), ("InvulnerabilityAfterHit", 0f),
             ("Invulnerable", false), ("DestroyOnDeath", true),
         ],
+        // Etiquetas do grupo a que a entidade pertence ("inimigo, voador"). É o que as ações de
+        // evento miram com "#inimigo" — sem isto, alvo só por nome exato, uma entidade por ação.
+        ["Tags"] =
+        [
+            ("Value", ""),
+        ],
         // Ataque à distância — Velocity/Source são setados em código no spawn (não fazem
         // sentido numa cena estática), só aparecem os campos abaixo pra editar/prefab.
         ["Projectile"] =
@@ -434,8 +440,9 @@ public class ComponentViewModel : ViewModelBase
         ["NavAgent.Follow"] = ("entities", "entidade perseguida — vazio = só SetTarget() por código"),
         ["FollowTarget.TargetName"] = ("entities", "entidade em que esta gruda"),
         ["Transform.Parent"] = ("entities", "entidade que carrega esta — vazio = solta no mundo"),
-        ["ContactDamage.TargetPrefix"] = ("entities", "só machuca nomes que começam assim — vazio = qualquer um com Health"),
-        ["Projectile.TargetPrefix"] = ("entities", "só acerta nomes que começam assim — vazio = qualquer um com Health"),
+        ["ContactDamage.TargetPrefix"] = ("targets", "#etiqueta, ou prefixo de nome — vazio = qualquer um com Health"),
+        ["Projectile.TargetPrefix"] = ("targets", "#etiqueta, ou prefixo de nome — vazio = qualquer um com Health"),
+        ["Tags.Value"] = ("tags", "etiquetas separadas por vírgula (inimigo, voador) — mire com #inimigo nas ações"),
 
         ["Spawner.Prefab"] = ("prefabs", "prefab ou id de tabela de spawn (sorteia entre vários)"),
         ["AttackSpawner.Prefab"] = ("prefabs", "prefab do golpe/projétil, ou id de tabela de spawn"),
@@ -477,6 +484,10 @@ public class ComponentViewModel : ViewModelBase
         source = entry.Source switch
         {
             "entities" => () => owner?.EntityNames ?? [],
+            // Campo de alvo aceita as duas linguagens: nome (prefixo) e etiqueta. A lista junta
+            // as duas porque quem preenche está escolhendo QUEM apanha, não que sintaxe usar.
+            "targets" => () => (owner?.TagNames.Select(t => "#" + t) ?? []).Concat(owner?.EntityNames ?? []),
+            "tags" => () => owner?.TagNames ?? [],
             "prefabs" => () => owner?.PrefabOrTableNames ?? [],
             "uiScreens" => () => owner?.UiScreenIds ?? [],
             "uiElements" => () => owner?.UiElementNames ?? [],

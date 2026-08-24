@@ -434,6 +434,14 @@
             <TextBox Grid.Column="4" Text="{Binding YText}" FontSize="11" Padding="4,3"/>
           </Grid>
 
+          <!-- Alcance (ações que miram entidade) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowRadius}">
+            <TextBlock Text="Alcance" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                       ToolTip.Tip="Em pixels, a partir de quem disparou o evento. 0 = cena inteira. Só limita alvo por #etiqueta."/>
+            <TextBox Grid.Column="1" Text="{Binding RadiusText}" FontSize="11" Padding="4,3"
+                     Watermark="0 = cena inteira"/>
+          </Grid>
+
           <!-- Tipo da condição (If) -->
           <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowConditionKind}">
             <TextBlock Text="Comparar" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
@@ -548,8 +556,11 @@
         <CheckBox Content="Snap" IsChecked="{Binding SnapToGrid}"
                   VerticalAlignment="Center" FontSize="12"
                   ToolTip.Tip="Prende o arrasto a uma grade. Segure Alt durante o arrasto pra inverter."/>
+        <!-- Largura folgada de propósito: os dois botões do spinner comem ~60px da caixa, e no
+             tamanho antigo (88) sobrava uma fresta onde o número não cabia. -->
         <NumericUpDown Value="{Binding SnapSize}" Minimum="1" Maximum="512" Increment="1"
-                       FormatString="0" Width="88" FontSize="12" VerticalAlignment="Center"
+                       FormatString="0" Width="130" MinWidth="130" FontSize="12"
+                       VerticalAlignment="Center" HorizontalContentAlignment="Left"
                        IsEnabled="{Binding SnapToGrid}"
                        ToolTip.Tip="Tamanho da grade em pixels de mundo."/>
         <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."

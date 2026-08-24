@@ -20,6 +20,9 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ Variáveis e switches globais (`GameState`) com save/load em JSON
 - ✅ Eventos visuais (`EventTrigger`): gatilhos SceneStart/PlayerTouch/SwitchOn e
   ações SetVariable, SetSwitch, Teleport, Destroy, Wait, ShowMessage
+- ✅ **Etiquetas** (`Tags`): grupo da entidade (`"inimigo, voador"`). Ações que miram entidade
+  aceitam `#inimigo` no lugar do nome e atingem o grupo todo, com `Radius` opcional pra limitar
+  ao redor de quem disparou
 - ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações
   PlaySound/PlayMusic/StopMusic nos eventos visuais
 - ✅ **Animação de sprites**: componente `Animator` com clipes de sprite sheet, troca de clipe em runtime

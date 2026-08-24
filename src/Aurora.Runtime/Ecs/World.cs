@@ -213,6 +213,24 @@ public sealed class World
         return false;
     }
 
+    /// <summary>
+    /// Todas as entidades vivas com a etiqueta dada (ver <see cref="Components.Tags"/>). Aceita
+    /// com ou sem <c>#</c>, ignorando maiúsculas.
+    ///
+    /// <para>Devolve uma LISTA pronta, não um iterador preguiçoso: quem chama costuma mandar
+    /// dano ou destruir os alvos, e isso mexe nos stores no meio da varredura.</para>
+    /// </summary>
+    public List<Entity> FindByTag(string tag)
+    {
+        var found = new List<Entity>();
+        foreach (var (entity, tags) in Query<Components.Tags>())
+        {
+            if (tags.Has(tag))
+                found.Add(entity);
+        }
+        return found;
+    }
+
     /// <summary>Handle da entidade a partir do id. Não valida: use <see cref="IsAlive"/> antes
     /// se o id veio de fora (rede, save) e pode estar velho.</summary>
     public Entity GetEntity(int id) => new(id, this);

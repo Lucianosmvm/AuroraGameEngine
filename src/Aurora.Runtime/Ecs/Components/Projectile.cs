@@ -19,8 +19,9 @@ public sealed class Projectile : Behavior
     public float Life = 2f;
     public float Damage = 20f;
 
-    /// <summary>Prefixo de nome que o projétil pode acertar (sem diferenciar maiúsculas) — ""
-    /// (padrão) acerta qualquer entidade com Health, exceto a própria Source.</summary>
+    /// <summary>Filtro de alvo (ver <see cref="Tags.Matches"/>): "" (padrão) acerta qualquer
+    /// entidade com Health exceto a própria Source; <c>#etiqueta</c> só quem tem a etiqueta;
+    /// qualquer outra coisa é prefixo do nome, sem diferenciar maiúsculas.</summary>
     public string TargetPrefix = "";
 
     /// <summary>Direção * velocidade — sete no spawn, não é float/int/bool/string então não
@@ -48,7 +49,7 @@ public sealed class Projectile : Behavior
         if (Source is { } source && other.Id == source.Id)
             return;
 
-        if (TargetPrefix.Length == 0 || other.Name.StartsWith(TargetPrefix, StringComparison.OrdinalIgnoreCase))
+        if (Tags.Matches(other, TargetPrefix))
             World?.Damage(other, Damage, Source);
 
         Entity.Destroy();

@@ -17,6 +17,16 @@ public sealed class EventAction
     /// <summary>SetVariable: "Set" (padrão) ou "Add".</summary>
     public string? Op;
 
+    /// <summary>
+    /// Alcance da ação em pixels, medido a partir de quem disparou o evento. 0 (padrão) = a cena
+    /// inteira. Só faz diferença quando o alvo é um grupo (<c>#etiqueta</c>): é o que separa uma
+    /// bomba de um botão que mata todo inimigo do mapa.
+    ///
+    /// <para>Precisa de uma origem: num gatilho sem entidade de origem não há de onde medir, e o
+    /// alcance é ignorado com aviso no console.</para>
+    /// </summary>
+    public float Radius;
+
     public float Value;
     public bool On = true;
     public float X;
@@ -55,6 +65,7 @@ public sealed class EventAction
                 Name = element.TryGetProperty("Name", out var name) ? name.GetString() : null,
                 Op = element.TryGetProperty("Op", out var op) ? op.GetString() : null,
                 Value = element.TryGetProperty("Value", out var v) ? v.GetSingle() : 0f,
+                Radius = element.TryGetProperty("Radius", out var r) ? r.GetSingle() : 0f,
                 On = element.TryGetProperty("On", out var on) ? on.GetBoolean() : true,
                 X = element.TryGetProperty("X", out var x) ? x.GetSingle() : 0f,
                 Y = element.TryGetProperty("Y", out var y) ? y.GetSingle() : 0f,
@@ -92,6 +103,7 @@ public sealed class EventAction
             if (action.Name is not null) json.WriteString("Name", action.Name);
             if (action.Op is not null) json.WriteString("Op", action.Op);
             if (action.Value != 0f) json.WriteNumber("Value", action.Value);
+            if (action.Radius != 0f) json.WriteNumber("Radius", action.Radius);
             if (!action.On) json.WriteBoolean("On", false);
             if (action.X != 0f) json.WriteNumber("X", action.X);
             if (action.Y != 0f) json.WriteNumber("Y", action.Y);

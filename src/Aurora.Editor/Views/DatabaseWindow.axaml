@@ -123,7 +123,8 @@
 
                   <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
                     As ações rodam em quem usou o item (o jogador, por padrão). "Heal 50" é uma
-                    poção; "SetSwitch PortaAberta" é uma chave.
+                    poção; "SetSwitch PortaAberta" é uma chave. Alvo vazio = quem usou — pra
+                    acertar os outros, escreva "#inimigo" e limite pelo Alcance (bomba).
                   </TextBlock>
 
                   <ItemsControl ItemsSource="{Binding Effects}">
@@ -141,10 +142,24 @@
                             <TextBlock Text="{Binding ActionDescription}" FontSize="10" Opacity="0.45"
                                        TextWrapping="Wrap"/>
 
+                            <!-- Alvo: aceita nome de entidade OU "#etiqueta" (o grupo todo).
+                                 AutoCompleteBox e não TextBox porque a lista de etiquetas da cena
+                                 é a única pista de que a segunda forma existe. -->
                             <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNameText}">
                               <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
                                          Opacity="0.6" FontSize="11"/>
-                              <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+                              <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding NameSuggestions}"
+                                               Text="{Binding Name}" FontSize="11"
+                                               FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                                               HorizontalAlignment="Stretch"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowRadius}">
+                              <TextBlock Text="Alcance" VerticalAlignment="Center"
+                                         Opacity="0.6" FontSize="11"
+                                         ToolTip.Tip="Em pixels, a partir de quem usou o item. 0 = cena inteira."/>
+                              <TextBox Grid.Column="1" Text="{Binding RadiusText}" FontSize="11" Padding="4,3"
+                                       Watermark="0 = cena inteira"/>
                             </Grid>
 
                             <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowValue}">
