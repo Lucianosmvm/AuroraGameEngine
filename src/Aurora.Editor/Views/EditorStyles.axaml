@@ -1,0 +1,111 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Aparência comum do editor. Só ESTILO: nada aqui muda binding, comando ou estrutura — trocar
+    este arquivo por um vazio devolve o Fluent puro com a janela funcionando igual.
+
+    O que era repetido em cada painel (Padding, CornerRadius, tamanho de fonte de rótulo) vira
+    classe: `panelTitle`, `card`, `rail`. Assim um painel novo nasce parecido com os outros sem
+    ninguém precisar copiar meia dúzia de atributos.
+  -->
+
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource EditorBg}"/>
+    <Setter Property="Foreground" Value="{DynamicResource EditorText}"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+
+  <Style Selector="Menu">
+    <Setter Property="Background" Value="{DynamicResource EditorPanelAlt}"/>
+  </Style>
+
+  <!-- Título de painel: "CENAS", "HIERARQUIA", "INSPECTOR". -->
+  <Style Selector="TextBlock.panelTitle">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource EditorTextMuted}"/>
+  </Style>
+
+  <!-- Cartão: bloco de campos dentro de um painel. -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource EditorCard}"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource EditorBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="6"/>
+  </Style>
+
+  <Style Selector="GridSplitter">
+    <Setter Property="Background" Value="{DynamicResource EditorBorder}"/>
+  </Style>
+
+  <!-- Rail de navegação: a coluna de ícones da esquerda. -->
+
+  <Style Selector="ListBox.rail">
+    <Setter Property="Background" Value="{DynamicResource EditorPanelAlt}"/>
+    <Setter Property="Padding" Value="0,6"/>
+  </Style>
+
+  <Style Selector="ListBox.rail ListBoxItem">
+    <Setter Property="Padding" Value="0,8"/>
+    <Setter Property="Margin" Value="6,2"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="Foreground" Value="{DynamicResource EditorTextMuted}"/>
+  </Style>
+
+  <Style Selector="ListBox.rail ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource EditorAccentSoft}"/>
+  </Style>
+
+  <Style Selector="ListBox.rail ListBoxItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource EditorAccent}"/>
+  </Style>
+
+  <!-- TabControl que serve de conteúdo pro rail: as abas continuam existindo (é o que guarda
+       qual lista está aberta), só não desenham a tira — quem desenha é o rail. -->
+  <Style Selector="TabControl.hiddenStrip /template/ ItemsPresenter#PART_ItemsPresenter">
+    <Setter Property="IsVisible" Value="False"/>
+  </Style>
+
+  <!-- Abas normais: banco de dados, painel de baixo. -->
+
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Foreground" Value="{DynamicResource EditorTextMuted}"/>
+  </Style>
+
+  <Style Selector="TabItem:selected">
+    <Setter Property="Foreground" Value="{DynamicResource EditorText}"/>
+  </Style>
+
+  <!-- Listas. -->
+
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+
+  <Style Selector="ListBoxItem">
+    <Setter Property="CornerRadius" Value="5"/>
+    <Setter Property="Padding" Value="8,5"/>
+  </Style>
+
+  <Style Selector="TreeViewItem">
+    <Setter Property="Foreground" Value="{DynamicResource EditorText}"/>
+  </Style>
+
+</Styles>

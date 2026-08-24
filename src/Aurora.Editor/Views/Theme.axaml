@@ -1,0 +1,52 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Paleta do editor, num lugar só.
+
+    Antes cada painel trazia o próprio hexadecimal (#E7EEF7 aqui, #EDF2FA ali), e trocar o visual
+    significava caçar dezenas de literais espalhados por três janelas — foi assim que o editor
+    ficou claro enquanto o viewport, que sempre desenhou em #181626, ficou escuro. Aqui os nomes
+    dizem a FUNÇÃO (fundo, painel, cartão, borda, texto, acento), então quem mexe no XAML escolhe
+    o papel do elemento e não a cor; e trocar a paleta inteira é editar este arquivo.
+
+    Cor de jogo (tint de sprite, cor de UiText) NÃO mora aqui: aquilo é dado da cena, mora no JSON
+    e é lido pelo EngineColor.
+  -->
+
+  <!-- Fundo da janela e das áreas que não são painel (atrás do viewport, entre os splitters). -->
+  <SolidColorBrush x:Key="EditorBg" Color="#14121D"/>
+
+  <!-- Painel: coluna do projeto, hierarquia, inspector, barras de ferramentas. -->
+  <SolidColorBrush x:Key="EditorPanel" Color="#1A1825"/>
+
+  <!-- Cabeçalho de painel e barra de abas — um degrau acima do painel, pra separar sem borda. -->
+  <SolidColorBrush x:Key="EditorPanelAlt" Color="#211E2F"/>
+
+  <!-- Cartão: grupo de campos dentro de um painel (um componente no inspector, uma ação). -->
+  <SolidColorBrush x:Key="EditorCard" Color="#232032"/>
+
+  <!-- Cartão dentro de cartão (uma ação dentro do bloco de efeito do item). -->
+  <SolidColorBrush x:Key="EditorCardAlt" Color="#2A2739"/>
+
+  <SolidColorBrush x:Key="EditorBorder" Color="#2E2A3E"/>
+  <SolidColorBrush x:Key="EditorBorderStrong" Color="#3B3550"/>
+
+  <SolidColorBrush x:Key="EditorText" Color="#E7E5F0"/>
+  <SolidColorBrush x:Key="EditorTextMuted" Color="#9B96AE"/>
+
+  <!-- Acento: Play, seleção, chip de prefab, foco. -->
+  <SolidColorBrush x:Key="EditorAccent" Color="#7C5CFF"/>
+  <SolidColorBrush x:Key="EditorAccentHover" Color="#8E72FF"/>
+  <!-- Acento lavado: fundo de item selecionado, aba ativa. Contraste baixo de propósito — o que
+       marca a seleção é a barra de acento, não o preenchimento. -->
+  <SolidColorBrush x:Key="EditorAccentSoft" Color="#2C2545"/>
+
+  <SolidColorBrush x:Key="EditorDanger" Color="#E0575D"/>
+  <SolidColorBrush x:Key="EditorWarn" Color="#E0A030"/>
+  <SolidColorBrush x:Key="EditorSuccess" Color="#3FB65C"/>
+
+  <!-- Saída do jogo: mais escura que os painéis, porque é terminal e não formulário. -->
+  <SolidColorBrush x:Key="EditorConsoleBg" Color="#100E18"/>
+
+</ResourceDictionary>

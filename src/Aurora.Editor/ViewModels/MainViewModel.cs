@@ -307,7 +307,10 @@ public sealed class MainViewModel : ViewModelBase
         private set
         {
             if (Set(ref _isDirty, value))
+            {
                 Raise(nameof(Title));
+                Raise(nameof(DocumentName));
+            }
         }
     }
 
@@ -331,6 +334,13 @@ public sealed class MainViewModel : ViewModelBase
     public string Title => _document is null
         ? "Aurora Editor"
         : $"Aurora Editor — {Path.GetFileName(_document.FilePath)}{(IsDirty ? " *" : "")}";
+
+    /// <summary>Nome do arquivo da cena aberta (sem pasta nem extensão), com "*" enquanto houver
+    /// alteração não salva. É o rótulo da aba do viewport — o <see cref="Title"/> não serve ali
+    /// porque carrega o nome do programa junto.</summary>
+    public string DocumentName => _document is null
+        ? ""
+        : $"{Path.GetFileNameWithoutExtension(_document.FilePath)}{(IsDirty ? " *" : "")}";
 
     public bool HasDocument => _document is not null;
     public bool CanUndo => _undoStack.Count > 0;
@@ -809,6 +819,7 @@ public sealed class MainViewModel : ViewModelBase
         IsDirty = false;
         Status = $"Nova cena: {_document.SceneName} | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
+        Raise(nameof(DocumentName));
         Raise(nameof(HasDocument));
         Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
@@ -844,6 +855,7 @@ public sealed class MainViewModel : ViewModelBase
         IsDirty = false;
         Status = $"{_document.SceneName} — {Entities.Count} entidades | assets: {_document.AssetsRoot}";
         Raise(nameof(Title));
+        Raise(nameof(DocumentName));
         Raise(nameof(HasDocument));
         Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
@@ -1639,6 +1651,7 @@ public sealed class MainViewModel : ViewModelBase
         _document.Save(path);
         IsDirty = false;
         Raise(nameof(Title));
+        Raise(nameof(DocumentName));
         Status = $"Salvo: {path}";
         ReloadSceneFiles();
         ReloadUiScreens();

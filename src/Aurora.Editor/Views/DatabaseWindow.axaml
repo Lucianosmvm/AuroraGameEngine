@@ -2,12 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Aurora.Editor.Views.DatabaseWindow"
         Width="920" Height="680" WindowStartupLocation="CenterOwner"
-        Background="#F2F4F7"
+        Background="{DynamicResource EditorBg}"
         Title="Banco de Dados">
 
   <DockPanel>
 
-    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Padding="10,8">
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}" Padding="10,8">
       <Grid ColumnDefinitions="*,Auto,Auto">
         <StackPanel VerticalAlignment="Center">
           <TextBlock Text="{Binding Items.Status}" FontSize="11" Opacity="0.6"
@@ -27,7 +27,7 @@
       <TabItem Header="Itens" FontSize="12">
         <DockPanel>
 
-          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="#D7DEE8"
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource EditorBorder}"
                   DataContext="{Binding Items}">
             <DockPanel>
               <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
@@ -54,7 +54,7 @@
                         IsVisible="{Binding HasSelection}">
             <StackPanel Spacing="10">
 
-              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8"
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8"
                       DataContext="{Binding Selected}">
                 <StackPanel Spacing="6">
                   <TextBlock Text="IDENTIFICAÇÃO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
@@ -87,7 +87,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8"
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8"
                       DataContext="{Binding Selected}">
                 <StackPanel Spacing="6">
                   <TextBlock Text="REGRAS" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
@@ -112,7 +112,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
                 <StackPanel Spacing="6">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="EFEITO AO USAR" FontSize="10" FontWeight="Bold" Opacity="0.5"
@@ -130,7 +130,7 @@
                   <ItemsControl ItemsSource="{Binding Effects}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="#FFFFFF" CornerRadius="3" Padding="8,6" Margin="0,3">
+                        <Border Background="{DynamicResource EditorCardAlt}" CornerRadius="3" Padding="8,6" Margin="0,3">
                           <StackPanel Spacing="4">
                             <Grid ColumnDefinitions="*,Auto">
                               <ComboBox ItemsSource="{Binding ActionTypes}" SelectedItem="{Binding ActionType}"
@@ -188,7 +188,7 @@
       <TabItem Header="Tabelas de Spawn" FontSize="12">
         <DockPanel DataContext="{Binding Spawns}">
 
-          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="#D7DEE8">
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="{DynamicResource EditorBorder}">
             <DockPanel>
               <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
                 <Button Content="+ Tabela" FontSize="11" Padding="8,2" Command="{Binding AddTableCommand}"/>
@@ -212,7 +212,7 @@
           <ScrollViewer Padding="12,10" IsVisible="{Binding HasSelection}">
             <StackPanel Spacing="10">
 
-              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
                 <StackPanel Spacing="6">
                   <TextBlock Text="GRUPO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
                   <Grid ColumnDefinitions="90,*" DataContext="{Binding Selected}">
@@ -227,7 +227,7 @@
                 </StackPanel>
               </Border>
 
-              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+              <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
                 <StackPanel Spacing="6">
                   <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="ENTRADAS" FontSize="10" FontWeight="Bold" Opacity="0.5"
@@ -239,7 +239,7 @@
                   <ItemsControl ItemsSource="{Binding Entries}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Border Background="#FFFFFF" CornerRadius="3" Padding="8,6" Margin="0,3">
+                        <Border Background="{DynamicResource EditorCardAlt}" CornerRadius="3" Padding="8,6" Margin="0,3">
                           <StackPanel Spacing="4">
 
                             <Grid ColumnDefinitions="*,60,Auto">

@@ -4,7 +4,7 @@
         Width="440" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
-        Background="#F2F4F7"
+        Background="{DynamicResource EditorBg}"
         Title="Confirmar">
 
   <StackPanel Margin="16" Spacing="12">
@@ -17,7 +17,7 @@
       <Button x:Name="CancelButton" Content="Cancelar" FontSize="12" Padding="16,5"
               Click="OnCancel" IsCancel="True"/>
       <Button x:Name="ConfirmButton" Content="Excluir" FontSize="12" Padding="16,5"
-              Background="#C0392B" Foreground="#FFFFFF" Click="OnConfirm" IsDefault="True"/>
+              Background="{DynamicResource EditorDanger}" Foreground="{DynamicResource EditorCardAlt}" Click="OnConfirm" IsDefault="True"/>
     </StackPanel>
 
   </StackPanel>

@@ -2,12 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="Aurora.Editor.Views.ProjectSettingsWindow"
         Width="520" Height="640" WindowStartupLocation="CenterOwner"
-        Background="#F2F4F7"
+        Background="{DynamicResource EditorBg}"
         Title="Configurações do Projeto">
 
   <DockPanel>
 
-    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Padding="10,8">
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}" Padding="10,8">
       <Button Content="Fechar" FontSize="12" Padding="14,4"
               HorizontalAlignment="Right" Click="OnClose"/>
     </Border>
@@ -16,7 +16,7 @@
       <StackPanel Spacing="10">
 
         <!-- Assets Root -->
-        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+        <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
           <StackPanel Spacing="4">
             <TextBlock Text="ASSETS ROOT" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             <Grid ColumnDefinitions="*,Auto">
@@ -30,7 +30,7 @@
         </Border>
 
         <!-- Projeto: caminho do executável/csproj para o botão Play -->
-        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+        <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
           <StackPanel Spacing="4">
             <TextBlock Text="PROJETO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             <Grid ColumnDefinitions="*,Auto">
@@ -46,7 +46,7 @@
         </Border>
 
         <!-- Tela de referência (UI) -->
-        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+        <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
           <StackPanel Spacing="4">
             <TextBlock Text="TELA DE REFERÊNCIA (UI)" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             <Grid ColumnDefinitions="*,Auto,*,Auto,Auto">
@@ -66,7 +66,7 @@
         </Border>
 
         <!-- Orientação Android -->
-        <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+        <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="10,8">
           <StackPanel Spacing="4">
             <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"

@@ -6,7 +6,7 @@
         Title="{Binding Title}"
         Width="1400" Height="850"
         WindowStartupLocation="CenterScreen"
-        Background="#F2F4F7">
+        Background="{DynamicResource EditorBg}">
 
   <Window.DataTemplates>
     <!-- Editores de propriedades escalares -->
@@ -101,7 +101,7 @@
         <TextBox Grid.Column="2" Text="{Binding Value}" FontSize="12" Padding="6,4"
                  Watermark="sprites/exemplo.png"/>
 
-        <TextBlock Grid.Column="2" Text="⚠" FontSize="14" Foreground="#D68A00"
+        <TextBlock Grid.Column="2" Text="⚠" FontSize="14" Foreground="{DynamicResource EditorWarn}"
                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
                    IsVisible="{Binding IsMissing}"
                    ToolTip.Tip="Este arquivo não está na pasta de assets do projeto"/>
@@ -116,7 +116,7 @@
         <Button Grid.Column="1" Padding="3" Margin="0,0,4,0" ToolTip.Tip="{Binding ColorName}"
                 AutomationProperties.Name="Escolher cor">
           <Border Background="{Binding Preview}" Width="26" Height="16"
-                  BorderBrush="#99A0AA" BorderThickness="1" CornerRadius="2"/>
+                  BorderBrush="{DynamicResource EditorTextMuted}" BorderThickness="1" CornerRadius="2"/>
           <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
               <StackPanel Width="290" Spacing="8">
@@ -131,7 +131,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate>
                       <Button Width="33" Height="26" Margin="1" Padding="0"
-                              Background="{Binding Brush}" BorderBrush="#99A0AA" BorderThickness="1"
+                              Background="{Binding Brush}" BorderBrush="{DynamicResource EditorTextMuted}" BorderThickness="1"
                               ToolTip.Tip="{Binding Label}" AutomationProperties.Name="{Binding Label}"
                               Command="{Binding Command}"/>
                     </DataTemplate>
@@ -160,7 +160,7 @@
         <Expander Header="Animator" IsExpanded="True" HorizontalAlignment="Stretch">
           <StackPanel Margin="6,4" Spacing="4">
             <ItemsControl ItemsSource="{Binding Properties}" Margin="0,0,0,4"/>
-            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
+            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}"
                     Margin="0,2,0,2" Padding="0,4,0,0">
               <TextBlock Text="CLIPES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -168,7 +168,7 @@
             <Button Content="+ Clipe" Command="{Binding AddClipCommand}"
                     FontSize="12" HorizontalAlignment="Stretch" Margin="0,2"/>
 
-            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
+            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}"
                     Margin="0,4,0,2" Padding="0,4,0,0">
               <TextBlock Text="TRANSIÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -183,18 +183,18 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
+                Background="Transparent" Foreground="{DynamicResource EditorDanger}" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
     <!-- AnimationClip: uma linha por clipe -->
     <DataTemplate DataType="{x:Type vm:AnimationClipViewModel}">
-      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
           <Grid ColumnDefinitions="*,Auto">
             <TextBox Text="{Binding ClipName}" FontSize="12" Padding="4,3" Watermark="Nome…"/>
             <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#D64545"
+                    Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <Grid ColumnDefinitions="60,*,8,35,*">
@@ -212,14 +212,14 @@
 
     <!-- AnimatorTransition: De -> Para, condição sobre um parâmetro local -->
     <DataTemplate DataType="{x:Type vm:AnimatorTransitionViewModel}">
-      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
           <Grid ColumnDefinitions="*,20,*,Auto">
             <TextBox Text="{Binding From}" FontSize="11" Padding="4,3" Watermark="Any"/>
             <TextBlock Grid.Column="1" Text="→" VerticalAlignment="Center" HorizontalAlignment="Center" Opacity="0.6"/>
             <TextBox Grid.Column="2" Text="{Binding To}" FontSize="11" Padding="4,3" Watermark="clipe…"/>
             <Button Grid.Column="3" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#D64545"
+                    Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <Grid ColumnDefinitions="60,*">
@@ -310,7 +310,7 @@
           </StackPanel>
 
           <!-- Separador de ações -->
-          <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
+          <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}"
                   Margin="0,4,0,2" Padding="0,4,0,0">
             <TextBlock Text="AÇÕES" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
           </Border>
@@ -325,7 +325,7 @@
               Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
               Command="{Binding RemoveCommand}"
               IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-              Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
+              Background="Transparent" Foreground="{DynamicResource EditorDanger}" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
@@ -338,7 +338,7 @@
           <StackPanel Margin="6,4" Spacing="4">
             <ItemsControl ItemsSource="{Binding Properties}"/>
 
-            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8"
+            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}"
                     Margin="0,2,0,2" Padding="0,4,0,0">
               <TextBlock Text="ONCLICK" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             </Border>
@@ -353,7 +353,7 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
+                Background="Transparent" Foreground="{DynamicResource EditorDanger}" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
@@ -367,13 +367,13 @@
                 Content="✕" FontSize="10" Padding="5,1" Margin="0,3,4,0"
                 Command="{Binding RemoveCommand}"
                 IsVisible="{Binding RemoveCommand, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Background="Transparent" Foreground="#D64545" BorderThickness="0"/>
+                Background="Transparent" Foreground="{DynamicResource EditorDanger}" BorderThickness="0"/>
       </Panel>
     </DataTemplate>
 
     <!-- Uma ação dentro de EventTrigger -->
     <DataTemplate DataType="{x:Type vm:EventActionViewModel}">
-      <Border Background="#EDF2FA" CornerRadius="4" Margin="0,2" Padding="6,5">
+      <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Margin="0,2" Padding="6,5">
         <StackPanel Spacing="3">
 
           <!-- Tipo + botão remover -->
@@ -381,7 +381,7 @@
             <ComboBox ItemsSource="{Binding ActionTypes}"
                       SelectedItem="{Binding ActionType}" FontSize="12"/>
             <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
-                    Command="{Binding RemoveCommand}" Foreground="#D64545"
+                    Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
                     Background="Transparent" BorderThickness="0"/>
           </Grid>
           <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
@@ -488,7 +488,7 @@
                     <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="11"
                              Padding="4,2" Watermark="Switch"/>
                     <Button Grid.Column="2" Content="✕" FontSize="10" Padding="4,2"
-                            Command="{Binding RemoveCommand}" Foreground="#D64545"
+                            Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
                             Background="Transparent" BorderThickness="0"/>
                   </Grid>
                 </DataTemplate>
@@ -540,13 +540,13 @@
     </Menu>
 
     <!-- Toolbar de execução -->
-    <Border DockPanel.Dock="Top" Background="#E7EEF7" Padding="8,5"
-            BorderBrush="#D7DEE8" BorderThickness="0,0,0,1">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource EditorPanel}" Padding="8,5"
+            BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button Content="▶  Play (F5)" Click="OnPlay"
                 IsEnabled="{Binding CanPlay}"
                 FontSize="13" FontWeight="SemiBold" Padding="14,5"
-                Background="#2E9E44" Foreground="White"/>
+                Background="{DynamicResource EditorAccent}" Foreground="White"/>
         <CheckBox Content="Colisores" IsChecked="{Binding ShowColliders}"
                   VerticalAlignment="Center" FontSize="12"
                   ToolTip.Tip="Mostra a hitbox de cada Collider no viewport: verde = sólido, laranja = trigger, tracejado = cinemático. Use 'Debug no jogo' pra ver isto rodando."/>
@@ -569,7 +569,7 @@
       </StackPanel>
     </Border>
 
-    <Border DockPanel.Dock="Bottom" Background="#E7EEF7" Padding="8,4">
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource EditorPanel}" Padding="8,4">
       <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"
                  ToolTip.Tip="{Binding StatusDetail}"/>
     </Border>
@@ -578,18 +578,18 @@
          bar) e escondido até ter o que mostrar. Sem ele, um Console.WriteLine dentro de um
          script do usuário não tinha pra onde ir — o processo do jogo roda com CreateNoWindow
          e o resumo da status bar só aparece quando o jogo MORRE. -->
-    <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Height="180"
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource EditorConsoleBg}" Height="180"
             IsVisible="{Binding IsOutputVisible}"
-            BorderBrush="#D7DEE8" BorderThickness="0,1,0,0">
+            BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,1,0,0">
       <DockPanel>
-        <Border DockPanel.Dock="Top" Background="#2A2A2A" Padding="8,4">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource EditorPanelAlt}" Padding="8,4">
           <Grid ColumnDefinitions="*,Auto,Auto">
             <TextBlock Text="SAÍDA" FontSize="11" FontWeight="Bold"
-                       Foreground="#B9C4D0" VerticalAlignment="Center"/>
+                       Foreground="{DynamicResource EditorTextMuted}" VerticalAlignment="Center"/>
             <Button Grid.Column="1" Content="Limpar" FontSize="11" Padding="8,2"
-                    Click="OnClearOutput" Background="Transparent" Foreground="#B9C4D0"/>
+                    Click="OnClearOutput" Background="Transparent" Foreground="{DynamicResource EditorTextMuted}"/>
             <Button Grid.Column="2" Content="✕" FontSize="11" Padding="8,2" Margin="4,0,0,0"
-                    Click="OnCloseOutput" Background="Transparent" Foreground="#B9C4D0"
+                    Click="OnCloseOutput" Background="Transparent" Foreground="{DynamicResource EditorTextMuted}"
                     ToolTip.Tip="Fecha o painel. Ele reabre sozinho no próximo Play."/>
           </Grid>
         </Border>
@@ -599,7 +599,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <TextBlock Text="{Binding}" FontFamily="Consolas,Menlo,monospace"
-                           FontSize="12" Foreground="#D6DEE8" TextWrapping="Wrap"/>
+                           FontSize="12" Foreground="{DynamicResource EditorText}" TextWrapping="Wrap"/>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
@@ -607,15 +607,57 @@
       </DockPanel>
     </Border>
 
-    <Grid ColumnDefinitions="264,4,*,4,330">
+    <Grid ColumnDefinitions="64,264,4,*,4,330">
+
+      <!-- Rail: troca a lista de arquivos aberta. É a MESMA TabControl de sempre, só que a tira
+           de abas dela fica escondida e quem manda no índice é este ListBox — daí o rail poder
+           ocupar a janela toda em altura, do lado de fora da coluna, sem que nenhuma lista
+           precise saber que ele existe. -->
+      <ListBox Grid.Column="0" Classes="rail" SelectedIndex="{Binding #ProjectTabs.SelectedIndex, Mode=TwoWay}">
+        <ListBoxItem>
+          <StackPanel Spacing="3">
+            <TextBlock Text="&#x25A3;" FontSize="18" HorizontalAlignment="Center"/>
+            <TextBlock Text="Cenas" FontSize="10" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem>
+          <StackPanel Spacing="3">
+            <TextBlock Text="&#x25AD;" FontSize="18" HorizontalAlignment="Center"/>
+            <TextBlock Text="UI" FontSize="10" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem>
+          <StackPanel Spacing="3">
+            <TextBlock Text="&#x25C8;" FontSize="18" HorizontalAlignment="Center"/>
+            <TextBlock Text="Prefabs" FontSize="10" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem>
+          <StackPanel Spacing="3">
+            <TextBlock Text="&#x2039;&#x203A;" FontSize="18" HorizontalAlignment="Center"/>
+            <TextBlock Text="Scripts" FontSize="10" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </ListBoxItem>
+        <ListBoxItem>
+          <StackPanel Spacing="3">
+            <TextBlock Text="&#x25A4;" FontSize="18" HorizontalAlignment="Center"/>
+            <TextBlock Text="Assets" FontSize="10" HorizontalAlignment="Center"/>
+          </StackPanel>
+        </ListBoxItem>
+      </ListBox>
 
       <!-- Coluna do projeto: as cinco listas de arquivo em ABAS, e a hierarquia embaixo.
            Empilhadas, cada uma sobrava ~110px de altura numa coluna de 230 — cabiam três
            linhas por lista e o resto era rolagem. Em aba, a lista aberta usa a coluna toda, e
            a hierarquia (que se consulta o tempo todo enquanto se edita) fica sempre visível. -->
-      <Grid Grid.Column="0" RowDefinitions="2*,4,3*">
+      <Grid Grid.Column="1" RowDefinitions="Auto,2*,4,3*" Background="{DynamicResource EditorPanel}">
 
-        <TabControl Grid.Row="0" Padding="0" Margin="0">
+        <!-- Título do painel tirado da aba selecionada: um lugar só pra mudar quando entrar
+             uma lista nova, e impossível ficar dessincronizado do que está aberto. -->
+        <TextBlock Grid.Row="0" Classes="panelTitle" Margin="12,10,10,6"
+                   Text="{Binding #ProjectTabs.SelectedItem.Header}"/>
+
+        <TabControl Grid.Row="1" x:Name="ProjectTabs" Classes="hiddenStrip" Padding="0" Margin="0">
 
           <TabItem FontSize="11" Header="Cenas">
             <DockPanel>
@@ -735,7 +777,7 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate>
                     <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
-                      <Border Width="32" Height="32" Background="#E7EEF7" CornerRadius="3">
+                      <Border Width="32" Height="32" Background="{DynamicResource EditorPanel}" CornerRadius="3">
                         <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="2"
                                RenderOptions.BitmapInterpolationMode="None"/>
                       </Border>
@@ -750,11 +792,10 @@
 
         </TabControl>
 
-        <GridSplitter Grid.Row="1" Background="#D7DEE8"/>
+        <GridSplitter Grid.Row="2" Background="{DynamicResource EditorBorder}"/>
 
-        <DockPanel Grid.Row="2">
-          <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8,10,4" FontSize="11"
-                     FontWeight="Bold" Opacity="0.5"/>
+        <DockPanel Grid.Row="3">
+          <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Classes="panelTitle" Margin="12,10,10,6"/>
           <TextBox DockPanel.Dock="Top" Margin="8,0,8,6" FontSize="12" Padding="6,3"
                    Watermark="Filtrar por nome…"
                    Text="{Binding EntityFilter}"
@@ -788,22 +829,22 @@
                     <TextBlock Grid.Column="1" Text="{Binding ParentLabel}" FontSize="10"
                                Opacity="0.55" Margin="6,0,0,0" VerticalAlignment="Center"
                                IsVisible="{Binding HasParent}"/>
-                    <Border Grid.Column="2" Background="#4A90D9" CornerRadius="3" Padding="5,2"
+                    <Border Grid.Column="2" Background="{DynamicResource EditorAccent}" CornerRadius="3" Padding="5,2"
                             Margin="6,0,0,0" VerticalAlignment="Center"
                             IsVisible="{Binding HasEventTrigger}">
                       <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
-                                 Foreground="#FFFFFF" FontWeight="SemiBold"/>
+                                 Foreground="{DynamicResource EditorCardAlt}" FontWeight="SemiBold"/>
                     </Border>
                   </Grid>
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
 
-            <GridSplitter Grid.Row="1" Background="#D7DEE8"
+            <GridSplitter Grid.Row="1" Background="{DynamicResource EditorBorder}"
                           IsVisible="{Binding HasEventEntities}"/>
 
             <!-- Painel EVENTOS: lista rápida de entidades com EventTrigger -->
-            <Border Grid.Row="2" Background="#EDF2FA"
+            <Border Grid.Row="2" Background="{DynamicResource EditorCard}"
                     IsVisible="{Binding HasEventEntities}">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="EVENTOS" FontSize="10" FontWeight="Bold"
@@ -815,10 +856,10 @@
                     <DataTemplate>
                       <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"/>
-                        <Border Grid.Column="1" Background="#4A90D9" CornerRadius="3" Padding="4,1"
+                        <Border Grid.Column="1" Background="{DynamicResource EditorAccent}" CornerRadius="3" Padding="4,1"
                                 Margin="4,0,0,0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"
-                                     Foreground="#FFFFFF"/>
+                                     Foreground="{DynamicResource EditorCardAlt}"/>
                         </Border>
                       </Grid>
                     </DataTemplate>
@@ -830,12 +871,30 @@
         </DockPanel>
       </Grid>
 
-      <GridSplitter Grid.Column="1" Background="#D7DEE8"/>
+      <GridSplitter Grid.Column="2" Background="{DynamicResource EditorBorder}"/>
 
       <!-- Cena + paleta de tiles -->
-      <Grid Grid.Column="2" RowDefinitions="*,Auto">
-        <views:SceneCanvas x:Name="Scene" Grid.Row="0" DataContext="{Binding}"/>
-        <Border Grid.Row="1" Background="#E7EEF7" Padding="8,6"
+      <Grid Grid.Column="3" RowDefinitions="Auto,*,Auto">
+
+        <!-- Aba do documento aberto. Só uma: o editor abre uma cena por vez, e a aba existe pra
+             dizer QUAL está aberta e se tem alteração não salva (o "*"), não pra fingir que dá
+             pra alternar entre várias. -->
+        <Border Grid.Row="0" Background="{DynamicResource EditorPanelAlt}" Padding="8,0"
+                BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,0,0,1">
+          <StackPanel Orientation="Horizontal" Height="34" IsVisible="{Binding HasDocument}">
+            <Border Background="{DynamicResource EditorPanel}" CornerRadius="6,6,0,0"
+                    Padding="12,6" Margin="0,4,0,0" VerticalAlignment="Bottom">
+              <!-- Sem botão de fechar: o editor não tem "fechar cena" (abrir outra troca o
+                   documento), e um X que não fecha nada é pior que X nenhum. O "*" do
+                   DocumentName é o aviso de alteração não salva. -->
+              <TextBlock Text="{Binding DocumentName}" FontSize="12"
+                         Foreground="{DynamicResource EditorAccent}" VerticalAlignment="Center"/>
+            </Border>
+          </StackPanel>
+        </Border>
+
+        <views:SceneCanvas x:Name="Scene" Grid.Row="1" DataContext="{Binding}"/>
+        <Border Grid.Row="2" Background="{DynamicResource EditorPanel}" Padding="8,6"
                 IsVisible="{Binding HasTilePalette}">
           <ListBox ItemsSource="{Binding PaletteTiles}"
                    SelectedItem="{Binding SelectedTileBrush}"
@@ -847,7 +906,7 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate>
-                <Border Width="36" Height="36" Background="#E7EEF7" CornerRadius="3"
+                <Border Width="36" Height="36" Background="{DynamicResource EditorPanel}" CornerRadius="3"
                         ToolTip.Tip="{Binding Index}">
                   <Panel>
                     <Image Source="{Binding Image}" Stretch="Uniform" Margin="2"
@@ -862,18 +921,20 @@
         </Border>
       </Grid>
 
-      <GridSplitter Grid.Column="3" Background="#D7DEE8"/>
+      <GridSplitter Grid.Column="4" Background="{DynamicResource EditorBorder}"/>
 
       <!-- Inspector -->
-      <DockPanel Grid.Column="4">
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="10,6,6,6">
-          <TextBlock Text="INSPECTOR" VerticalAlignment="Center" FontSize="11"
-                     FontWeight="Bold" Opacity="0.5"/>
+      <DockPanel Grid.Column="5" Background="{DynamicResource EditorPanel}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="12,10,6,6">
+          <TextBlock Text="INSPECTOR" VerticalAlignment="Center" Classes="panelTitle"/>
           <Button Grid.Column="1" Content="⚙" FontSize="13" Padding="7,2"
                   Background="Transparent" BorderThickness="0"
                   Click="OnOpenProjectSettings"
                   ToolTip.Tip="Configurações do projeto (assets root, projeto do jogo, tela de referência, orientação Android)"/>
         </Grid>
+        <!-- Panel (e não outro filho do DockPanel): os dois ocupam a MESMA área, e quem decide
+             qual aparece é a seleção. Docado, o estado vazio viraria uma coluna à esquerda. -->
+        <Panel>
         <ScrollViewer>
           <StackPanel Margin="10,0,10,10" DataContext="{Binding SelectedEntity}"
                       IsVisible="{Binding Converter={x:Static ObjectConverters.IsNotNull}}">
@@ -886,7 +947,7 @@
             <Button Content="Salvar como Prefab…" Click="OnSaveAsPrefab" FontSize="12"
                     HorizontalAlignment="Stretch" Margin="0,0,0,8"
                     IsVisible="{Binding !HasPrefab}"/>
-            <Border Background="#EDF2FA" CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
+            <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Padding="8,6" Margin="0,0,0,8"
                     IsVisible="{Binding HasPrefab}">
               <StackPanel Spacing="4">
                 <TextBlock Text="{Binding PrefabPath}" FontSize="11" Opacity="0.6"
@@ -905,7 +966,7 @@
             <ItemsControl ItemsSource="{Binding Components}"/>
 
             <!-- Adicionar Componente -->
-            <Border BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Margin="0,8,0,4"/>
+            <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource EditorBorder}" Margin="0,8,0,4"/>
             <Grid ColumnDefinitions="*,Auto,Auto">
               <ComboBox ItemsSource="{Binding AvailableComponentTypes}"
                         SelectedItem="{Binding NewComponentType}" FontSize="12"/>
@@ -919,6 +980,19 @@
             </Grid>
           </StackPanel>
         </ScrollViewer>
+
+        <!-- Estado vazio: sem isto o inspector fica um retângulo em branco e não dá pra saber se
+             falta selecionar alguma coisa ou se o painel quebrou. -->
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6"
+                    Margin="24" IsVisible="{Binding !HasSelectedEntity}">
+          <TextBlock Text="Nenhum objeto selecionado" FontSize="13"
+                     Foreground="{DynamicResource EditorTextMuted}"
+                     HorizontalAlignment="Center"/>
+          <TextBlock Text="Selecione um objeto na hierarquia para ver suas propriedades."
+                     FontSize="11" Foreground="{DynamicResource EditorTextMuted}"
+                     Opacity="0.7" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="240"/>
+        </StackPanel>
+        </Panel>
       </DockPanel>
     </Grid>
   </DockPanel>
