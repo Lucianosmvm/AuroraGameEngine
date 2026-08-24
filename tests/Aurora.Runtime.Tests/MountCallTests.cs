@@ -116,9 +116,12 @@ public class MountCallTests
         var (world, _, horse, ride, wander) = Build(distance: 800f);
 
         ride.Call();
-        Advance(world, 400);           // chega perto do dono, na origem
 
-        var ondeParou = horse.Get<Transform>()!.Position;
+        // AdvanceUntilArrived, não um número fixo de frames: assim que chega, o cavalo refixa o
+        // lar e JÁ COMEÇA a pastar, sorteando alvo dentro do raio. Com "Advance(world, 400)" a
+        // medida caía ora no instante da chegada, ora alguns passos de pasto depois — e aí
+        // "onde parou" já vinha deslocado, deixando o teste falhar em ~40% das execuções.
+        var ondeParou = AdvanceUntilArrived(world, ride, horse);
         Advance(world, 900);           // 15s pastando
 
         float distanciaDoNascimento = Vector2.Distance(horse.Get<Transform>()!.Position, new Vector2(800f, 0f));

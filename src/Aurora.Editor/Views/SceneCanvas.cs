@@ -136,6 +136,10 @@ public sealed class SceneCanvas : Control
         (screen.X - Bounds.Width / 2) / _zoom + _cameraPosition.X,
         (screen.Y - Bounds.Height / 2) / _zoom + _cameraPosition.Y);
 
+    private Point WorldToScreen(Point world) => new(
+        (world.X - _cameraPosition.X) * _zoom + Bounds.Width / 2,
+        (world.Y - _cameraPosition.Y) * _zoom + Bounds.Height / 2);
+
     /// <summary>Tilemaps com Transform, na ordem da hierarquia. Rotação de tilemap é ignorada.</summary>
     private IEnumerable<TilemapView> VisibleTilemaps()
     {
@@ -676,6 +680,36 @@ public sealed class SceneCanvas : Control
 
     // ---- Renderização ----
 
+    /// <summary>Desenha a grade do snap sobre a área visível, só quando o snap está ligado —
+    /// arrastar preso a uma grade invisível parece bug. Some quando a grade fica densa demais
+    /// pra ter sentido na tela (linha a cada 4px vira um borrão que esconde a cena).</summary>
+    private void DrawSnapGrid(DrawingContext context)
+    {
+        if (_viewModel is not { SnapToGrid: true } vm || vm.SnapSize <= 0)
+            return;
+
+        double step = (double)vm.SnapSize;
+        if (step * _zoom < 6)
+            return;
+
+        var topLeft = ScreenToWorld(new Point(0, 0));
+        var bottomRight = ScreenToWorld(new Point(Bounds.Width, Bounds.Height));
+
+        var pen = new Pen(new SolidColorBrush(Colors.White, 0.10), 1);
+
+        for (double x = Math.Floor(topLeft.X / step) * step; x <= bottomRight.X; x += step)
+        {
+            double screenX = WorldToScreen(new Point(x, 0)).X;
+            context.DrawLine(pen, new Point(screenX, 0), new Point(screenX, Bounds.Height));
+        }
+
+        for (double y = Math.Floor(topLeft.Y / step) * step; y <= bottomRight.Y; y += step)
+        {
+            double screenY = WorldToScreen(new Point(0, y)).Y;
+            context.DrawLine(pen, new Point(0, screenY), new Point(Bounds.Width, screenY));
+        }
+    }
+
     public override void Render(DrawingContext context)
     {
         context.FillRectangle(new SolidColorBrush(Color.FromRgb(24, 22, 38)), new Rect(Bounds.Size));
@@ -683,6 +717,8 @@ public sealed class SceneCanvas : Control
 
         if (_viewModel is null)
             return;
+
+        DrawSnapGrid(context);
 
         // Sprites e tilemaps intercalados por camada, como no runtime.
         var drawables = VisibleSprites().Select(s => (s.Layer, Sprite: (SpriteView?)s, Map: (TilemapView?)null))
@@ -1109,8 +1145,8 @@ public sealed class SceneCanvas : Control
             {
                 var world = ScreenToWorld(position);
                 _target.SetPosition(
-                    (float)(world.X + _dragOffset.X),
-                    (float)(world.Y + _dragOffset.Y));
+                    (float)Snap(world.X + _dragOffset.X, e.KeyModifiers),
+                    (float)Snap(world.Y + _dragOffset.Y, e.KeyModifiers));
                 break;
             }
 
@@ -1157,6 +1193,19 @@ public sealed class SceneCanvas : Control
         _drag = DragMode.None;
         _target = null;
         _uiTarget = null;
+    }
+
+    /// <summary>Arredonda uma coordenada de mundo pra grade, quando o snap está ligado.
+    /// Segurar Alt inverte a decisão: com snap ligado ele solta, com snap desligado ele prende —
+    /// alinhar dez plataformas e depois encostar uma no pixel é o mesmo gesto, sem ir no
+    /// checkbox no meio do caminho.</summary>
+    private double Snap(double value, Avalonia.Input.KeyModifiers modifiers)
+    {
+        bool invert = modifiers.HasFlag(Avalonia.Input.KeyModifiers.Alt);
+        bool snapping = (_viewModel?.SnapToGrid ?? false) ^ invert;
+        double step = (double)(_viewModel?.SnapSize ?? 0);
+
+        return snapping && step > 0 ? Math.Round(value / step) * step : value;
     }
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)

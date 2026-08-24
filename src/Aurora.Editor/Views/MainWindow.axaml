@@ -505,6 +505,10 @@
         <MenuItem Header="_Salvar" Click="OnSaveScene" InputGesture="Ctrl+S" IsEnabled="{Binding HasDocument}"/>
         <MenuItem Header="Salvar _Como…" Click="OnSaveSceneAs" InputGesture="Ctrl+Shift+S" IsEnabled="{Binding HasDocument}"/>
         <Separator/>
+        <MenuItem Header="_Validar Projeto" Click="OnValidateProject" InputGesture="Ctrl+Shift+V"
+                  IsEnabled="{Binding CanValidate}"
+                  ToolTip.Tip="Procura referência quebrada em todas as cenas: textura/som/cena que não existe mais, componente que o jogo não conhece. Nada disso é erro de compilação."/>
+        <Separator/>
         <MenuItem Header="_Build Jogo (Release)…" Click="OnBuildGame" IsEnabled="{Binding CanBuild}"/>
         <MenuItem Header="Exportar _Android (APK)…" Click="OnExportAndroid" IsEnabled="{Binding CanExportAndroid}"/>
         <Separator/>
@@ -513,6 +517,13 @@
       <MenuItem Header="_Editar">
         <MenuItem Header="_Desfazer" Click="OnUndo" InputGesture="Ctrl+Z" IsEnabled="{Binding CanUndo}"/>
         <MenuItem Header="_Refazer" Click="OnRedo" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}"/>
+        <Separator/>
+        <MenuItem Header="Du_plicar Entidade" Click="OnDuplicateEntity" InputGesture="Ctrl+D"
+                  IsEnabled="{Binding HasSelectedEntity}"/>
+        <MenuItem Header="_Copiar Entidade" Click="OnCopyEntity" InputGesture="Ctrl+C"
+                  IsEnabled="{Binding HasSelectedEntity}"/>
+        <MenuItem Header="Co_lar Entidade" Click="OnPasteEntity" InputGesture="Ctrl+V"
+                  IsEnabled="{Binding CanPaste}"/>
         <Separator/>
         <MenuItem Header="_Configurações do Projeto…" Click="OnOpenProjectSettings"/>
         <Separator/>
@@ -524,13 +535,23 @@
     <Border DockPanel.Dock="Top" Background="#E7EEF7" Padding="8,5"
             BorderBrush="#D7DEE8" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="▶  Play" Click="OnPlay"
+        <Button Content="▶  Play (F5)" Click="OnPlay"
                 IsEnabled="{Binding CanPlay}"
                 FontSize="13" FontWeight="SemiBold" Padding="14,5"
                 Background="#2E9E44" Foreground="White"/>
         <CheckBox Content="Colisores" IsChecked="{Binding ShowColliders}"
                   VerticalAlignment="Center" FontSize="12"
-                  ToolTip.Tip="Mostra a hitbox de cada Collider no viewport: verde = sólido, laranja = trigger, tracejado = cinemático. Não aparece no jogo."/>
+                  ToolTip.Tip="Mostra a hitbox de cada Collider no viewport: verde = sólido, laranja = trigger, tracejado = cinemático. Use 'Debug no jogo' pra ver isto rodando."/>
+        <CheckBox Content="Debug no jogo" IsChecked="{Binding DebugOverlayOnPlay}"
+                  VerticalAlignment="Center" FontSize="12"
+                  ToolTip.Tip="Passa --debug pro jogo no Play: desenha as hitboxes por cima e escreve FPS/entidades/desenhos no canto."/>
+        <CheckBox Content="Snap" IsChecked="{Binding SnapToGrid}"
+                  VerticalAlignment="Center" FontSize="12"
+                  ToolTip.Tip="Prende o arrasto a uma grade. Segure Alt durante o arrasto pra inverter."/>
+        <NumericUpDown Value="{Binding SnapSize}" Minimum="1" Maximum="512" Increment="1"
+                       FormatString="0" Width="88" FontSize="12" VerticalAlignment="Center"
+                       IsEnabled="{Binding SnapToGrid}"
+                       ToolTip.Tip="Tamanho da grade em pixels de mundo."/>
         <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
                    VerticalAlignment="Center" FontSize="11" Opacity="0.5"
                    IsVisible="{Binding !CanPlay}"/>
@@ -540,6 +561,39 @@
     <Border DockPanel.Dock="Bottom" Background="#E7EEF7" Padding="8,4">
       <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"
                  ToolTip.Tip="{Binding StatusDetail}"/>
+    </Border>
+
+    <!-- Painel de SAÍDA: stdout+stderr do jogo ao vivo. Ancorado embaixo (acima da status
+         bar) e escondido até ter o que mostrar. Sem ele, um Console.WriteLine dentro de um
+         script do usuário não tinha pra onde ir — o processo do jogo roda com CreateNoWindow
+         e o resumo da status bar só aparece quando o jogo MORRE. -->
+    <Border DockPanel.Dock="Bottom" Background="#1E1E1E" Height="180"
+            IsVisible="{Binding IsOutputVisible}"
+            BorderBrush="#D7DEE8" BorderThickness="0,1,0,0">
+      <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#2A2A2A" Padding="8,4">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Text="SAÍDA" FontSize="11" FontWeight="Bold"
+                       Foreground="#B9C4D0" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Limpar" FontSize="11" Padding="8,2"
+                    Click="OnClearOutput" Background="Transparent" Foreground="#B9C4D0"/>
+            <Button Grid.Column="2" Content="✕" FontSize="11" Padding="8,2" Margin="4,0,0,0"
+                    Click="OnCloseOutput" Background="Transparent" Foreground="#B9C4D0"
+                    ToolTip.Tip="Fecha o painel. Ele reabre sozinho no próximo Play."/>
+          </Grid>
+        </Border>
+
+        <ScrollViewer Name="OutputScroll" Padding="8,4">
+          <ItemsControl ItemsSource="{Binding GameOutput}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding}" FontFamily="Consolas,Menlo,monospace"
+                           FontSize="12" Foreground="#D6DEE8" TextWrapping="Wrap"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
     </Border>
 
     <Grid ColumnDefinitions="264,4,*,4,330">
@@ -688,8 +742,13 @@
         <GridSplitter Grid.Row="1" Background="#D7DEE8"/>
 
         <DockPanel Grid.Row="2">
-          <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
+          <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8,10,4" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
+          <TextBox DockPanel.Dock="Top" Margin="8,0,8,6" FontSize="12" Padding="6,3"
+                   Watermark="Filtrar por nome…"
+                   Text="{Binding EntityFilter}"
+                   IsEnabled="{Binding HasDocument}"
+                   ToolTip.Tip="Esconde da lista quem não bate com o texto. Não altera a cena."/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">
             <Button Content="+ Nova" Click="OnCreateEntity" FontSize="12"
                     IsEnabled="{Binding HasDocument}"/>
@@ -701,6 +760,13 @@
           <Grid RowDefinitions="*,4,Auto">
             <ListBox Grid.Row="0" ItemsSource="{Binding Entities}"
                      SelectedItem="{Binding SelectedEntity}">
+              <!-- Filtro por visibilidade do container, não por remover da coleção: assim a
+                   entidade filtrada continua existindo, selecionada e indexada. -->
+              <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                  <Setter Property="IsVisible" Value="{Binding MatchesFilter}"/>
+                </Style>
+              </ListBox.Styles>
               <ListBox.ItemTemplate>
                 <DataTemplate>
                   <Grid ColumnDefinitions="*,Auto">

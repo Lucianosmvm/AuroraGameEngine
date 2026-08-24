@@ -14,6 +14,12 @@ public sealed class EntityViewModel : ViewModelBase
     /// <summary>Tag identifica o gesto de edição (coalescência de undo).</summary>
     public event Action<string>? Edited;
 
+    /// <summary>Nativos que o SceneSerializer sabe ler, incluindo os dois que nao aparecem no
+    /// "+Add Componente" porque tem botao proprio (Transform vem em toda entidade, Tilemap vem
+    /// do "+ Tilemap"). Usada pelo ProjectValidator pra saber o que e componente conhecido.</summary>
+    public static IReadOnlyList<string> NativeComponentTypes =>
+        [.. GameplayComponentTypes, "Transform", "Tilemap"];
+
     private static readonly string[] GameplayComponentTypes =
         ["SpriteRenderer", "Animator", "Collider", "Health", "Projectile", "CameraController",
          "EventTrigger", "ParticleEmitter", "Light2D", "GlobalTint", "NavAgent",
@@ -72,6 +78,16 @@ public sealed class EntityViewModel : ViewModelBase
             Raise();
             Edited?.Invoke($"rename:{Node.GetHashCode()}");
         }
+    }
+
+    private bool _matchesFilter = true;
+
+    /// <summary>Falso quando o filtro da hierarquia (MainViewModel.EntityFilter) esconde esta
+    /// entidade. Some da lista sem sair da cena — a seleção e os índices continuam válidos.</summary>
+    public bool MatchesFilter
+    {
+        get => _matchesFilter;
+        set => Set(ref _matchesFilter, value);
     }
 
     public ComponentViewModel? Component(string type)

@@ -33,6 +33,38 @@ public sealed class MainViewModel : ViewModelBase
     public ObservableCollection<ScriptFileViewModel> Scripts { get; } = [];
     public bool HasEventEntities => EventEntities.Count > 0;
 
+    /// <summary>Teto de linhas guardadas no painel de saída. Um jogo que loga por frame enche
+    /// isso em segundos; sem teto a lista cresce até o editor engasgar.</summary>
+    private const int MaxOutputLines = 800;
+
+    /// <summary>Saída ao vivo do jogo (stdout+stderr) e do próprio editor. Antes disso um
+    /// Console.WriteLine dentro de um script do usuário não aparecia em lugar nenhum: o
+    /// processo era largado com UseShellExecute e o console dele morria junto.</summary>
+    public ObservableCollection<string> GameOutput { get; } = [];
+
+    private bool _isOutputVisible;
+
+    /// <summary>Painel aberto. Abre sozinho no Play e em qualquer coisa que escreva log —
+    /// log que ninguém vê não serve pra nada.</summary>
+    public bool IsOutputVisible
+    {
+        get => _isOutputVisible;
+        set => Set(ref _isOutputVisible, value);
+    }
+
+    /// <summary>Escreve uma linha no painel (e abre o painel). Sempre chamada da thread de UI:
+    /// quem lê o processo do jogo faz await num contexto capturado da UI.</summary>
+    public void Log(string line)
+    {
+        GameOutput.Add(line);
+        while (GameOutput.Count > MaxOutputLines)
+            GameOutput.RemoveAt(0);
+
+        IsOutputVisible = true;
+    }
+
+    public void ClearOutput() => GameOutput.Clear();
+
     /// <summary>Templates prontos oferecidos pelo "+ Novo…" do painel SCRIPTS (ver ScriptTemplates).</summary>
     public IReadOnlyList<ScriptTemplates.Template> ScriptTemplateOptions { get; } = ScriptTemplates.All;
 
@@ -119,6 +151,65 @@ public sealed class MainViewModel : ViewModelBase
         set => Set(ref _showColliders, value);
     }
 
+    private bool _debugOverlayOnPlay;
+
+    /// <summary>Passa <c>--debug</c> pro jogo no Play. Sem isto o jogo rodando é caixa preta:
+    /// dá pra ver a hitbox no editor, mas não a hitbox de verdade, com a posição de verdade,
+    /// depois que os controladores mexeram em tudo.</summary>
+    public bool DebugOverlayOnPlay
+    {
+        get => _debugOverlayOnPlay;
+        set => Set(ref _debugOverlayOnPlay, value);
+    }
+
+    private bool _snapToGrid;
+
+    /// <summary>Prende o arrasto de entidade a uma grade de <see cref="SnapSize"/> px. Alinhar
+    /// plataforma no olho deixa buraco de 1px que o jogador atravessa; com snap, dois objetos
+    /// arrastados pro mesmo lugar encostam de verdade. Alt segurado inverte durante o arrasto.</summary>
+    public bool SnapToGrid
+    {
+        get => _snapToGrid;
+        set => Set(ref _snapToGrid, value);
+    }
+
+    private decimal _snapSize = 16;
+
+    /// <summary>Passo da grade em pixels de mundo. 16 por padrão: é o tile que o
+    /// GameProjectScaffolder usa no Tilemap novo, então cenário e objeto caem na mesma grade.
+    /// decimal, não double: é o tipo de NumericUpDown.Value, e binding com tipo exato não
+    /// depende de conversão implícita (que falharia calada, deixando o campo vazio).</summary>
+    public decimal SnapSize
+    {
+        get => _snapSize;
+        set => Set(ref _snapSize, Math.Clamp(value, 1m, 512m));
+    }
+
+    private string _entityFilter = "";
+
+    /// <summary>Filtro da hierarquia por nome (case-insensitive). Cena com dezenas de objetos
+    /// vira rolagem sem isto.</summary>
+    public string EntityFilter
+    {
+        get => _entityFilter;
+        set
+        {
+            if (Set(ref _entityFilter, value))
+                ApplyEntityFilter();
+        }
+    }
+
+    /// <summary>Marca cada entidade como visível ou não conforme <see cref="EntityFilter"/>.
+    /// Filtra por visibilidade em vez de remover da coleção: remover perderia a seleção e
+    /// bagunçaria o índice que Excluir usa pra escolher quem fica selecionado depois.</summary>
+    private void ApplyEntityFilter()
+    {
+        string filter = _entityFilter.Trim();
+        foreach (var entity in Entities)
+            entity.MatchesFilter = filter.Length == 0
+                || entity.Name.Contains(filter, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Resolução de referência da UI vinda do aurora.project.json (padrão 1280x720).
     /// O SceneCanvas desenha a moldura do jogo com esse tamanho e resolve os Anchor contra ela,
     /// pro preview bater com o jogo em vez de acompanhar o tamanho do painel do editor. Precisa
@@ -199,10 +290,16 @@ public sealed class MainViewModel : ViewModelBase
         get => _selectedEntity;
         set
         {
-            if (Set(ref _selectedEntity, value))
-                RebuildTilePalette();
+            if (!Set(ref _selectedEntity, value))
+                return;
+
+            RebuildTilePalette();
+            Raise(nameof(HasSelectedEntity));
         }
     }
+
+    /// <summary>Habilita Duplicar/Copiar no menu Editar.</summary>
+    public bool HasSelectedEntity => _selectedEntity is not null;
 
     public bool IsDirty
     {
@@ -382,11 +479,26 @@ public sealed class MainViewModel : ViewModelBase
             psi.ArgumentList.Add("--scene");
             psi.ArgumentList.Add(scenePath);
 
+            if (DebugOverlayOnPlay)
+            {
+                psi.ArgumentList.Add("--debug");
+
+                // O runtime não lê aurora.project.json e não tem fonte embutida — quem sabe qual
+                // TTF o projeto usa é o editor, então o caminho vai junto. Sem isso o overlay
+                // desenha as hitboxes e fica sem o bloco de números.
+                psi.ArgumentList.Add("--debug-font");
+                psi.ArgumentList.Add(_settings?.EffectiveUiFont ?? "fonts/DejaVuSans.ttf");
+            }
+
             var process = Process.Start(psi)
                 ?? throw new InvalidOperationException("Não consegui iniciar o processo do jogo.");
 
             Status = $"Jogo iniciado — cena: {Path.GetFileName(scenePath)}";
             StatusDetail = null;
+
+            // Painel zerado a cada Play: misturar a saída de duas execuções é pior que não ter.
+            ClearOutput();
+            Log($"--- Play: {Path.GetFileName(scenePath)} ---");
 
             // Sem await: o editor continua usável enquanto o jogo roda. Como Play() está na
             // thread de UI, as continuações de WatchGameAsync voltam pra ela pelo
@@ -408,18 +520,23 @@ public sealed class MainViewModel : ViewModelBase
     {
         using (process)
         {
+            var stdoutLines = new List<string>();
+            var stderrLines = new List<string>();
             string stdout, stderr;
+
             try
             {
-                // Os dois lidos em paralelo: ler um até o fim antes do outro trava se o
-                // processo encher o buffer do que ficou esperando.
-                var stdoutTask = process.StandardOutput.ReadToEndAsync();
-                var stderrTask = process.StandardError.ReadToEndAsync();
-                await Task.WhenAll(stdoutTask, stderrTask);
+                // Linha a linha (não ReadToEnd) pra saída aparecer no painel ENQUANTO o jogo
+                // roda — é o que faz Console.WriteLine servir de debug. Os dois streams lidos
+                // em paralelo: consumir um até o fim antes do outro trava se o processo encher
+                // o buffer do que ficou esperando.
+                await Task.WhenAll(
+                    PumpAsync(process.StandardOutput, stdoutLines, isError: false),
+                    PumpAsync(process.StandardError, stderrLines, isError: true));
                 await process.WaitForExitAsync();
 
-                stdout = stdoutTask.Result;
-                stderr = stderrTask.Result;
+                stdout = string.Join("\n", stdoutLines);
+                stderr = string.Join("\n", stderrLines);
             }
             catch (Exception ex)
             {
@@ -432,6 +549,7 @@ public sealed class MainViewModel : ViewModelBase
             {
                 Status = $"Jogo encerrado — cena: {sceneName}";
                 StatusDetail = null;
+                Log("--- jogo encerrou normalmente ---");
                 return;
             }
 
@@ -441,9 +559,23 @@ public sealed class MainViewModel : ViewModelBase
                 ? $"0x{process.ExitCode:X8}"
                 : process.ExitCode.ToString();
 
-            Status = $"Jogo fechou sozinho (código {code}): "
-                + GameScriptDiscovery.FirstCrashLine(stdout, stderr);
+            string reason = GameScriptDiscovery.FirstCrashLine(stdout, stderr);
+            Status = $"Jogo fechou sozinho (código {code}): {reason}";
             StatusDetail = GameScriptDiscovery.CombineLog(stdout, stderr);
+            Log($"--- jogo fechou sozinho (código {code}): {reason} ---");
+        }
+    }
+
+    /// <summary>Drena um stream do jogo linha a linha: cada linha vai pro painel na hora e
+    /// fica guardada pro resumo de crash no fim. Como WatchGameAsync começou na thread de UI,
+    /// as continuações voltam pra ela — Log toca ObservableCollection da thread certa.</summary>
+    private async Task PumpAsync(StreamReader reader, List<string> sink, bool isError)
+    {
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            sink.Add(line);
+            // stderr marcado: numa lista só, saber de onde veio a linha é metade do diagnóstico.
+            Log(isError ? "! " + line : line);
         }
     }
 
@@ -683,6 +815,8 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(CanPlay));
         Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
+        Raise(nameof(CanPaste));
+        Raise(nameof(HasSelectedEntity));
         RaiseUndoState();
         ReloadAssets();
         ReloadSceneFiles();
@@ -716,6 +850,8 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(CanPlay));
         Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
+        Raise(nameof(CanPaste));
+        Raise(nameof(HasSelectedEntity));
         RaiseUndoState();
         ReloadAssets();
         ReloadSceneFiles();
@@ -788,6 +924,7 @@ public sealed class MainViewModel : ViewModelBase
             entity.Edited += OnEdited;
             Entities.Add(entity);
         }
+        ApplyEntityFilter();
         RebuildEventEntities();
     }
 
@@ -1623,6 +1760,160 @@ public sealed class MainViewModel : ViewModelBase
         SelectedEntity = entity;
         OnEdited($"create:{node.GetHashCode()}");
         Status = $"{name} instanciada de {prefab.Name}.";
+    }
+
+    // ---- Validar projeto ----
+
+    public bool CanValidate => _document is not null;
+
+    /// <summary>
+    /// Varre todas as cenas do projeto atrás de referência quebrada e joga o resultado no
+    /// painel de saída. É o passo que faltava entre "compila" e "roda": nada aqui é erro de
+    /// compilação — asset faltando fecha o jogo sozinho, componente desconhecido some calado.
+    /// </summary>
+    public void ValidateProject()
+    {
+        if (_document is null)
+        {
+            Status = "Abra uma cena antes de validar.";
+            return;
+        }
+
+        ReloadSceneFiles();
+        ReloadUiScreens();
+
+        // Cenas de gameplay E telas de UI: as duas listas vêm da mesma pasta de assets e as
+        // duas podem apontar pra textura que não existe mais.
+        var files = SceneFiles.Select(f => f.FullPath)
+            .Concat(UiScreens.Select(f => f.FullPath))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        // Nativos + os [SceneScript] descobertos. Sem os descobertos, todo componente custom
+        // do usuário viraria falso positivo — e uma lista cheia de erro falso não se lê.
+        var known = EntityViewModel.NativeComponentTypes
+            .Concat(CustomScripts.Select(s => s.Name))
+            .ToList();
+
+        var problems = ProjectValidator.Validate(
+            _document.AssetsRoot, files, known, _settings?.EffectiveUiFont);
+
+        ClearOutput();
+        Log($"--- Validação: {_document.AssetsRoot} ---");
+
+        if (problems.Count == 0)
+        {
+            Log("Nenhum problema encontrado.");
+            Status = "Validação: nenhum problema encontrado.";
+            StatusDetail = null;
+            return;
+        }
+
+        foreach (var problem in problems)
+            Log($"! {problem.Where}: {problem.Message}");
+
+        Status = $"Validação: {problems.Count} problema(s) — veja o painel de saída.";
+        StatusDetail = string.Join(Environment.NewLine,
+            problems.Select(problem => $"{problem.Where}: {problem.Message}"));
+    }
+
+    // ---- Duplicar / copiar / colar ----
+
+    private string? _entityClipboard;
+
+    /// <summary>Tem entidade copiada esperando um Ctrl+V (a cópia atravessa troca de cena —
+    /// é assim que se leva um objeto montado de uma fase pra outra).</summary>
+    public bool CanPaste => _entityClipboard is not null && _document is not null;
+
+    /// <summary>Nome livre a partir de um nome base, ignorando o número que ele já tenha no
+    /// fim: duplicar "Plataforma3" dá "Plataforma4", não "Plataforma31".</summary>
+    private string UniqueEntityName(string desired)
+    {
+        var taken = Entities.Select(e => e.Name).ToHashSet(StringComparer.Ordinal);
+        if (!taken.Contains(desired))
+            return desired;
+
+        string root = desired.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+        if (root.Length == 0)
+            root = desired; // nome só de dígitos: trata o todo como raiz
+
+        // Continua a contagem do número que o original já tinha, em vez de recomeçar do 1:
+        // duplicar "Plataforma3" com "Plataforma1" livre daria "Plataforma1", que parece
+        // outro objeto.
+        int start = 1;
+        if (root.Length < desired.Length && int.TryParse(desired[root.Length..], out int current))
+            start = current + 1;
+
+        for (int number = start; ; number++)
+        {
+            string candidate = root + number;
+            if (!taken.Contains(candidate))
+                return candidate;
+        }
+    }
+
+    /// <summary>Insere um nó de entidade já pronto (cópia/colagem) na cena, com nome livre,
+    /// selecionado e num passo de undo próprio.</summary>
+    private void InsertEntityNode(System.Text.Json.Nodes.JsonObject node, string editTag)
+    {
+        if (_document is null)
+            return;
+
+        node["Name"] = UniqueEntityName(node["Name"]?.GetValue<string>() ?? "Entidade");
+
+        _document.Objects.Add(node);
+
+        var entity = new EntityViewModel(node, this);
+        entity.Edited += OnEdited;
+        Entities.Add(entity);
+
+        // Diferente de CreateEntity: uma entidade colada PODE trazer EventTrigger junto, e sem
+        // isto ela não apareceria na aba de eventos até recarregar a cena.
+        RebuildEventEntities();
+
+        SelectedEntity = entity;
+        OnEdited($"{editTag}:{node.GetHashCode()}");
+    }
+
+    /// <summary>Duplica a entidade selecionada na mesma posição e passa a seleção pra cópia —
+    /// duplicar e arrastar é o gesto, então quem sai selecionado tem que ser o novo.</summary>
+    public void DuplicateSelectedEntity()
+    {
+        if (_document is null || SelectedEntity is null)
+            return;
+
+        var clone = SelectedEntity.Node.DeepClone().AsObject();
+        InsertEntityNode(clone, "duplicate");
+        Status = $"Duplicado: {SelectedEntity.Name} (mesma posição — arraste pra separar).";
+    }
+
+    public void CopySelectedEntity()
+    {
+        if (SelectedEntity is null)
+            return;
+
+        _entityClipboard = SelectedEntity.Node.ToJsonString();
+        Raise(nameof(CanPaste));
+        Status = $"Copiado: {SelectedEntity.Name}.";
+    }
+
+    public void PasteEntity()
+    {
+        if (_document is null || _entityClipboard is null)
+            return;
+
+        System.Text.Json.Nodes.JsonObject node;
+        try
+        {
+            node = System.Text.Json.Nodes.JsonNode.Parse(_entityClipboard)!.AsObject();
+        }
+        catch (Exception ex)
+        {
+            Status = $"Não consegui colar: {ex.Message}";
+            return;
+        }
+
+        InsertEntityNode(node, "paste");
+        Status = $"Colado: {SelectedEntity!.Name}.";
     }
 
     public void DeleteSelectedEntity()

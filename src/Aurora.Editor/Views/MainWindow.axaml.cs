@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private MainViewModel ViewModel => (MainViewModel)DataContext!;
 
     private ViewModels.AssetViewModel? _dragCandidate;
+    private System.Collections.Specialized.INotifyCollectionChanged? _outputSource;
     private Avalonia.Point _dragStart;
 
     public MainWindow()
@@ -22,8 +23,19 @@ public partial class MainWindow : Window
         // quem precisa dele é o campo de textura lá no inspector — a VM guarda só o gancho.
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is MainViewModel vm)
-                vm.PickTextureFromDisk = PickTextureAsync;
+            if (DataContext is not MainViewModel vm)
+                return;
+
+            vm.PickTextureFromDisk = PickTextureAsync;
+
+            // Autoscroll do painel de saída. Assinado AQUI e não no corpo do construtor: lá o
+            // DataContext ainda é null (quem o define é o App, depois de construir a janela),
+            // e ler ViewModel derrubava o editor no start.
+            if (_outputSource is not null)
+                _outputSource.CollectionChanged -= OnGameOutputChanged;
+
+            _outputSource = vm.GameOutput;
+            _outputSource.CollectionChanged += OnGameOutputChanged;
         };
 
         // Arrastar asset para o canvas: só vira drag depois de 8px de movimento,
@@ -113,6 +125,34 @@ public partial class MainWindow : Window
                     || e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.Z))
             {
                 ViewModel.Redo();
+                e.Handled = true;
+            }
+            // Ctrl+D / Ctrl+C / Ctrl+V também só fora de campo de texto: dentro de um TextBox
+            // o Ctrl+C tem que continuar copiando o texto selecionado, não a entidade.
+            else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.D && e.Source is not TextBox)
+            {
+                ViewModel.DuplicateSelectedEntity();
+                e.Handled = true;
+            }
+            else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.C && e.Source is not TextBox)
+            {
+                ViewModel.CopySelectedEntity();
+                e.Handled = true;
+            }
+            else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.V && e.Source is not TextBox)
+            {
+                ViewModel.PasteEntity();
+                e.Handled = true;
+            }
+            else if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.V
+                     && e.Source is not TextBox)
+            {
+                ViewModel.ValidateProject();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F5 && e.Source is not TextBox && ViewModel.CanPlay)
+            {
+                ViewModel.Play();
                 e.Handled = true;
             }
         };
@@ -337,6 +377,25 @@ public partial class MainWindow : Window
     private DatabaseWindow? _itemDatabase;
 
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
+
+    private void OnDuplicateEntity(object? sender, RoutedEventArgs e) => ViewModel.DuplicateSelectedEntity();
+
+    private void OnCopyEntity(object? sender, RoutedEventArgs e) => ViewModel.CopySelectedEntity();
+
+    private void OnPasteEntity(object? sender, RoutedEventArgs e) => ViewModel.PasteEntity();
+
+    /// <summary>Rola o painel de saída pro fim a cada linha nova — sem isso a linha entra fora
+    /// da vista e o painel parece congelado justo quando o jogo está falando. Em prioridade
+    /// Background pra rolar depois do item ter sido criado no layout.</summary>
+    private void OnGameOutputChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        => Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => OutputScroll.ScrollToEnd(), Avalonia.Threading.DispatcherPriority.Background);
+
+    private void OnValidateProject(object? sender, RoutedEventArgs e) => ViewModel.ValidateProject();
+
+    private void OnClearOutput(object? sender, RoutedEventArgs e) => ViewModel.ClearOutput();
+
+    private void OnCloseOutput(object? sender, RoutedEventArgs e) => ViewModel.IsOutputVisible = false;
 
     private async Task PickAndBuildAsync()
     {

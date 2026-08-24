@@ -122,14 +122,37 @@ public abstract class Game : IDisposable
     /// </summary>
     public void ParseArgs(string[] args)
     {
-        for (int i = 0; i < args.Length - 1; i++)
+        // Percorre TODOS os argumentos (não args.Length - 1): "--debug" não tem valor, e com o
+        // laço parando um antes ele era ignorado quando vinha por último.
+        for (int i = 0; i < args.Length; i++)
         {
-            if (args[i] == "--scene")
+            bool hasValue = i + 1 < args.Length;
+
+            if (args[i] == "--debug")
+                DebugOverlayEnabled = true;
+            else if (args[i] == "--scene" && hasValue)
                 BootScene = args[i + 1];
-            else if (args[i] == "--describe-scripts")
+            else if (args[i] == "--describe-scripts" && hasValue)
                 _describeScriptsOutputPath = args[i + 1];
+            else if (args[i] == "--debug-font" && hasValue)
+                _debugFontPath = args[i + 1];
         }
     }
+
+    private string? _debugFontPath;
+
+    /// <summary>Overlay de diagnóstico ligado (<c>--debug</c>): hitbox de cada Collider por cima
+    /// da cena e FPS/contagens no canto. Também dá pra ligar em código, antes do Run.</summary>
+    public bool DebugOverlayEnabled { get; set; }
+
+    /// <summary>Estado do overlay. Público pra dar pra ajustar (espessura da linha) ou desenhar
+    /// coisa extra a partir do jogo.</summary>
+    public DebugOverlay Debug { get; } = new();
+
+    /// <summary>Fonte do texto do overlay. Sem ela o overlay ainda desenha as hitboxes — só o
+    /// bloco de números fica de fora. Carregada de <c>--debug-font</c>, que o editor preenche
+    /// com o uiFont do projeto: o runtime não tem fonte embutida nem sabe do aurora.project.json.</summary>
+    private Font? _debugFont;
 
     /// <summary>Origem dos assets. Defina antes de Run (Android: AndroidAssetSource). Null = pasta "Assets".</summary>
     public IAssetSource? AssetSource { get; set; }
@@ -278,6 +301,7 @@ public abstract class Game : IDisposable
         ApplyViewport(View.FramebufferSize);
 
         AutoRegisterScripts();
+        LoadDebugFont();
         OnLoad();
     }
 
@@ -294,10 +318,31 @@ public abstract class Game : IDisposable
         Scenes.RegisterScripts(GetType().Assembly);
     }
 
+    /// <summary>Carrega a fonte do overlay, se pedida. Falha aqui NÃO derruba o jogo: um
+    /// caminho de fonte errado no --debug-font não pode virar crash de um jogo que rodaria bem
+    /// sem a flag.</summary>
+    private void LoadDebugFont()
+    {
+        if (!DebugOverlayEnabled || _debugFontPath is null)
+            return;
+
+        try
+        {
+            _debugFont = Assets.LoadFont(_debugFontPath, 16f);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] --debug-font '{_debugFontPath}' não carregou ({ex.Message}) — overlay sem texto.");
+        }
+    }
+
     private void HandleUpdate(double deltaTime)
     {
         float dt = MathF.Min((float)deltaTime, MaxDeltaTime);
         Input.BeginFrame();
+
+        if (DebugOverlayEnabled)
+            Debug.Tick(dt);
 
         // World.Update já isola exceções por behavior; esse try/catch é a rede de segurança
         // pro resto (OnUpdate do seu Game, SceneManager, Events, UI) — pior caso, um frame de
@@ -371,6 +416,11 @@ public abstract class Game : IDisposable
         {
             World.Render(SpriteBatch, Camera);
             OnRender((float)deltaTime);
+
+            // Depois do OnRender: hitbox tem que ficar POR CIMA do que o jogo desenhou, senão
+            // o sprite tapa justamente o que se quer conferir.
+            if (DebugOverlayEnabled)
+                Debug.DrawColliders(SpriteBatch, World);
         }
         catch (Exception ex)
         {
@@ -388,6 +438,10 @@ public abstract class Game : IDisposable
             World.DrawGlobalTint(SpriteBatch, ScreenSize.X, ScreenSize.Y);
             OnRenderUI((float)deltaTime);
             SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
+
+            // Por último: os números ficam legíveis mesmo com HUD e fade de troca de cena.
+            if (DebugOverlayEnabled && _debugFont is not null)
+                Debug.DrawStats(SpriteBatch, _debugFont, World, SceneManager.CurrentScene ?? "(nenhuma)");
         }
         catch (Exception ex)
         {
