@@ -67,6 +67,10 @@ public abstract class Game : IDisposable
     public InventoryManager Inventory { get; } = new();
     public QuestManager Quests { get; } = new();
 
+    /// <summary>O que já aconteceu com as entidades marcadas com Persistent, por cena (inimigo
+    /// morto, baú aberto). Vale na mesma partida e atravessa o save.</summary>
+    public Saves.SceneStateStore SceneState { get; } = new();
+
     /// <summary>Catálogo de itens (nome, ícone, preço, efeito ao usar). Carregado sozinho de
     /// <c>Assets/database/items.json</c> no boot, se o arquivo existir — jogo sem itens não
     /// precisa criar nada.</summary>
@@ -238,7 +242,7 @@ public abstract class Game : IDisposable
         SceneManager.PlayerEntityName = Events.PlayerEntityName;
         Events.QuitRequested += Exit;
 
-        Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests);
+        Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests, SceneState);
         Events.Save = Save;
 
         // Só anota o pedido: executar aqui trocaria a cena (World.Clear) no meio da varredura
@@ -250,6 +254,7 @@ public abstract class Game : IDisposable
         // em Game.OnUpdate (World já chega de graça em todo Behavior, isso só estende o mesmo canal).
         World.Input = Input;
         World.State = State;
+        World.SceneState = SceneState;
         World.Inventory = Inventory;
         World.Quests = Quests;
         World.Dialogue = Dialogue;

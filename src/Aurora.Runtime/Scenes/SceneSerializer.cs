@@ -868,6 +868,11 @@ public sealed class SceneSerializer
                 if (!t.Enabled) json.WriteBoolean("Enabled", false);
                 if (t.Color.ToHex() != "#000028FF") json.WriteString("Color", t.Color.ToHex());
             });
+
+        // Marcador sem campo nenhum: o que importa é estar presente. Ver Persistent.
+        Register<Persistent>("Persistent",
+            static (_, _) => new Persistent(),
+            static (_, _, _) => { });
     }
 
     private void RegisterNetworkIdentity()

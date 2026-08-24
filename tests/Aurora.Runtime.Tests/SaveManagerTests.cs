@@ -33,6 +33,7 @@ public class SaveManagerTests : IDisposable
     private readonly GameState _state = new();
     private readonly InventoryManager _inventory = new();
     private readonly QuestManager _quests = new();
+    private readonly Saves.SceneStateStore _sceneState = new();
     private readonly SceneManager _scenes;
     private readonly SaveManager _save;
 
@@ -45,9 +46,10 @@ public class SaveManagerTests : IDisposable
         // GL null: nada aqui carrega textura, e LoadText só toca o IAssetSource (mesmo padrão
         // de SceneManagerTests).
         var assets = new AssetManager(null!, new FileAssetSource(_assetsRoot));
+        _world.SceneState = _sceneState;
         _scenes = new SceneManager(_world, new SceneSerializer(), new EventSystem(_world, _state),
             new DialogueSystem(), assets);
-        _save = new SaveManager(_state, _scenes, _world, _gameName, _inventory, _quests);
+        _save = new SaveManager(_state, _scenes, _world, _gameName, _inventory, _quests, _sceneState);
     }
 
     private void WriteScene(string name, float playerX, float playerY)
@@ -302,6 +304,93 @@ public class SaveManagerTests : IDisposable
         Assert.Equal(1, _inventory.GetCount("chave_mestra"));
         Assert.Equal(3, _quests.GetStage("resgate"));
         Assert.True(_state.GetSwitch("ponte_baixada"));
+    }
+
+    // ---- Estado por entidade ----
+
+    /// <summary>Cena com um chefe marcado como Persistent.</summary>
+    private void WriteSceneWithBoss(string name) => File.WriteAllText(
+        Path.Combine(_assetsRoot, "scenes", name), """
+        {
+          "Scene": "covil",
+          "Objects": [
+            { "Name": "Player", "Components": [{ "Type": "Transform", "X": 0, "Y": 0 }] },
+            {
+              "Name": "Chefe",
+              "Components": [
+                { "Type": "Transform", "X": 100, "Y": 0 },
+                { "Type": "Persistent" }
+              ]
+            }
+          ]
+        }
+        """);
+
+    [Fact]
+    public void EnemyKilledBeforeSaving_IsStillDeadAfterLoading()
+    {
+        WriteSceneWithBoss("covil.json");
+        _scenes.Load("scenes/covil.json");
+
+        _world.TryFind("Chefe", out var chefe);
+        _world.Destroy(chefe);
+        _world.Update(1f / 60f);
+
+        _save.Save();
+
+        // Simula reabrir o jogo: registro zerado, cena montada do arquivo.
+        _sceneState.Clear();
+        _scenes.Load("scenes/covil.json");
+        Assert.True(_world.TryFind("Chefe", out _), "Pré-condição: do arquivo, o chefe volta.");
+
+        _save.Load();
+
+        Assert.False(_world.TryFind("Chefe", out _), "O chefe ressuscitou ao carregar o save.");
+    }
+
+    [Fact]
+    public void LoadingAnotherSlot_DoesNotInheritKillsFromThePreviousOne()
+    {
+        WriteSceneWithBoss("covil.json");
+
+        // Slot 0: chefe vivo.
+        _scenes.Load("scenes/covil.json");
+        _save.Save(slot: 0);
+
+        // Slot 1: chefe morto.
+        _world.TryFind("Chefe", out var chefe);
+        _world.Destroy(chefe);
+        _world.Update(1f / 60f);
+        _save.Save(slot: 1);
+
+        _save.Load(slot: 1);
+        Assert.False(_world.TryFind("Chefe", out _));
+
+        _save.Load(slot: 0);
+
+        Assert.True(_world.TryFind("Chefe", out _),
+            "Voltar pro save antigo trouxe de volta a morte do outro save.");
+    }
+
+    [Fact]
+    public void OldSaveWithoutSceneState_LoadsWithEverythingAlive()
+    {
+        WriteSceneWithBoss("covil.json");
+        _scenes.Load("scenes/covil.json");
+        _save.Save();
+
+        File.WriteAllText(Path.Combine(_save.SaveDirectory, "slot_0.json"), """
+            {
+              "Slot": 0,
+              "Scene": "scenes/covil.json",
+              "SavedAt": "2024-01-01T00:00:00Z",
+              "Variables": {},
+              "Switches": {}
+            }
+            """);
+
+        Assert.True(_save.Load());
+        Assert.True(_world.TryFind("Chefe", out _));
     }
 
     // ---- Slots ----

@@ -25,7 +25,8 @@ public sealed class EntityViewModel : ViewModelBase
          "EventTrigger", "ParticleEmitter", "Light2D", "GlobalTint", "NavAgent",
          "TopDownController", "PlatformerController", "VehicleController",
          "AttackSpawner", "ContactDamage", "FollowTarget", "Lifetime",
-         "AutoMotion", "Spawner", "PatrolPath", "Weather", "Rideable", "Wander"];
+         "AutoMotion", "Spawner", "PatrolPath", "Weather", "Rideable", "Wander",
+         "Persistent"];
 
     // UiText/UiImage/UiBar/UiPanel/UiButton só existem no sistema UIManager (telas de HUD/menu,
     // coordenadas de pixel de tela, sem câmera) — não são IComponent do SceneSerializer normal.

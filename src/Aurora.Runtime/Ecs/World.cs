@@ -32,6 +32,11 @@ public sealed class World
     public DialogueSystem? Dialogue { get; internal set; }
     public UIManager? UI { get; internal set; }
     public AudioManager? Audio { get; internal set; }
+
+    /// <summary>Registro do que já aconteceu com as entidades marcadas com Persistent. Injetado
+    /// pelo Game, igual Input/State/Audio. Null num World montado à mão (teste, ferramenta):
+    /// nesse caso nada é lembrado, que é o comportamento de antes.</summary>
+    public Saves.SceneStateStore? SceneState { get; internal set; }
     public SaveManager? Save { get; internal set; }
 
     /// <summary>Carregador de assets do jogo — <c>World.Assets?.LoadTexture("sprites/slash.png")</c>.
@@ -348,6 +353,12 @@ public sealed class World
     /// <summary>Destruição durante Update é adiada para o fim do frame.</summary>
     public void Destroy(int id)
     {
+        // Registrado AQUI, não no RemoveNow: a fila de destruição adiada é drenada com a
+        // entidade ainda viva, mas Destroy é o ponto único por onde toda morte passa, e é aqui
+        // que a entidade certamente ainda tem nome e componentes pra consultar.
+        if (SceneState is not null && _alive.Contains(id))
+            SceneState.RecordDestroyed(new Entity(id, this));
+
         if (_updating)
         {
             _destroyQueue.Add(id);

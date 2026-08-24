@@ -89,6 +89,52 @@ public class LoadActionTests
     }
 
     [Fact]
+    public void NewGame_WipesEverythingAPlaythroughAccumulates()
+    {
+        // Sem isto, "Novo Jogo" depois de um "Continuar" começa com o ouro, os switches e os
+        // chefes já mortos da partida anterior.
+        var (world, events, state) = Build();
+        var inventory = new InventoryManager();
+        var quests = new QuestManager();
+        var store = new Saves.SceneStateStore { CurrentScene = "scenes/covil.json" };
+
+        events.Inventory = inventory;
+        events.Quests = quests;
+        world.SceneState = store;
+
+        state.SetVariable("Gold", 500);
+        state.SetSwitch("ponte", true);
+        inventory.Add("pocao", 3);
+        quests.SetStage("resgate", 2);
+
+        var chefe = world.CreateEntity("Chefe");
+        chefe.Add(new Transform());
+        chefe.Add(new Persistent());
+        world.Destroy(chefe);
+        Assert.True(store.HasAnything, "Pré-condição: a morte foi registrada.");
+
+        Fire(world, events, new EventAction { Type = "NewGame" });
+
+        Assert.Equal(0, state.GetVariable("Gold"), 0.001);
+        Assert.False(state.GetSwitch("ponte"));
+        Assert.Equal(0, inventory.GetCount("pocao"));
+        Assert.Equal(0, quests.GetStage("resgate"));
+        Assert.False(store.HasAnything, "O chefe morto sobreviveu ao Novo Jogo.");
+    }
+
+    [Fact]
+    public void NewGame_WithoutInventoryOrQuests_DoesNotCrash()
+    {
+        // Jogo montado sem esses managers (plataforma simples) não pode quebrar no Novo Jogo.
+        var (world, events, state) = Build();
+        state.SetVariable("Pontos", 10);
+
+        Fire(world, events, new EventAction { Type = "NewGame" });
+
+        Assert.Equal(0, state.GetVariable("Pontos"), 0.001);
+    }
+
+    [Fact]
     public void WithoutAnySubscriber_LoadIsAQuietNoOp()
     {
         var (world, events, _) = Build();

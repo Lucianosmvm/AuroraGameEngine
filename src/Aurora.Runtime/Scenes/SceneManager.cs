@@ -139,6 +139,16 @@ public sealed class SceneManager
             _serializer.Load(_assets.LoadText(path),
                 new SceneContext { World = _world, Assets = _assets });
             CurrentScene = path;
+
+            // Reaplica o que ja aconteceu nesta cena (inimigo morto, bau aberto) ANTES de
+            // qualquer update: um frame sequer com o chefe de volta em pe ja apareceria na tela.
+            // A cena atual tambem e anotada aqui porque o World, que registra as mortes, nao
+            // conhece o SceneManager.
+            if (_world.SceneState is { } sceneState)
+            {
+                sceneState.CurrentScene = path;
+                sceneState.ApplyTo(path, _world);
+            }
         }
         catch (Exception ex)
         {

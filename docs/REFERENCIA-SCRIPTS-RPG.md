@@ -625,7 +625,7 @@ Actions   List<EventAction>
 ```
 
 Ações suportadas (`Type` de cada `EventAction`): `SetVariable`, `SetSwitch`, `Teleport`,
-`Destroy`, `Damage`, `Heal`, `ShowMessage`, `Save`, `Load`, `AddItem`, `RemoveItem`, `SetQuestStage`,
+`Destroy`, `Damage`, `Heal`, `ShowMessage`, `Save`, `Load`, `NewGame`, `AddItem`, `RemoveItem`, `SetQuestStage`,
 `AdvanceQuest`, `ShowUI`, `HideUI`, `ToggleUI`, `ChangeScene`, `SetPause`, `Quit`,
 `PlaySound`, `PlayMusic`, `StopMusic`, `PlayAnimation`, `StopAnimation`, `SetActive`,
 `ShowChoice`, `Wait`.
@@ -873,6 +873,8 @@ UiText
 | Achar todas de um tipo | `World?.Query<T>()` |
 | Salvar jogo | `World?.Save?.Save(slot)` / ação `Save` |
 | Carregar jogo | `World?.Save?.Load(slot)` / ação `Load` (Valor negativo = autosave) |
+| Recomeçar do zero | ação `NewGame` (zera estado, inventário, quests e o que já aconteceu nas cenas) |
+| Lembrar inimigo morto / baú aberto | componente `Persistent` na entidade |
 | Pausar | `World.Paused = true` / ação `SetPause` |
 | Tocar efeito | `World?.Audio?.Play("audio/x.wav")` / ação `PlaySound` |
 | Tocar música | `World?.Audio?.PlayMusic("audio/tema.ogg")` / ação `PlayMusic` |

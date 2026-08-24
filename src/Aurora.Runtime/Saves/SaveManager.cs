@@ -25,6 +25,7 @@ public sealed class SaveManager
     private readonly World _world;
     private readonly InventoryManager? _inventory;
     private readonly QuestManager? _quests;
+    private readonly SceneStateStore? _sceneState;
     private readonly string _saveDir;
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
@@ -37,13 +38,14 @@ public sealed class SaveManager
     public string PlayerEntityName { get; set; } = "Player";
 
     public SaveManager(GameState state, SceneManager sceneManager, World world, string gameName = "AuroraGame",
-        InventoryManager? inventory = null, QuestManager? quests = null)
+        InventoryManager? inventory = null, QuestManager? quests = null, SceneStateStore? sceneState = null)
     {
         _state = state;
         _sceneManager = sceneManager;
         _world = world;
         _inventory = inventory;
         _quests = quests;
+        _sceneState = sceneState;
         _saveDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             Sanitize(gameName), "saves");
@@ -114,7 +116,8 @@ public sealed class SaveManager
             PlayerX: playerX,
             PlayerY: playerY,
             PlayerHealth: health,
-            PlayerMaxHealth: maxHealth);
+            PlayerMaxHealth: maxHealth,
+            Scenes: _sceneState?.ToSnapshot());
 
         WriteAtomic(path, JsonSerializer.Serialize(dto, JsonOpts));
     }
@@ -161,6 +164,11 @@ public sealed class SaveManager
         // Items/QuestStages podem faltar num save de antes desta feature - trata como vazio.
         if (dto.Items is not null) _inventory?.LoadFromDictionary(dto.Items);
         if (dto.QuestStages is not null) _quests?.LoadFromDictionary(dto.QuestStages);
+
+        // ANTES de carregar a cena: o SceneManager reaplica os fatos assim que monta o mundo,
+        // então o registro precisa já estar com o conteúdo deste save. Substitui, não mistura —
+        // carregar o slot 2 não pode herdar os inimigos mortos da partida do slot 1.
+        _sceneState?.LoadSnapshot(dto.Scenes);
 
         if (dto.Scene is not null)
         {
@@ -237,5 +245,6 @@ public sealed class SaveManager
         // Opcionais: save gravado antes destes campos existirem continua carregando (o jogador
         // so fica com a vida que a cena define, como era antes).
         float? PlayerHealth = null,
-        float? PlayerMaxHealth = null);
+        float? PlayerMaxHealth = null,
+        Dictionary<string, SceneStateStore.SceneFacts>? Scenes = null);
 }

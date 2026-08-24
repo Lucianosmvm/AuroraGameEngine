@@ -102,6 +102,7 @@ public sealed class EventSystem
             return;
 
         trigger.Fired = true;
+        _world.SceneState?.RecordTriggerFired(entity);
         foreach (var action in trigger.Actions)
             ExecuteWithChance(entity, action);
     }
@@ -137,6 +138,7 @@ public sealed class EventSystem
                 if (trigger.Trigger == "Timer")
                     trigger._timer = 0f;
                 trigger.Fired = true;
+                _world.SceneState?.RecordTriggerFired(entity);
                 trigger.Running = true;
                 trigger.ActionIndex = 0;
                 trigger.WaitTimer = 0f;
@@ -483,6 +485,16 @@ public sealed class EventSystem
                 LoadRequested?.Invoke((int)action.Value);
                 break;
 
+            // Zera tudo que uma partida acumula. Sem isto, clicar "Novo Jogo" depois de ter
+            // carregado um save começa com o ouro, os switches e — desde o estado por entidade —
+            // os chefes já mortos da partida anterior. O par de Load num menu de verdade.
+            case "NewGame":
+                _state.Clear();
+                Inventory?.Clear();
+                Quests?.Clear();
+                _world.SceneState?.Clear();
+                break;
+
             case "AddItem" when action.Name is not null:
                 Inventory?.Add(action.Name, (int)action.Value);
                 break;
@@ -590,6 +602,9 @@ public sealed class EventSystem
                     var tint = activeTarget.Get<GlobalTint>();
                     if (tint is not null)
                         tint.Enabled = action.On;
+
+                    // Tocha acesa continua acesa ao voltar na sala (se a entidade for Persistent).
+                    _world.SceneState?.RecordActive(activeTarget, action.On);
                 }
                 break;
             }

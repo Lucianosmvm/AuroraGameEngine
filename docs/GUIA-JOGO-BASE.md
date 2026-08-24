@@ -740,6 +740,29 @@ botão, `HideUI` (esconde o menu) e depois `Load` com Valor:`0`.
 > "Continuar" à prova de slot vazio, só mostre o botão quando houver save: cheque
 > `Game.Save.HasSave(0)` no `OnLoad` e carregue a tela de menu correspondente.
 
+### O que já aconteceu na cena (inimigo morto, baú aberto)
+
+Toda vez que uma cena é carregada, ela é montada de novo a partir do arquivo — o inimigo que
+você matou volta em pé. Pra um bicho comum isso é o certo (voltar num mapa e achá-lo vazio é
+pior); pra chefe, baú e alavanca, não.
+
+Adicione o componente **`Persistent`** na entidade (**"+Add Componente" → Persistent**, sem
+nenhum campo pra preencher). A partir daí a engine lembra, por cena:
+
+- que ela foi **destruída** — o chefe morto continua morto;
+- que o `EventTrigger` marcado como **`Once`** já disparou — o baú aberto não dá o prêmio de novo;
+- o último **`SetActive`** aplicado — a tocha acesa continua acesa.
+
+Vale nas duas travessias: sair da sala e voltar dentro da mesma partida, e fechar o jogo e
+carregar o save.
+
+Não são lembrados vida e posição: são estado contínuo de simulação, e "o chefe continua com 10%
+de vida no ponto exato onde você fugiu" é outra decisão de design, não uma consequência desta.
+
+> **Botão "Novo Jogo":** use a ação **`NewGame`** antes do `ChangeScene`. Ela zera variáveis,
+> switches, inventário, quests e o que já aconteceu nas cenas. Sem ela, começar um jogo novo
+> depois de ter clicado "Continuar" herda o ouro e os chefes já mortos da partida anterior.
+
 ```
 AÇÕES
 ┌─────────────────────────┐
