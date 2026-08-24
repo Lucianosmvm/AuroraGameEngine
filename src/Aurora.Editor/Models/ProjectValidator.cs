@@ -74,8 +74,14 @@ public static class ProjectValidator
         }
 
         bool isUiScreen = sceneObject["UI"]?.GetValue<bool>() ?? false;
+        var entities = (sceneObject["Objects"] as JsonArray ?? []).OfType<JsonObject>().ToList();
 
-        foreach (var entityNode in (sceneObject["Objects"] as JsonArray ?? []).OfType<JsonObject>())
+        // Nomes desta cena: Transform.Parent aponta por nome, e o pai tem que estar na MESMA
+        // cena — o vínculo é resolvido dentro do mundo carregado.
+        var namesInScene = new HashSet<string>(
+            entities.Select(e => e["Name"]?.GetValue<string>() ?? ""), StringComparer.Ordinal);
+
+        foreach (var entityNode in entities)
         {
             string entityName = entityNode["Name"]?.GetValue<string>() ?? "(sem nome)";
             string where = $"{sceneName} › {entityName}";
@@ -87,6 +93,7 @@ public static class ProjectValidator
                 ValidateComponentType(type, where, isUiScreen, known, problems);
                 ValidateAssetFields(assetsRoot, component, type, where, problems);
                 ValidateActions(assetsRoot, component, where, problems);
+                ValidateParent(component, type, entityName, where, namesInScene, problems);
             }
         }
     }
@@ -116,6 +123,29 @@ public static class ProjectValidator
 
         problems.Add(new Problem(where,
             $"componente '{type}' não é nativo nem um script [SceneScript] do projeto. No jogo ele é ignorado com um aviso no console — a entidade nasce sem esse comportamento."));
+    }
+
+    /// <summary>Transform.Parent apontando pra entidade que não existe na cena. Em jogo isso não
+    /// dá erro nenhum: o filho simplesmente não é levado por ninguém, e a arma fica plantada no
+    /// chão enquanto o player anda.</summary>
+    private static void ValidateParent(JsonObject component, string type, string entityName,
+        string where, HashSet<string> namesInScene, List<Problem> problems)
+    {
+        if (type != "Transform")
+            return;
+
+        if (component["Parent"]?.GetValue<string>() is not { Length: > 0 } parent)
+            return;
+
+        if (parent == entityName)
+        {
+            problems.Add(new Problem(where, "Transform.Parent aponta pra própria entidade."));
+            return;
+        }
+
+        if (!namesInScene.Contains(parent))
+            problems.Add(new Problem(where,
+                $"Transform.Parent aponta pra '{parent}', que não existe nesta cena. O filho não vai seguir ninguém — e nada avisa em jogo."));
     }
 
     private static void ValidateAssetFields(string assetsRoot, JsonObject component, string type,

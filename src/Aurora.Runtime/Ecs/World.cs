@@ -126,6 +126,8 @@ public sealed class World
     public bool Paused { get; set; }
 
     private readonly List<(Entity Entity, Transform Transform, Collider Collider)> _collisionBuffer = [];
+    private readonly List<(int Depth, Transform Transform)> _hierarchyBuffer = [];
+    private readonly HashSet<string> _hierarchyCycleReported = [];
     private readonly List<(Entity Entity, Transform Transform, Tilemap Tilemap)> _tilemapBuffer = [];
     private readonly Collider _tileCollider = new() { IsKinematic = true };
     private HashSet<long> _activeTriggers = [];
@@ -435,6 +437,13 @@ public sealed class World
 
             UpdateNavAgents(deltaTime);
             ProcessCollisions();
+
+            // Depois da colisao, antes de desenhar: os pais ja terminaram de se mover neste
+            // frame (script, controlador, fisica), entao o filho e levado pra posicao final do
+            // pai. Rodar antes deixaria o filho um frame atras — visivel como tremida na arma
+            // presa ao player.
+            UpdateHierarchy();
+
             UpdateParticles(deltaTime);
             UpdateTilemapAnimations(deltaTime);
             UpdateHealth(deltaTime);
@@ -452,6 +461,154 @@ public sealed class World
         }
 
         CompactBehaviors();
+    }
+
+    /// <summary>
+    /// Leva cada filho junto com o movimento do pai neste frame.
+    ///
+    /// <para>Propaga DELTA (o quanto o pai andou/girou desde o frame passado) em vez de recalcular
+    /// a posição do filho a partir do pai. Duas razões: <see cref="Transform.Position"/> continua
+    /// sendo mundo pra todo o resto da engine (ver o comentário lá), e quem mexer no filho por
+    /// fora — empurrão de colisão, script, tween — não é sobrescrito no frame seguinte; o
+    /// deslocamento novo vira o novo encaixe.</para>
+    ///
+    /// <para>Filhos são processados por profundidade: neto só depois do pai dele já ter sido
+    /// levado pelo avô, senão a corrente andaria um frame por elo.</para>
+    /// </summary>
+    private void UpdateHierarchy()
+    {
+        _hierarchyBuffer.Clear();
+
+        foreach (var (_, transform) in Query<Transform>())
+        {
+            if (transform.Parent is null)
+                continue;
+
+            _hierarchyBuffer.Add((HierarchyDepth(transform), transform));
+        }
+
+        if (_hierarchyBuffer.Count == 0)
+            return;
+
+        _hierarchyBuffer.Sort(static (a, b) => a.Depth.CompareTo(b.Depth));
+
+        foreach (var (_, child) in _hierarchyBuffer)
+        {
+            if (!TryFind(child.Parent!, out var parentEntity)
+                || parentEntity.Get<Transform>() is not { } parent)
+            {
+                // Pai sumiu (morreu, ou o nome está errado): o filho fica onde está, solto. Zera
+                // a memória pra que, se um pai com esse nome aparecer depois, o reencontro não
+                // aplique de uma vez todo o movimento que aconteceu enquanto ele não existia.
+                child.LastParentPosition = null;
+                continue;
+            }
+
+            if (child.LastParentPosition is not { } lastPosition)
+            {
+                // Primeiro frame com este pai: só memoriza. Mover agora arrancaria o filho da
+                // posição em que a cena o colocou.
+                child.LastParentPosition = parent.Position;
+                child.LastParentRotation = parent.Rotation;
+                continue;
+            }
+
+            child.Position += parent.Position - lastPosition;
+
+            float deltaRotation = parent.Rotation - child.LastParentRotation;
+            if (child.InheritRotation && deltaRotation != 0f)
+            {
+                // Órbita: o filho gira EM VOLTA do pai, além de girar em torno do próprio eixo.
+                // Só girar o filho no lugar faria a arma apontar pro outro lado sem sair da mão.
+                var offset = child.Position - parent.Position;
+                float sin = MathF.Sin(deltaRotation);
+                float cos = MathF.Cos(deltaRotation);
+
+                child.Position = parent.Position + new Vector2(
+                    offset.X * cos - offset.Y * sin,
+                    offset.X * sin + offset.Y * cos);
+
+                child.Rotation += deltaRotation;
+            }
+
+            child.LastParentPosition = parent.Position;
+            child.LastParentRotation = parent.Rotation;
+        }
+    }
+
+    /// <summary>
+    /// Põe uma entidade numa posição de mundo levando os filhos pelo mesmo deslocamento.
+    ///
+    /// <para>Existe porque escrever direto em <c>Transform.Position</c> teleporta SÓ o pai: o
+    /// vínculo pai/filho preserva o encaixe a partir do frame seguinte, não o recalcula, então o
+    /// filho fica exatamente onde estava — a arma do jogador plantada no ponto de nascimento
+    /// enquanto ele reaparece do outro lado do mapa. É o caminho certo pra qualquer salto que
+    /// não seja andar: carregar save, marcador de spawn, teleporte por evento.</para>
+    /// </summary>
+    public void TeleportWithChildren(Entity entity, Vector2 position)
+    {
+        if (entity.Get<Transform>() is not { } transform)
+            return;
+
+        var delta = position - transform.Position;
+        transform.Position = position;
+
+        if (delta == Vector2.Zero)
+            return;
+
+        foreach (var descendant in DescendantTransforms(entity.Name))
+            descendant.Position += delta;
+    }
+
+    /// <summary>Transforms de filhos, netos e abaixo. Guarda contra ciclo — hierarquia é por
+    /// nome, e nada impede o autor de fechar o laço no editor.</summary>
+    private IEnumerable<Transform> DescendantTransforms(string rootName)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal) { rootName };
+        var pending = new Queue<string>();
+        pending.Enqueue(rootName);
+
+        while (pending.Count > 0)
+        {
+            string parentName = pending.Dequeue();
+
+            foreach (var (entity, transform) in Query<Transform>())
+            {
+                if (transform.Parent != parentName || !visited.Add(entity.Name))
+                    continue;
+
+                pending.Enqueue(entity.Name);
+                yield return transform;
+            }
+        }
+    }
+
+    /// <summary>Quantos pais existem acima desta entidade. Ciclo (A filho de B, B filho de A)
+    /// devolve 0 e é logado uma vez: preso num laço, a alternativa seria travar o jogo.</summary>
+    private int HierarchyDepth(Transform transform)
+    {
+        int depth = 0;
+        var current = transform;
+
+        // Teto = número de entidades: qualquer corrente honesta é mais curta que isso, então
+        // estourar significa ciclo.
+        int limit = _alive.Count + 1;
+
+        while (current.Parent is not null && depth < limit)
+        {
+            if (!TryFind(current.Parent, out var parentEntity)
+                || parentEntity.Get<Transform>() is not { } parent)
+                break;
+
+            current = parent;
+            depth++;
+        }
+
+        if (depth >= limit && _hierarchyCycleReported.Add(transform.Parent ?? ""))
+            Console.Error.WriteLine(
+                $"[World] Hierarquia circular envolvendo '{transform.Parent}' — tratando como sem pai.");
+
+        return depth >= limit ? 0 : depth;
     }
 
     /// <summary>

@@ -43,6 +43,78 @@ public class SceneSerializerTests
     }
 
     [Fact]
+    public void TransformParent_SurvivesTheRoundtrip()
+    {
+        var origem = new World();
+        origem.CreateEntity("Player").Add(new Transform(new Vector2(10, 20)));
+        origem.CreateEntity("Arma").Add(new Transform(new Vector2(14, 20))
+        {
+            Parent = "Player",
+            InheritRotation = false,
+        });
+
+        var destino = Roundtrip(origem);
+
+        var arma = Achar(destino, "Arma").Get<Transform>()!;
+        Assert.Equal("Player", arma.Parent);
+        Assert.False(arma.InheritRotation);
+        Assert.Equal(14, arma.Position.X, Tolerance);
+    }
+
+    [Fact]
+    public void TransformWithoutParent_DoesNotWriteTheField()
+    {
+        // Cena de projeto antigo tem que continuar byte a byte igual: campo com valor padrão
+        // não entra no JSON, senão todo save de cena viraria um diff cheio de ruído.
+        var origem = new World();
+        origem.CreateEntity("Solto").Add(new Transform(new Vector2(1, 2)));
+
+        string json = new SceneSerializer().Save("Teste", new SceneContext { World = origem });
+
+        Assert.DoesNotContain("Parent", json);
+        Assert.DoesNotContain("InheritRotation", json);
+    }
+
+    [Fact]
+    public void InheritRotationTrue_IsTheDefault_WhenTheFieldIsAbsent()
+    {
+        var serializer = new SceneSerializer();
+        var world = new World();
+
+        serializer.Load("""
+            {
+              "Scene": "t",
+              "Objects": [{
+                "Name": "Arma",
+                "Components": [{ "Type": "Transform", "X": 0, "Y": 0, "Parent": "Player" }]
+              }]
+            }
+            """, new SceneContext { World = world });
+
+        Assert.True(Achar(world, "Arma").Get<Transform>()!.InheritRotation);
+    }
+
+    [Fact]
+    public void EmptyParentString_ReadsAsNoParent()
+    {
+        // "" viraria busca por uma entidade de nome vazio a cada frame.
+        var serializer = new SceneSerializer();
+        var world = new World();
+
+        serializer.Load("""
+            {
+              "Scene": "t",
+              "Objects": [{
+                "Name": "Solto",
+                "Components": [{ "Type": "Transform", "X": 0, "Y": 0, "Parent": "" }]
+              }]
+            }
+            """, new SceneContext { World = world });
+
+        Assert.Null(Achar(world, "Solto").Get<Transform>()!.Parent);
+    }
+
+    [Fact]
     public void NomeDaCenaEEntidadesAparecemNoJson()
     {
         var world = new World();

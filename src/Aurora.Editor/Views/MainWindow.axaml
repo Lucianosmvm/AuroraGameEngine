@@ -769,9 +769,15 @@
               </ListBox.Styles>
               <ListBox.ItemTemplate>
                 <DataTemplate>
-                  <Grid ColumnDefinitions="*,Auto">
+                  <Grid ColumnDefinitions="*,Auto,Auto">
                     <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"/>
-                    <Border Grid.Column="1" Background="#4A90D9" CornerRadius="3" Padding="5,2"
+                    <!-- Vínculo de pai marcado na própria linha: quem some de vista quando o pai
+                         é arrastado é o filho, então dá pra saber quem vai junto sem abrir cada
+                         entidade no inspector. -->
+                    <TextBlock Grid.Column="1" Text="{Binding ParentLabel}" FontSize="10"
+                               Opacity="0.55" Margin="6,0,0,0" VerticalAlignment="Center"
+                               IsVisible="{Binding HasParent}"/>
+                    <Border Grid.Column="2" Background="#4A90D9" CornerRadius="3" Padding="5,2"
                             Margin="6,0,0,0" VerticalAlignment="Center"
                             IsVisible="{Binding HasEventTrigger}">
                       <TextBlock Text="{Binding TriggerTypeLabel}" FontSize="10"

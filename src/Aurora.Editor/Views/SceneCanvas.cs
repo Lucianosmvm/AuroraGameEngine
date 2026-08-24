@@ -1144,7 +1144,10 @@ public sealed class SceneCanvas : Control
             case DragMode.Move when _target is not null:
             {
                 var world = ScreenToWorld(position);
-                _target.SetPosition(
+
+                // Pelo ViewModel, nao por _target.SetPosition: arrastar um pai tem que levar os
+                // filhos junto no viewport, igual o runtime faz no jogo.
+                _viewModel?.MoveEntityWithChildren(_target,
                     (float)Snap(world.X + _dragOffset.X, e.KeyModifiers),
                     (float)Snap(world.Y + _dragOffset.Y, e.KeyModifiers));
                 break;

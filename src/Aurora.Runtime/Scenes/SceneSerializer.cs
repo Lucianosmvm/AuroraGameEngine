@@ -335,12 +335,22 @@ public sealed class SceneSerializer
                 Position = new(GetFloat(json, "X", 0f), GetFloat(json, "Y", 0f)),
                 Rotation = GetFloat(json, "Rotation", 0f),
                 Scale = new(GetFloat(json, "ScaleX", 1f), GetFloat(json, "ScaleY", 1f)),
+                Parent = NullIfEmpty(GetString(json, "Parent", "")),
+                InheritRotation = GetBool(json, "InheritRotation", true),
             },
             static (json, component, _) =>
             {
                 var t = (Transform)component;
                 json.WriteNumber("X", t.Position.X);
                 json.WriteNumber("Y", t.Position.Y);
+
+                // Só grava o que foge do padrão: cena de projeto antigo continua idêntica, e o
+                // diff de uma cena editada mostra o que mudou de verdade.
+                if (!string.IsNullOrEmpty(t.Parent))
+                    json.WriteString("Parent", t.Parent);
+                if (!t.InheritRotation)
+                    json.WriteBoolean("InheritRotation", false);
+
                 if (t.Rotation != 0f)
                     json.WriteNumber("Rotation", t.Rotation);
                 if (t.Scale.X != 1f || t.Scale.Y != 1f)
@@ -942,4 +952,9 @@ public sealed class SceneSerializer
 
     public static string GetString(JsonElement json, string name, string fallback)
         => json.TryGetProperty(name, out var prop) ? prop.GetString() ?? fallback : fallback;
+
+    /// <summary>Campo de texto opcional: ausente e vazio significam a mesma coisa ("não tem"),
+    /// e null é o que o componente espera — string vazia em Transform.Parent viraria uma busca
+    /// por uma entidade de nome vazio a cada frame.</summary>
+    private static string? NullIfEmpty(string value) => value.Length == 0 ? null : value;
 }

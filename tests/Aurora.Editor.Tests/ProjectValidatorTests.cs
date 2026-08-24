@@ -262,6 +262,54 @@ public class ProjectValidatorTests : IDisposable
         Assert.Equal(2, problems.Count);
     }
 
+    [Fact]
+    public void ParentPointingToAnEntityThatIsNotInTheScene_IsReported()
+    {
+        var problems = Validate("""
+            {
+              "Scene": "fase",
+              "Objects": [{
+                "Name": "Arma",
+                "Components": [{ "Type": "Transform", "X": 0, "Y": 0, "Parent": "Player" }]
+              }]
+            }
+            """);
+
+        Assert.Contains(problems, p => p.Message.Contains("Parent aponta pra 'Player'"));
+    }
+
+    [Fact]
+    public void ParentPointingToAnEntityInTheScene_IsFine()
+    {
+        var problems = Validate("""
+            {
+              "Scene": "fase",
+              "Objects": [
+                { "Name": "Player", "Components": [{ "Type": "Transform", "X": 0, "Y": 0 }] },
+                { "Name": "Arma", "Components": [{ "Type": "Transform", "X": 5, "Y": 0, "Parent": "Player" }] }
+              ]
+            }
+            """);
+
+        Assert.Empty(problems);
+    }
+
+    [Fact]
+    public void EntityParentedToItself_IsReported()
+    {
+        var problems = Validate("""
+            {
+              "Scene": "fase",
+              "Objects": [{
+                "Name": "Arma",
+                "Components": [{ "Type": "Transform", "X": 0, "Y": 0, "Parent": "Arma" }]
+              }]
+            }
+            """);
+
+        Assert.Contains(problems, p => p.Message.Contains("própria entidade"));
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_assets, recursive: true); } catch { /* melhor esforço */ }

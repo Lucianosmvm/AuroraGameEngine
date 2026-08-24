@@ -34,6 +34,29 @@ public class SceneManagerTests : IDisposable
     private void Escrever(string path, string content)
         => File.WriteAllText(Path.Combine(_root, path), content);
 
+    [Fact]
+    public void SpawnPoint_CarriesThePlayersChildrenAlong()
+    {
+        // Atravessar uma porta move o jogador pro marcador. Movendo só ele, os filhos ficam na
+        // posição em que a cena nova os nasce — a arma some pro canto e nunca mais alcança o
+        // dono, porque o vínculo pai/filho preserva o encaixe em vez de recalcular.
+        Escrever("scenes/quarto.json", """
+            {
+              "Scene": "quarto",
+              "Objects": [
+                { "Name": "Player", "Components": [{ "Type": "Transform", "X": 0, "Y": 0 }] },
+                { "Name": "Arma", "Components": [{ "Type": "Transform", "X": 10, "Y": 0, "Parent": "Player" }] },
+                { "Name": "PortaNorte", "Components": [{ "Type": "Transform", "X": 300, "Y": 0 }] }
+              ]
+            }
+            """);
+
+        _manager.Load("scenes/quarto.json", spawnPoint: "PortaNorte");
+
+        Assert.True(_world.TryFind("Arma", out var arma));
+        Assert.Equal(310, arma.Get<Ecs.Components.Transform>()!.Position.X, 0.001);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))

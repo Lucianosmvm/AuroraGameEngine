@@ -176,7 +176,9 @@ public sealed class SceneManager
             return;
         }
 
-        if (_world.TryFind(PlayerEntityName, out var player) && player.Get<Transform>() is { } playerTransform)
-            playerTransform.Position = markerTransform.Position;
+        // Leva os filhos junto: sem isso, atravessar uma porta deixa a arma do jogador na
+        // sala anterior (ver World.TeleportWithChildren).
+        if (_world.TryFind(PlayerEntityName, out var player))
+            _world.TeleportWithChildren(player, markerTransform.Position);
     }
 }

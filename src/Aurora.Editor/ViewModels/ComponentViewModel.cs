@@ -15,9 +15,13 @@ public class ComponentViewModel : ViewModelBase
     /// </summary>
     private static readonly Dictionary<string, (string Name, object Default)[]> KnownSchemas = new()
     {
+        // Parent/InheritRotation por último: são o caso menos comum, e X/Y no topo é o que se
+        // procura ao abrir o inspector. Os dois só entram no JSON quando saem do padrão (ver
+        // TextPropertyViewModel/BoolPropertyViewModel), então cena sem hierarquia não muda.
         ["Transform"] =
         [
             ("X", 0f), ("Y", 0f), ("Rotation", 0f), ("ScaleX", 1f), ("ScaleY", 1f),
+            ("Parent", ""), ("InheritRotation", true),
         ],
         // SizeX/SizeY: tamanho de desenho em pixels de mundo, independente da resolução do PNG
         // (um slime de 178x150 cabe em 28x28 sem redimensionar o arquivo). Os dois em 0 = tamanho
@@ -429,6 +433,7 @@ public class ComponentViewModel : ViewModelBase
         ["CameraController.Follow"] = ("entities", "entidade que a câmera segue"),
         ["NavAgent.Follow"] = ("entities", "entidade perseguida — vazio = só SetTarget() por código"),
         ["FollowTarget.TargetName"] = ("entities", "entidade em que esta gruda"),
+        ["Transform.Parent"] = ("entities", "entidade que carrega esta — vazio = solta no mundo"),
         ["ContactDamage.TargetPrefix"] = ("entities", "só machuca nomes que começam assim — vazio = qualquer um com Health"),
         ["Projectile.TargetPrefix"] = ("entities", "só acerta nomes que começam assim — vazio = qualquer um com Health"),
 

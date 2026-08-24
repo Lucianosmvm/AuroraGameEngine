@@ -154,10 +154,14 @@ public sealed class SaveManager
             // frames depois (após o fade pro preto), quando este método já teria retornado.
             _sceneManager.Load(dto.Scene);
 
+            // TeleportWithChildren, nao Position direto: escrever a posicao so no jogador
+            // deixaria os filhos dele (arma, escudo, luz) na posicao que a CENA nasce, a
+            // centenas de pixels de distancia — e o vinculo pai/filho preserva o encaixe a
+            // partir dali, entao a separacao seria permanente.
             if (dto.PlayerX is { } px && dto.PlayerY is { } py
-                && _world.TryFind(PlayerEntityName, out var player) && player.Get<Transform>() is { } transform)
+                && _world.TryFind(PlayerEntityName, out var player))
             {
-                transform.Position = new Vector2(px, py);
+                _world.TeleportWithChildren(player, new Vector2(px, py));
             }
         }
 

@@ -83,10 +83,25 @@ public class WanderTests
             wanderers.Add(wander);
         }
 
-        Advance(world, 60);   // 1s: alguns já andam, outros não
+        // Olhar o estado num instante fixo ("depois de 1s, alguém anda e alguém não") depende de
+        // sorteio: com pausa em [0.5, 3], os 12 estarem parados em t=1s acontece de vez em
+        // quando, e o teste falhava sozinho. O que importa não é o instantâneo — é que eles não
+        // deem o primeiro passo TODOS no mesmo frame. Isso dá pra medir sem depender de sorte.
+        var primeiroPasso = new int?[wanderers.Count];
 
-        Assert.Contains(wanderers, w => w.IsMoving);
-        Assert.Contains(wanderers, w => !w.IsMoving);
+        for (int frame = 0; frame < 240; frame++)   // 4s > PauseMax, todos já saíram
+        {
+            world.Update(1f / 60f);
+
+            for (int i = 0; i < wanderers.Count; i++)
+                if (primeiroPasso[i] is null && wanderers[i].IsMoving)
+                    primeiroPasso[i] = frame;
+        }
+
+        var frames = primeiroPasso.Where(f => f is not null).Select(f => f!.Value).ToList();
+
+        Assert.True(frames.Count >= 2, $"Só {frames.Count} bicho(s) chegou a andar em 4s.");
+        Assert.True(frames.Distinct().Count() > 1, "Todos deram o primeiro passo no mesmo frame.");
     }
 
     [Fact]

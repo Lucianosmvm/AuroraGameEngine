@@ -1816,6 +1816,66 @@ public sealed class MainViewModel : ViewModelBase
             problems.Select(problem => $"{problem.Where}: {problem.Message}"));
     }
 
+    // ---- Hierarquia (pai/filho) ----
+
+    /// <summary>
+    /// Move uma entidade e leva os descendentes pelo mesmo deslocamento, igual o runtime faz
+    /// (ver World.UpdateHierarchy). Sem isto o editor mentiria: no viewport a arma ficaria
+    /// parada enquanto o player anda, e só no Play ela grudaria de volta.
+    ///
+    /// <para>Delta, não reposicionamento: preserva o encaixe que a pessoa montou, que é a mesma
+    /// regra do runtime.</para>
+    /// </summary>
+    public void MoveEntityWithChildren(EntityViewModel entity, float x, float y)
+    {
+        var transform = entity.Transform;
+        if (transform is null)
+            return;
+
+        float deltaX = x - transform.GetFloat("X", 0f);
+        float deltaY = y - transform.GetFloat("Y", 0f);
+
+        entity.SetPosition(x, y);
+
+        if (deltaX == 0f && deltaY == 0f)
+            return;
+
+        // Tag do PAI em todos: o arrasto inteiro vira um passo de undo só.
+        foreach (var descendant in Descendants(entity))
+        {
+            if (descendant.Transform is not { } childTransform)
+                continue;
+
+            descendant.SetPosition(
+                childTransform.GetFloat("X", 0f) + deltaX,
+                childTransform.GetFloat("Y", 0f) + deltaY,
+                entity.MoveTag);
+        }
+    }
+
+    /// <summary>Filhos, netos e por aí abaixo. Guarda contra ciclo (A pai de B, B pai de A) —
+    /// hierarquia é por nome e nada impede a pessoa de fechar o laço no inspector.</summary>
+    public IEnumerable<EntityViewModel> Descendants(EntityViewModel root)
+    {
+        var visited = new HashSet<string>(StringComparer.Ordinal) { root.Name };
+        var pending = new Queue<string>();
+        pending.Enqueue(root.Name);
+
+        while (pending.Count > 0)
+        {
+            string parentName = pending.Dequeue();
+
+            foreach (var candidate in Entities)
+            {
+                if (candidate.ParentName != parentName || !visited.Add(candidate.Name))
+                    continue;
+
+                pending.Enqueue(candidate.Name);
+                yield return candidate;
+            }
+        }
+    }
+
     // ---- Duplicar / copiar / colar ----
 
     private string? _entityClipboard;
@@ -1992,6 +2052,11 @@ public sealed class MainViewModel : ViewModelBase
 
         if (tag.StartsWith("addcomp:") || tag.StartsWith("removecomp:"))
             RebuildEventEntities();
+
+        // Mexeu no campo Parent: a marca "↳ Pai" na hierarquia tem que acompanhar na hora.
+        if (tag is "Transform.Parent")
+            foreach (var entity in Entities)
+                entity.RaiseParentChanged();
 
         IsDirty = true;
         RebuildTilePalette();

@@ -407,10 +407,11 @@ public sealed class EventSystem
 
             case "Teleport":
             {
-                var target = ResolveTarget(self, action.Name);
-                var transform = target?.Get<Transform>();
-                if (transform is not null)
-                    transform.Position = new Vector2(action.X, action.Y);
+                // Leva os filhos junto (ver World.TeleportWithChildren): escrever Position direto
+                // moveria só o alvo, e o que estivesse preso nele ficaria pra trás pra sempre —
+                // o vínculo pai/filho preserva o encaixe, não o recalcula.
+                if (ResolveTarget(self, action.Name) is { } target && target.Get<Transform>() is not null)
+                    _world.TeleportWithChildren(target, new Vector2(action.X, action.Y));
                 break;
             }
 

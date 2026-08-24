@@ -99,6 +99,32 @@ public sealed class EntityViewModel : ViewModelBase
     public ComponentViewModel? Camera => Component("CameraController");
     public ComponentViewModel? Collider => Component("Collider");
 
+    /// <summary>Nome do pai (Transform.Parent), ou null. Usado pela hierarquia pra marcar o
+    /// vínculo e pelo canvas pra levar os filhos junto quando o pai é arrastado.</summary>
+    public string? ParentName
+    {
+        get
+        {
+            string? parent = Transform?.GetString("Parent");
+            return string.IsNullOrWhiteSpace(parent) ? null : parent;
+        }
+    }
+
+    public bool HasParent => ParentName is not null;
+
+    /// <summary>Rótulo do vínculo na lista da hierarquia ("↳ Player"). Marcar na lista plana em
+    /// vez de virar árvore: a hierarquia aqui é uma relação por nome, não uma árvore de verdade —
+    /// uma TreeView prometeria arrastar-pra-reparentar, que não existe.</summary>
+    public string ParentLabel => ParentName is { } parent ? $"↳ {parent}" : "";
+
+    /// <summary>Reavalia o vínculo depois de editar o campo Parent no inspector.</summary>
+    public void RaiseParentChanged()
+    {
+        Raise(nameof(ParentName));
+        Raise(nameof(HasParent));
+        Raise(nameof(ParentLabel));
+    }
+
     // ---- EventTrigger visibility in hierarchy ----
 
     public bool HasEventTrigger => Components.Any(c => c.Type == "EventTrigger");
@@ -427,7 +453,16 @@ public sealed class EntityViewModel : ViewModelBase
 
     /// <summary>Move a entidade (arrasto no canvas), sincronizando o inspector. Um gesto = um undo.</summary>
     public void SetPosition(float x, float y)
-        => SetTransformFields($"move:{Node.GetHashCode()}", ("X", x), ("Y", y));
+        => SetPosition(x, y, MoveTag);
+
+    /// <summary>Move usando a tag de undo de OUTRA entidade. Arrastar um pai move os filhos
+    /// junto; com a tag de cada um, as edições se alternariam e o arrasto viraria dezenas de
+    /// passos de undo em vez de um.</summary>
+    public void SetPosition(float x, float y, string tag)
+        => SetTransformFields(tag, ("X", x), ("Y", y));
+
+    /// <summary>Tag de undo do arrasto desta entidade.</summary>
+    public string MoveTag => $"move:{Node.GetHashCode()}";
 
     public void SetScale(float scaleX, float scaleY)
         => SetTransformFields($"scale:{Node.GetHashCode()}", ("ScaleX", scaleX), ("ScaleY", scaleY));
