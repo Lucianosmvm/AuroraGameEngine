@@ -561,8 +561,10 @@ GetInfo(slot = 0) -> SaveInfo?
 AutoSave() / LoadAutoSave() / HasAutoSave()
 PlayerEntityName  string  "Player"   // entidade cuja Transform.Position é salva
 ```
-Salva `GameState` (vars+switches) + `Inventory` + `Quests` + posição do `Player`. Disparado
-via ação `Save` de `EventTrigger`, ou chamando `Game.Save.Save()` direto.
+Salva `GameState` (vars+switches) + `Inventory` + `Quests` + posição do `Player` (levando junto
+o que estiver preso nele via `Transform.Parent`) + `Health` do `Player` (atual e máxima).
+Disparado via ação `Save` de `EventTrigger`, ou chamando `Game.Save.Save()` direto; para voltar,
+ação `Load` (Valor = slot, negativo = autosave) ou `Game.Save.Load()`.
 
 ### 6.8 `AudioManager` — som e música (`Game.Audio`, `World?.Audio`)
 ```csharp
@@ -623,7 +625,7 @@ Actions   List<EventAction>
 ```
 
 Ações suportadas (`Type` de cada `EventAction`): `SetVariable`, `SetSwitch`, `Teleport`,
-`Destroy`, `Damage`, `Heal`, `ShowMessage`, `Save`, `AddItem`, `RemoveItem`, `SetQuestStage`,
+`Destroy`, `Damage`, `Heal`, `ShowMessage`, `Save`, `Load`, `AddItem`, `RemoveItem`, `SetQuestStage`,
 `AdvanceQuest`, `ShowUI`, `HideUI`, `ToggleUI`, `ChangeScene`, `SetPause`, `Quit`,
 `PlaySound`, `PlayMusic`, `StopMusic`, `PlayAnimation`, `StopAnimation`, `SetActive`,
 `ShowChoice`, `Wait`.
@@ -870,6 +872,7 @@ UiText
 | Achar entidade única | `World?.TryFind(name, out entity)` |
 | Achar todas de um tipo | `World?.Query<T>()` |
 | Salvar jogo | `World?.Save?.Save(slot)` / ação `Save` |
+| Carregar jogo | `World?.Save?.Load(slot)` / ação `Load` (Valor negativo = autosave) |
 | Pausar | `World.Paused = true` / ação `SetPause` |
 | Tocar efeito | `World?.Audio?.Play("audio/x.wav")` / ação `PlaySound` |
 | Tocar música | `World?.Audio?.PlayMusic("audio/tema.ogg")` / ação `PlayMusic` |

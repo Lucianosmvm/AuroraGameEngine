@@ -61,6 +61,17 @@ public sealed class EventSystem
     /// <summary>Disparado pela ação Quit. O Game assina e chama Exit() (fecha a janela/app).</summary>
     public event Action? QuitRequested;
 
+    /// <summary>
+    /// Disparado pela ação Load, com o slot pedido (negativo = autosave). O Game assina e
+    /// executa no começo do frame SEGUINTE.
+    ///
+    /// <para>Evento em vez de chamar SaveManager.Load aqui pelo mesmo motivo do ChangeScene:
+    /// carregar um save troca a cena, e trocar a cena esvazia o World no meio da varredura de
+    /// gatilhos. O snapshot desta varredura sobreviveria, e as ações restantes rodariam contra
+    /// entidades da cena ANTIGA que não existem mais.</para>
+    /// </summary>
+    public event Action<int>? LoadRequested;
+
     private bool _sceneStartFired;
 
     /// <summary>Reseta o estado de disparo — chamado ao carregar uma nova cena.</summary>
@@ -464,6 +475,12 @@ public sealed class EventSystem
 
             case "Save":
                 Save?.Save((int)action.Value);
+                break;
+
+            // Par da ação Save: é o que permite montar um botão "Continuar" no menu sem escrever
+            // C#. Value = slot, negativo = autosave (mesma convenção do SaveManager.AutoSave).
+            case "Load":
+                LoadRequested?.Invoke((int)action.Value);
                 break;
 
             case "AddItem" when action.Name is not null:

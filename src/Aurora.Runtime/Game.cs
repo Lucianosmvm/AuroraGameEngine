@@ -241,6 +241,10 @@ public abstract class Game : IDisposable
         Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests);
         Events.Save = Save;
 
+        // Só anota o pedido: executar aqui trocaria a cena (World.Clear) no meio da varredura
+        // de gatilhos que disparou a ação. Ver HandleUpdate.
+        Events.LoadRequested += slot => _pendingLoadSlot = slot;
+
         // Disponibiliza os sistemas do Game pra qualquer Behavior via World?.Input / World?.State
         // / etc — sem isso, cada script precisaria de um campo público + injeção manual repetida
         // em Game.OnUpdate (World já chega de graça em todo Behavior, isso só estende o mesmo canal).
@@ -338,6 +342,14 @@ public abstract class Game : IDisposable
 
     private void HandleUpdate(double deltaTime)
     {
+        // Antes de tudo: um Load pedido no frame passado (botão "Continuar" do menu, evento)
+        // troca a cena inteira. Aqui é o único ponto do frame em que nada está iterando o World.
+        if (_pendingLoadSlot is { } pendingSlot)
+        {
+            _pendingLoadSlot = null;
+            ApplyPendingLoad(pendingSlot);
+        }
+
         float dt = MathF.Min((float)deltaTime, MaxDeltaTime);
         Input.BeginFrame();
 
@@ -369,6 +381,20 @@ public abstract class Game : IDisposable
         {
             Console.Error.WriteLine($"[Game] Exceção não tratada em HandleUpdate — frame ignorado: {ex}");
         }
+    }
+
+    private int? _pendingLoadSlot;
+
+    /// <summary>Executa o Load pedido pela ação. Slot negativo = autosave. Slot vazio não é erro
+    /// de programação — é um jogador clicando "Continuar" antes de ter salvado alguma vez: loga
+    /// e segue, com o jogo intacto.</summary>
+    private void ApplyPendingLoad(int slot)
+    {
+        bool loaded = slot < 0 ? Save.LoadAutoSave() : Save.Load(slot);
+
+        if (!loaded)
+            Console.Error.WriteLine(
+                $"[Game] Ação Load: não há save {(slot < 0 ? "automático" : $"no slot {slot}")} — nada foi carregado.");
     }
 
     private void UpdateCamera(float dt)

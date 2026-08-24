@@ -714,11 +714,31 @@ de cena, já que controle é por script do jogador, não por entidade da cena.
 
 ## 15. Salvar progresso
 
-`Save` já persiste `GameState` (variáveis/switches) + `Inventory` + `Quests` + a posição
-(`Transform`) da entidade `Player` juntos — carregar um save volta o jogador exatamente onde
-salvou, não onde a cena originalmente colocou. Gatilho comum: item/alavanca de save, ou tecla
-dedicada — num `EventTrigger` (ex. `KeyPress`), **"+ Adicionar Ação" → Save**, campo
-Valor:`0` (número do slot).
+`Save` já persiste tudo que o jogador tem consigo — carregar volta exatamente como estava:
+
+| O que | Vem de |
+|---|---|
+| Cena atual e posição do `Player` (com o que estiver preso nele) | `SceneManager` + `Transform` |
+| Vida atual e vida máxima do `Player` | componente `Health` |
+| Ouro/pontos e qualquer outra variável, e os switches | `GameState` |
+| Itens do inventário (inclusive "Gold" como item) | `InventoryManager` |
+| Estágio de cada missão | `QuestManager` |
+
+Gatilho comum: item/alavanca de save, ou tecla dedicada — num `EventTrigger` (ex. `KeyPress`),
+**"+ Adicionar Ação" → Save**, campo Valor:`0` (número do slot).
+
+Para voltar ao jogo depois, use a ação **`Load`** com o mesmo número de slot (Valor negativo
+carrega o autosave). É o que faz um botão **"Continuar"** no menu principal: no `OnClick` do
+botão, `HideUI` (esconde o menu) e depois `Load` com Valor:`0`.
+
+> Se não existir save nesse slot, `Load` não carrega nada e só avisa no console — o jogo segue
+> na cena em que estava.
+>
+> A carga acontece no **frame seguinte** (ela troca a cena inteira, e fazer isso no meio da
+> varredura de gatilhos quebraria as ações seguintes da lista). Ou seja: mudar a ordem das ações
+> não adianta — um `HideUI` na mesma lista esconde o menu antes, de todo jeito. Para um
+> "Continuar" à prova de slot vazio, só mostre o botão quando houver save: cheque
+> `Game.Save.HasSave(0)` no `OnLoad` e carregue a tela de menu correspondente.
 
 ```
 AÇÕES

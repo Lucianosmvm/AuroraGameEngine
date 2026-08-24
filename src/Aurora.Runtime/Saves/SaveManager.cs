@@ -84,10 +84,23 @@ public sealed class SaveManager
         Directory.CreateDirectory(_saveDir);
 
         float? playerX = null, playerY = null;
-        if (_world.TryFind(PlayerEntityName, out var player) && player.Get<Transform>() is { } transform)
+        float? health = null, maxHealth = null;
+
+        if (_world.TryFind(PlayerEntityName, out var player))
         {
-            playerX = transform.Position.X;
-            playerY = transform.Position.Y;
+            if (player.Get<Transform>() is { } transform)
+            {
+                playerX = transform.Position.X;
+                playerY = transform.Position.Y;
+            }
+
+            // Max junto do Current: jogo que aumenta a vida máxima ao subir de nível perderia o
+            // ganho se só o atual fosse salvo — voltaria pro Max escrito no arquivo da cena.
+            if (player.Get<Health>() is { } playerHealth)
+            {
+                health = playerHealth.Current;
+                maxHealth = playerHealth.Max;
+            }
         }
 
         var dto = new SaveDto(
@@ -99,7 +112,9 @@ public sealed class SaveManager
             Items: _inventory is null ? [] : new Dictionary<string, int>(_inventory.Items),
             QuestStages: _quests is null ? [] : new Dictionary<string, int>(_quests.Stages),
             PlayerX: playerX,
-            PlayerY: playerY);
+            PlayerY: playerY,
+            PlayerHealth: health,
+            PlayerMaxHealth: maxHealth);
 
         WriteAtomic(path, JsonSerializer.Serialize(dto, JsonOpts));
     }
@@ -154,18 +169,41 @@ public sealed class SaveManager
             // frames depois (após o fade pro preto), quando este método já teria retornado.
             _sceneManager.Load(dto.Scene);
 
-            // TeleportWithChildren, nao Position direto: escrever a posicao so no jogador
-            // deixaria os filhos dele (arma, escudo, luz) na posicao que a CENA nasce, a
-            // centenas de pixels de distancia — e o vinculo pai/filho preserva o encaixe a
-            // partir dali, entao a separacao seria permanente.
-            if (dto.PlayerX is { } px && dto.PlayerY is { } py
-                && _world.TryFind(PlayerEntityName, out var player))
+            if (_world.TryFind(PlayerEntityName, out var player))
             {
-                _world.TeleportWithChildren(player, new Vector2(px, py));
+                // TeleportWithChildren, nao Position direto: escrever a posicao so no jogador
+                // deixaria os filhos dele (arma, escudo, luz) na posicao que a CENA nasce, a
+                // centenas de pixels de distancia — e o vinculo pai/filho preserva o encaixe a
+                // partir dali, entao a separacao seria permanente.
+                if (dto.PlayerX is { } px && dto.PlayerY is { } py)
+                    _world.TeleportWithChildren(player, new Vector2(px, py));
+
+                RestoreHealth(player, dto);
             }
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Devolve a vida que o jogador tinha ao salvar. Sem isto, carregar um save entregava o HP
+    /// escrito no arquivo da CENA — quem salvou com 3 de vida voltava curado, e quem salvou
+    /// depois de ganhar vida máxima perdia o ganho.
+    ///
+    /// <para>Max antes de Current: se o save trouxer um Max maior que o da cena, escrever Current
+    /// primeiro seria cortado pelo teto antigo. E o Current é limitado ao Max pra um save
+    /// adulterado não deixar o jogador com vida acima do teto.</para>
+    /// </summary>
+    private static void RestoreHealth(Entity player, SaveDto dto)
+    {
+        if (player.Get<Health>() is not { } health)
+            return;
+
+        if (dto.PlayerMaxHealth is { } max and > 0f)
+            health.Max = max;
+
+        if (dto.PlayerHealth is { } current)
+            health.Current = Math.Clamp(current, 0f, health.Max);
     }
 
     private SaveInfo? ReadInfo(string path, int slot)
@@ -195,5 +233,9 @@ public sealed class SaveManager
         Dictionary<string, int>? Items = null,
         Dictionary<string, int>? QuestStages = null,
         float? PlayerX = null,
-        float? PlayerY = null);
+        float? PlayerY = null,
+        // Opcionais: save gravado antes destes campos existirem continua carregando (o jogador
+        // so fica com a vida que a cena define, como era antes).
+        float? PlayerHealth = null,
+        float? PlayerMaxHealth = null);
 }

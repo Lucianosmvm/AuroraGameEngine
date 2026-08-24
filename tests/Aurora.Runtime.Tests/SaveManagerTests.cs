@@ -60,6 +60,26 @@ public class SaveManagerTests : IDisposable
             }
             """);
 
+    private void WriteSceneWithHealth(string name, float max, float current)
+        => File.WriteAllText(Path.Combine(_assetsRoot, "scenes", name), $$"""
+            {
+              "Scene": "{{Path.GetFileNameWithoutExtension(name)}}",
+              "Objects": [{
+                "Name": "Player",
+                "Components": [
+                  { "Type": "Transform", "X": 0, "Y": 0 },
+                  { "Type": "Health", "Max": {{max}}, "Current": {{current}} }
+                ]
+              }]
+            }
+            """);
+
+    private Health PlayerHealth()
+    {
+        Assert.True(_world.TryFind("Player", out var player), "A cena carregada não tem Player.");
+        return player.Get<Health>()!;
+    }
+
     private Transform PlayerTransform()
     {
         Assert.True(_world.TryFind("Player", out var player), "A cena carregada não tem Player.");
@@ -124,6 +144,164 @@ public class SaveManagerTests : IDisposable
 
         Assert.Equal(3, _inventory.GetCount("pocao"));
         Assert.Equal(2, _quests.GetStage("resgate"));
+    }
+
+    // ---- O que o jogador carrega consigo ----
+
+    [Fact]
+    public void SaveThenLoad_RestoresHealth_NotTheSceneDefault()
+    {
+        // Salvar com 3 de vida e voltar curado apaga a tensão inteira de um jogo.
+        WriteSceneWithHealth("arena.json", max: 100, current: 100);
+        _scenes.Load("scenes/arena.json");
+        PlayerHealth().Current = 12f;
+        _save.Save();
+
+        _scenes.Load("scenes/arena.json");
+        Assert.Equal(100, PlayerHealth().Current, Tolerance);
+
+        _save.Load();
+
+        Assert.Equal(12, PlayerHealth().Current, Tolerance);
+    }
+
+    [Fact]
+    public void SaveThenLoad_RestoresMaxHealth_SoLevelUpsAreNotLost()
+    {
+        WriteSceneWithHealth("arena.json", max: 100, current: 100);
+        _scenes.Load("scenes/arena.json");
+
+        var health = PlayerHealth();
+        health.Max = 250f;      // subiu de nível
+        health.Current = 200f;
+        _save.Save();
+
+        _scenes.Load("scenes/arena.json");
+        _save.Load();
+
+        Assert.Equal(250, PlayerHealth().Max, Tolerance);
+        Assert.Equal(200, PlayerHealth().Current, Tolerance);
+    }
+
+    [Fact]
+    public void HealthAboveTheMax_IsClamped_SoATamperedSaveCannotBreakTheGame()
+    {
+        // Max 77, fora dos valores padrão do Health: se a leitura da cena ou do save falhasse,
+        // o resultado cairia em 100 (o default) e o teste denunciaria em vez de passar à toa.
+        WriteSceneWithHealth("arena.json", max: 77, current: 50);
+        _scenes.Load("scenes/arena.json");
+        _save.Save();
+
+        string path = Path.Combine(_save.SaveDirectory, "slot_0.json");
+        string original = File.ReadAllText(path);
+        string adulterado = System.Text.RegularExpressions.Regex.Replace(
+            original, "\"PlayerHealth\": *[0-9.]+", "\"PlayerHealth\": 99999");
+
+        // Sem isto, um replace que não casasse deixaria o arquivo intacto e o teste passaria
+        // sozinho, sem nunca ter testado o clamp.
+        Assert.NotEqual(original, adulterado);
+        File.WriteAllText(path, adulterado);
+
+        _save.Load();
+
+        Assert.Equal(77, PlayerHealth().Current, Tolerance);
+    }
+
+    [Fact]
+    public void PlayerWithoutHealthComponent_SavesAndLoadsFine()
+    {
+        // Jogo sem vida (puzzle, plataforma sem dano) não pode quebrar por causa deste campo.
+        _scenes.Load("scenes/fase1.json");
+        _save.Save();
+
+        Assert.True(_save.Load());
+    }
+
+    [Fact]
+    public void OldSaveWithoutHealth_KeepsTheSceneValue_InsteadOfZeroingIt()
+    {
+        // Campo novo é opcional: save de antes dele não pode ressuscitar o jogador com 0 de vida.
+        WriteSceneWithHealth("arena.json", max: 100, current: 100);
+        _scenes.Load("scenes/arena.json");
+        _save.Save();
+
+        string path = Path.Combine(_save.SaveDirectory, "slot_0.json");
+        File.WriteAllText(path, """
+            {
+              "Slot": 0,
+              "Scene": "scenes/arena.json",
+              "SavedAt": "2024-01-01T00:00:00Z",
+              "Variables": {},
+              "Switches": {}
+            }
+            """);
+
+        Assert.True(_save.Load());
+        Assert.Equal(100, PlayerHealth().Current, Tolerance);
+    }
+
+    [Fact]
+    public void GoldAsAVariable_Persists()
+    {
+        // "Ouro" na engine é variável do GameState OU item do inventário (ver GUIA-JOGO-BASE).
+        // Os dois caminhos precisam sobreviver — este é o primeiro.
+        _state.SetVariable("Gold", 1250);
+        _save.Save();
+
+        _state.Clear();
+        _save.Load();
+
+        Assert.Equal(1250, _state.GetVariable("Gold"), Tolerance);
+    }
+
+    [Fact]
+    public void GoldAsAnInventoryItem_Persists()
+    {
+        _inventory.Add("Gold", 87);
+        _save.Save();
+
+        _inventory.Clear();
+        _save.Load();
+
+        Assert.Equal(87, _inventory.GetCount("Gold"));
+    }
+
+    [Fact]
+    public void EverythingThePlayerCarries_SurvivesTogether()
+    {
+        // O teste de aceitação do pedido: fechar o jogo e voltar com tudo — cena, lugar, vida,
+        // ouro, itens e missão.
+        WriteSceneWithHealth("arena.json", max: 120, current: 120);
+        _scenes.Load("scenes/arena.json");
+
+        PlayerTransform().Position = new Vector2(640, 360);
+        PlayerHealth().Current = 45f;
+        _state.SetVariable("Gold", 300);
+        _inventory.Add("pocao", 4);
+        _inventory.Add("chave_mestra", 1);
+        _quests.SetStage("resgate", 3);
+        _state.SetSwitch("ponte_baixada", true);
+
+        _save.Save(slot: 1);
+
+        // Simula reabrir o jogo do zero.
+        _state.Clear();
+        _inventory.Clear();
+        _quests.Clear();
+        _scenes.Load("scenes/fase1.json");
+
+        Assert.True(_save.Load(slot: 1));
+
+        Assert.Equal("scenes/arena.json", _scenes.CurrentScene);
+        Assert.Equal(640, PlayerTransform().Position.X, Tolerance);
+        Assert.Equal(360, PlayerTransform().Position.Y, Tolerance);
+        Assert.Equal(45, PlayerHealth().Current, Tolerance);
+        Assert.Equal(120, PlayerHealth().Max, Tolerance);
+        Assert.Equal(300, _state.GetVariable("Gold"), Tolerance);
+        Assert.Equal(4, _inventory.GetCount("pocao"));
+        Assert.Equal(1, _inventory.GetCount("chave_mestra"));
+        Assert.Equal(3, _quests.GetStage("resgate"));
+        Assert.True(_state.GetSwitch("ponte_baixada"));
     }
 
     // ---- Slots ----

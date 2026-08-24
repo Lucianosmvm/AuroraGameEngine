@@ -25,7 +25,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Damage", "Heal",
         "PlayAnimation", "StopAnimation",
         "PlaySound", "PlayMusic", "StopMusic",
-        "ChangeScene", "Save", "Quit",
+        "ChangeScene", "Save", "Load", "Quit",
         "AddItem", "RemoveItem", "UseItem",
         "If", "Else", "EndIf",
         "SetQuestStage", "AdvanceQuest",
@@ -154,7 +154,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string ValueLabel => ActionType switch
     {
         "PlaySound" or "PlayMusic" => "Volume",
-        "Save" => "Slot",
+        "Save" or "Load" => "Slot",
         "AddItem" or "RemoveItem" => "Quantidade",
         "SetQuestStage" => "Estágio",
         "AdvanceQuest" => "Incremento",
@@ -309,6 +309,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "StopMusic"      => "Para a música que está tocando",
         "ChangeScene"    => "Carrega outra cena (arquivo .json)",
         "Save"           => "Salva o jogo num slot",
+        "Load"           => "Carrega o jogo de um slot (negativo = autosave). É o que faz o botão \"Continuar\" do menu",
         "AddItem"        => "Adiciona quantidade ao item no inventário",
         "RemoveItem"     => "Remove quantidade do item no inventário (nunca fica negativo)",
         "SetQuestStage"  => "Define o estágio atual da quest",
@@ -335,8 +336,8 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowConditionKind => ActionType == "If";
     public bool ShowSpawnPoint => ActionType == "ChangeScene";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
-        or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage" or "Heal"
-        or "If" or "SetWeather";
+        or "Load" or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage"
+        or "Heal" or "If" or "SetWeather";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause" or "If";
     public bool ShowXY => ActionType is "Teleport" or "Spawn";
     public bool ShowSeconds => ActionType == "Wait";
