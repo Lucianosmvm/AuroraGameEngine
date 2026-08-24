@@ -25,11 +25,27 @@
     <DataTemplate DataType="{x:Type vm:BoolPropertyViewModel}">
       <CheckBox Content="{Binding Name}" IsChecked="{Binding Value}" Margin="0,2" FontSize="12"/>
     </DataTemplate>
+    <!-- Campo com sugestão: aceita qualquer texto, lista o que existe no projeto -->
+    <DataTemplate DataType="{x:Type vm:SuggestPropertyViewModel}">
+      <Grid ColumnDefinitions="90,*" Margin="0,2">
+        <TextBlock Text="{Binding Name}" VerticalAlignment="Top" Opacity="0.7" FontSize="12"
+                   Margin="0,5,0,0"/>
+        <StackPanel Grid.Column="1" Spacing="1">
+          <AutoCompleteBox ItemsSource="{Binding Suggestions}" Text="{Binding Value}"
+                           FontSize="12" FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                           HorizontalAlignment="Stretch"/>
+          <TextBlock Text="{Binding Hint}" FontSize="10" Opacity="0.45" TextWrapping="Wrap"
+                     IsVisible="{Binding HasHint}"/>
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type vm:EnumPropertyViewModel}">
       <Grid ColumnDefinitions="90,*" Margin="0,2">
         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
         <ComboBox Grid.Column="1" ItemsSource="{Binding Options}"
-                  SelectedItem="{Binding Value}" FontSize="12"/>
+                  SelectedItem="{Binding Selected}" FontSize="12"
+                  HorizontalAlignment="Stretch"/>
       </Grid>
     </DataTemplate>
 
@@ -257,11 +273,19 @@
             <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="12" Padding="6,4"/>
           </Grid>
 
+          <!-- TargetPrefix — só Touch -->
+          <Grid ColumnDefinitions="90,*" IsVisible="{Binding ShowTargetPrefix}">
+            <TextBlock Text="Só o nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+            <TextBox Grid.Column="1" Text="{Binding TargetPrefix}" FontSize="12" Padding="6,4"
+                     Watermark="Player… (vazio = qualquer um)"/>
+          </Grid>
+
           <!-- Key — só KeyPress -->
           <Grid ColumnDefinitions="90,*" IsVisible="{Binding ShowKey}">
             <TextBlock Text="Tecla" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
-            <TextBox Grid.Column="1" Text="{Binding Key}" FontSize="12" Padding="6,4"
-                     Watermark="Space, E, Enter…"/>
+            <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding KeyNames}" Text="{Binding Key}"
+                             FontSize="12" FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                             Watermark="Space, E, Enter…" HorizontalAlignment="Stretch"/>
           </Grid>
 
           <!-- Interval — só Timer -->
@@ -363,11 +387,16 @@
           <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
                      Opacity="0.5" Margin="0,-1,0,2"/>
 
-          <!-- Nome (variável, entidade, falante) -->
+          <!-- Nome (variável, entidade, item, arquivo de som…). AutoCompleteBox e não TextBox:
+               aceita qualquer texto (a entidade alvo pode nascer só em jogo) mas lista o que já
+               existe no projeto, que é onde mora o erro de digitação difícil de achar. -->
           <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNameText}">
             <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
                        Opacity="0.6" FontSize="11"/>
-            <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+            <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding NameSuggestions}"
+                             Text="{Binding Name}" FontSize="11"
+                             FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                             HorizontalAlignment="Stretch"/>
           </Grid>
 
           <!-- Nome via seletor (ChangeScene: cenas do projeto; ShowUI/HideUI/ToggleUI: telas de UI) -->
@@ -403,6 +432,27 @@
             <TextBlock Grid.Column="3" Text="Y" VerticalAlignment="Center"
                        Opacity="0.6" FontSize="11"/>
             <TextBox Grid.Column="4" Text="{Binding YText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Tipo da condição (If) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowConditionKind}">
+            <TextBlock Text="Comparar" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding ConditionKinds}"
+                      SelectedItem="{Binding ConditionKind}" FontSize="11" HorizontalAlignment="Stretch"/>
+          </Grid>
+
+          <!-- Ponto de spawn (ChangeScene) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowSpawnPoint}">
+            <TextBlock Text="Chegar em" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding SpawnPoint}" FontSize="11" Padding="4,3"
+                     Watermark="nome do marcador na cena de destino"/>
+          </Grid>
+
+          <!-- Chance (qualquer ação que não seja de fluxo) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowChance}">
+            <TextBlock Text="Chance" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                       ToolTip.Tip="0 a 1. 1 = sempre acontece."/>
+            <TextBox Grid.Column="1" Text="{Binding ChanceText}" FontSize="11" Padding="4,3"/>
           </Grid>
 
           <!-- Segundos (Wait) -->
@@ -465,6 +515,8 @@
         <MenuItem Header="_Refazer" Click="OnRedo" InputGesture="Ctrl+Y" IsEnabled="{Binding CanRedo}"/>
         <Separator/>
         <MenuItem Header="_Configurações do Projeto…" Click="OnOpenProjectSettings"/>
+        <Separator/>
+        <MenuItem Header="Banco de _Dados (Itens)…" Click="OnOpenItemDatabase"/>
       </MenuItem>
     </Menu>
 
@@ -490,136 +542,152 @@
                  ToolTip.Tip="{Binding StatusDetail}"/>
     </Border>
 
-    <Grid ColumnDefinitions="230,4,*,4,330">
+    <Grid ColumnDefinitions="264,4,*,4,330">
 
-      <!-- Cenas + Telas UI + Prefabs + Scripts + Assets + Hierarquia -->
-      <Grid Grid.Column="0" RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,4,*,4,*">
+      <!-- Coluna do projeto: as cinco listas de arquivo em ABAS, e a hierarquia embaixo.
+           Empilhadas, cada uma sobrava ~110px de altura numa coluna de 230 — cabiam três
+           linhas por lista e o resto era rolagem. Em aba, a lista aberta usa a coluna toda, e
+           a hierarquia (que se consulta o tempo todo enquanto se edita) fica sempre visível. -->
+      <Grid Grid.Column="0" RowDefinitions="2*,4,3*">
 
-        <DockPanel Grid.Row="0" MaxHeight="130">
-          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
-            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
-                    Click="OnRefreshScenes" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Reescanear cenas do projeto"/>
-            <Button DockPanel.Dock="Right" Content="+" FontSize="12" Padding="8,2" Margin="0,0,4,0"
-                    Click="OnNewScene" ToolTip.Tip="Nova cena"/>
-            <TextBlock Text="CENAS" FontSize="11" FontWeight="Bold" Opacity="0.5"
-                       VerticalAlignment="Center"/>
-          </DockPanel>
-          <ListBox ItemsSource="{Binding SceneFiles}" DoubleTapped="OnSceneFileDoubleTapped">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding DisplayName}" FontSize="12"
-                           TextTrimming="CharacterEllipsis"
-                           ToolTip.Tip="{Binding Name}"/>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
+        <TabControl Grid.Row="0" Padding="0" Margin="0">
+
+          <TabItem FontSize="11" Header="Cenas">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+" FontSize="12" Padding="8,2" Click="OnNewScene"
+                        ToolTip.Tip="Nova cena"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Click="OnDeleteScene"
+                        IsEnabled="{Binding SelectedSceneFile, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="Apaga o arquivo da cena selecionada"/>
+                <Button Content="↻" FontSize="12" Padding="6,2" Click="OnRefreshScenes"
+                        IsEnabled="{Binding HasDocument}" ToolTip.Tip="Reescanear cenas do projeto"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding SceneFiles}" SelectedItem="{Binding SelectedSceneFile}"
+                       DoubleTapped="OnSceneFileDoubleTapped"
+                       ToolTip.Tip="Duplo-clique abre a cena">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Name}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem FontSize="11" Header="UI">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+" FontSize="12" Padding="8,2" Click="OnNewUiScreen"
+                        ToolTip.Tip="Nova tela de UI (HUD/menu)"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Click="OnDeleteUiScreen"
+                        IsEnabled="{Binding SelectedUiScreen, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="Apaga o arquivo da tela selecionada"/>
+                <Button Content="↻" FontSize="12" Padding="6,2" Click="OnRefreshUiScreens"
+                        IsEnabled="{Binding HasDocument}" ToolTip.Tip="Reescanear telas de UI"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding UiScreens}" SelectedItem="{Binding SelectedUiScreen}"
+                       DoubleTapped="OnSceneFileDoubleTapped"
+                       ToolTip.Tip="HUD/menu — componentes UiText/UiImage/UiBar/UiPanel em pixel de tela">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding DisplayName}" FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Name}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem FontSize="11" Header="Prefabs">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Click="OnDeletePrefab"
+                        IsEnabled="{Binding SelectedPrefab, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="Apaga o arquivo do prefab selecionado"/>
+                <Button Content="↻" FontSize="12" Padding="6,2" Click="OnRefreshPrefabs"
+                        IsEnabled="{Binding HasDocument}" ToolTip.Tip="Reescanear prefabs do projeto"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Prefabs}" SelectedItem="{Binding SelectedPrefab}"
+                       DoubleTapped="OnPrefabDoubleTapped"
+                       ToolTip.Tip="Duplo-clique instancia na cena. Pra criar: botão direito numa entidade → salvar como prefab">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding RelativePath}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem FontSize="11" Header="Scripts">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Novo…" FontSize="11" Padding="8,2" Click="OnNewScript"
+                        IsEnabled="{Binding HasDocument}"
+                        ToolTip.Tip="Escolhe um template e abre o editor de código interno — salva em Scripts/ e registra o script na hora"/>
+                <Button Content="Abrir…" FontSize="11" Padding="8,2" Click="OnLoadScript"
+                        IsEnabled="{Binding HasDocument}"
+                        ToolTip.Tip="Abre um .cs existente no editor de código interno"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Click="OnDeleteScript"
+                        IsEnabled="{Binding SelectedScript, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="Apaga o arquivo .cs selecionado"/>
+                <Button Content="↻" FontSize="12" Padding="6,2" Click="OnRefreshScriptFiles"
+                        IsEnabled="{Binding HasDocument}" ToolTip.Tip="Reescanear a pasta Scripts"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Scripts}" SelectedItem="{Binding SelectedScript}"
+                       DoubleTapped="OnScriptFileDoubleTapped"
+                       ToolTip.Tip="Duplo-clique abre no editor de código interno (Shift+duplo-clique abre no VS Code)">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding RelativePath}"/>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem FontSize="11" Header="Assets">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Importar…" FontSize="11" Padding="8,2" Click="OnImportAssets"
+                        IsEnabled="{Binding HasDocument}"
+                        ToolTip.Tip="Copia imagem/áudio/fonte pra dentro do projeto (sprites/sounds/fonts)"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Click="OnDeleteAsset"
+                        IsEnabled="{Binding SelectedAsset, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="Apaga o arquivo do asset selecionado"/>
+                <Button Content="↻" FontSize="12" Padding="6,2" Click="OnRefreshAssets"
+                        IsEnabled="{Binding HasDocument}" ToolTip.Tip="Reescanear pasta de assets"/>
+              </StackPanel>
+              <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}"
+                       SelectedItem="{Binding SelectedAsset}"
+                       DoubleTapped="OnAssetDoubleTapped">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
+                      <Border Width="32" Height="32" Background="#E7EEF7" CornerRadius="3">
+                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="2"
+                               RenderOptions.BitmapInterpolationMode="None"/>
+                      </Border>
+                      <TextBlock Text="{Binding RelativePath}" VerticalAlignment="Center"
+                                 FontSize="12" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </TabItem>
+
+        </TabControl>
 
         <GridSplitter Grid.Row="1" Background="#D7DEE8"/>
 
-        <DockPanel Grid.Row="2" MaxHeight="110">
-          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
-            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
-                    Click="OnRefreshUiScreens" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Reescanear telas de UI do projeto"/>
-            <Button DockPanel.Dock="Right" Content="+" FontSize="12" Padding="8,2" Margin="0,0,4,0"
-                    Click="OnNewUiScreen" ToolTip.Tip="Nova tela de UI (HUD/menu)"/>
-            <TextBlock Text="TELAS UI" FontSize="11" FontWeight="Bold" Opacity="0.5"
-                       VerticalAlignment="Center"/>
-          </DockPanel>
-          <ListBox ItemsSource="{Binding UiScreens}" DoubleTapped="OnSceneFileDoubleTapped"
-                    ToolTip.Tip="HUD/menu — componentes UiText/UiImage/UiBar/UiPanel em pixel de tela">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding DisplayName}" FontSize="12"
-                           TextTrimming="CharacterEllipsis"
-                           ToolTip.Tip="{Binding Name}"/>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
-
-        <GridSplitter Grid.Row="3" Background="#D7DEE8"/>
-
-        <DockPanel Grid.Row="4" MaxHeight="110">
-          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
-            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
-                    Click="OnRefreshPrefabs" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Reescanear prefabs do projeto"/>
-            <TextBlock Text="PREFABS" FontSize="11" FontWeight="Bold" Opacity="0.5"
-                       VerticalAlignment="Center"/>
-          </DockPanel>
-          <ListBox ItemsSource="{Binding Prefabs}" DoubleTapped="OnPrefabDoubleTapped"
-                    ToolTip.Tip="Duplo-clique instancia na cena">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"/>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
-
-        <GridSplitter Grid.Row="5" Background="#D7DEE8"/>
-
-        <DockPanel Grid.Row="6" MaxHeight="130">
-          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
-            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
-                    Click="OnRefreshScriptFiles" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Reescanear a pasta Scripts do projeto"/>
-            <Button DockPanel.Dock="Right" Content="Carregar…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
-                    Click="OnLoadScript" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Abre um .cs existente no editor de código interno"/>
-            <Button DockPanel.Dock="Right" Content="+ Novo…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
-                    Click="OnNewScript" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Escolhe um template e abre o editor de código interno — salva em Scripts/ e registra o script na hora"/>
-            <TextBlock Text="SCRIPTS" FontSize="11" FontWeight="Bold" Opacity="0.5"
-                       VerticalAlignment="Center"/>
-          </DockPanel>
-          <ListBox ItemsSource="{Binding Scripts}" DoubleTapped="OnScriptFileDoubleTapped"
-                    ToolTip.Tip="Duplo-clique abre no editor de código interno (Shift+duplo-clique abre no VS Code)">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Name}" FontSize="12" TextTrimming="CharacterEllipsis"
-                           ToolTip.Tip="{Binding RelativePath}"/>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
-
-        <GridSplitter Grid.Row="7" Background="#D7DEE8"/>
-
-        <DockPanel Grid.Row="8">
-          <DockPanel DockPanel.Dock="Top" Margin="10,8,8,8">
-            <Button DockPanel.Dock="Right" Content="↻" FontSize="12" Padding="6,2"
-                    Click="OnRefreshAssets" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Reescanear pasta de assets"/>
-            <Button DockPanel.Dock="Right" Content="+ Importar…" FontSize="12" Padding="8,2" Margin="0,0,4,0"
-                    Click="OnImportAssets" IsEnabled="{Binding HasDocument}"
-                    ToolTip.Tip="Copia imagem/áudio/fonte pra dentro do projeto (sprites/sounds/fonts)"/>
-            <TextBlock Text="ASSETS" FontSize="11" FontWeight="Bold" Opacity="0.5"
-                       VerticalAlignment="Center"/>
-          </DockPanel>
-          <ListBox x:Name="AssetList" ItemsSource="{Binding Assets}"
-                   DoubleTapped="OnAssetDoubleTapped">
-            <ListBox.ItemTemplate>
-              <DataTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="8" Background="Transparent">
-                  <Border Width="32" Height="32" Background="#E7EEF7" CornerRadius="3">
-                    <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="2"
-                           RenderOptions.BitmapInterpolationMode="None"/>
-                  </Border>
-                  <TextBlock Text="{Binding RelativePath}" VerticalAlignment="Center"
-                             FontSize="12" TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
-              </DataTemplate>
-            </ListBox.ItemTemplate>
-          </ListBox>
-        </DockPanel>
-
-        <GridSplitter Grid.Row="9" Background="#D7DEE8"/>
-
-        <DockPanel Grid.Row="10">
+        <DockPanel Grid.Row="2">
           <TextBlock DockPanel.Dock="Top" Text="HIERARQUIA" Margin="10,8" FontSize="11"
                      FontWeight="Bold" Opacity="0.5"/>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="8" Spacing="6">

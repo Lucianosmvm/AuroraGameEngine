@@ -297,17 +297,45 @@ public sealed class TextPropertyViewModel : PropertyViewModel
 }
 
 /// <summary>Propriedade string com valores fixos (ex.: AnchorX/Y) — ComboBox em vez de TextBox.</summary>
+/// <summary>
+/// Uma opção de campo fechado: o que o autor lê e o que vai pro arquivo. Os dois são separados
+/// porque o formato de cena é em inglês (Rain, Storm) e quem monta a cena não deveria precisar
+/// decorar isso — a lista mostra "Chuva" e grava "Rain".
+/// </summary>
+public sealed record EnumOption(string Label, string Value)
+{
+    /// <summary>O ComboBox do Avalonia usa ToString quando não há template — é o que faz o
+    /// rótulo aparecer sem precisar de um DataTemplate só pra isto.</summary>
+    public override string ToString() => Label;
+}
+
 public sealed class EnumPropertyViewModel : PropertyViewModel
 {
     private readonly string _fallback;
 
-    public string[] Options { get; }
+    public EnumOption[] Options { get; }
 
-    public EnumPropertyViewModel(JsonObject component, string name, string fallback, string[] options)
+    public EnumPropertyViewModel(JsonObject component, string name, string fallback, EnumOption[] options)
         : base(component, name)
     {
         _fallback = fallback;
         Options = options;
+    }
+
+    /// <summary>
+    /// Opção correspondente ao que está gravado. Null quando o arquivo tem um valor que não está
+    /// na lista (JSON editado à mão, campo renomeado numa versão nova) — a caixa aparece VAZIA de
+    /// propósito. Cair na primeira opção esconderia o problema e, no primeiro clique em qualquer
+    /// outro campo, gravaria por cima do que o autor tinha escrito.
+    /// </summary>
+    public EnumOption? Selected
+    {
+        get => Array.Find(Options, o => o.Value == Value);
+        set
+        {
+            if (value is not null)
+                Value = value.Value;
+        }
     }
 
     public string Value
@@ -319,11 +347,59 @@ public sealed class EnumPropertyViewModel : PropertyViewModel
                 return;
             Component[Name] = value;
             Raise();
+            Raise(nameof(Selected));
             NotifyEdited();
         }
     }
 }
 
+/// <summary>
+/// Campo de texto com sugestões: aceita qualquer valor, mas oferece a lista do que existe no
+/// projeto. É o meio-termo certo pros campos que apontam pra algo SEU — nome de entidade,
+/// arquivo de prefab, id de tela — onde uma lista fechada seria errada (o alvo pode ainda não
+/// existir, ou ser criado por script em jogo) e texto puro é um convite a errar a digitação e
+/// passar meia hora procurando por que o inimigo não persegue ninguém.
+/// </summary>
+public sealed class SuggestPropertyViewModel : PropertyViewModel
+{
+    private readonly string _fallback;
+    private readonly Func<IEnumerable<string>> _suggestions;
+
+    /// <summary>Avaliado a cada leitura, não guardado: entidades e arquivos aparecem e somem
+    /// enquanto o inspector está aberto, e uma lista congelada envelheceria na tela.</summary>
+    public IEnumerable<string> Suggestions => _suggestions();
+
+    /// <summary>Dica curta abaixo do campo — o que aquilo espera receber.</summary>
+    public string Hint { get; }
+
+    public SuggestPropertyViewModel(JsonObject component, string name, string fallback,
+        Func<IEnumerable<string>> suggestions, string hint = "")
+        : base(component, name)
+    {
+        _fallback = fallback;
+        _suggestions = suggestions;
+        Hint = hint;
+    }
+
+    public bool HasHint => Hint.Length > 0;
+
+    public string Value
+    {
+        get => Component[Name]?.GetValue<string>() ?? _fallback;
+        set
+        {
+            string incoming = value ?? "";
+            if (Value == incoming)
+                return;
+
+            if (incoming.Length == 0) Component.Remove(Name);
+            else Component[Name] = incoming;
+
+            Raise();
+            NotifyEdited();
+        }
+    }
+}
 public sealed class BoolPropertyViewModel : PropertyViewModel
 {
     private readonly bool _fallback;

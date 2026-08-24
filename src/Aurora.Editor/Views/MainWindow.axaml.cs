@@ -316,6 +316,26 @@ public partial class MainWindow : Window
 
     private ProjectSettingsWindow? _projectSettings;
 
+    /// <summary>
+    /// Abre o banco de dados de itens do projeto. Janela própria e não-modal, igual às
+    /// configurações: cadastrar item é uma tarefa longa que se faz junto com a cena aberta.
+    /// </summary>
+    private void OnOpenItemDatabase(object? sender, RoutedEventArgs e)
+    {
+        if (_itemDatabase is not null)
+        {
+            _itemDatabase.Activate();
+            return;
+        }
+
+        var window = new DatabaseWindow(new ViewModels.DatabaseViewModel(ViewModel));
+        window.Closed += (_, _) => _itemDatabase = null;
+        _itemDatabase = window;
+        window.Show(this);
+    }
+
+    private DatabaseWindow? _itemDatabase;
+
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
 
     private async Task PickAndBuildAsync()
@@ -454,6 +474,73 @@ public partial class MainWindow : Window
     }
 
     private void OnRefreshScenes(object? sender, RoutedEventArgs e) => ViewModel.ReloadSceneFiles();
+
+    // ---------- Exclusão de arquivos do projeto ----------
+
+    /// <summary>
+    /// Confirma e apaga um arquivo do projeto. Um caminho só pros cinco painéis: o texto do
+    /// diálogo muda, a regra (confirmar → apagar → recarregar a lista → avisar no status) não.
+    /// </summary>
+    private async Task ConfirmAndDeleteAsync(string? fullPath, string kind, Action reload)
+    {
+        if (string.IsNullOrEmpty(fullPath))
+        {
+            ViewModel.Status = $"Selecione {kind} na lista pra excluir.";
+            return;
+        }
+
+        bool confirmed = await new ConfirmWindow(
+            $"Excluir {kind} \"{System.IO.Path.GetFileName(fullPath)}\"?",
+            $"O arquivo é apagado do disco. Não tem desfazer — o Ctrl+Z do editor volta edição " +
+            $"de cena, não arquivo.\n\n{fullPath}")
+            .ShowDialog<bool>(this);
+
+        if (confirmed)
+            ViewModel.Status = ViewModel.DeleteProjectFile(fullPath, reload);
+    }
+
+    private void OnDeleteScene(object? sender, RoutedEventArgs e)
+    {
+        // Apagar a cena aberta deixaria o editor mostrando um documento sem arquivo, e o próximo
+        // Salvar recriaria o que o usuário acabou de mandar apagar.
+        if (ViewModel.SelectedSceneFile is { IsCurrent: true })
+        {
+            ViewModel.Status = "Essa é a cena aberta — abra outra antes de excluir.";
+            return;
+        }
+
+        _ = ConfirmAndDeleteAsync(ViewModel.SelectedSceneFile?.FullPath, "a cena",
+            ViewModel.ReloadSceneFiles);
+    }
+
+    private void OnDeleteUiScreen(object? sender, RoutedEventArgs e)
+    {
+        if (ViewModel.SelectedUiScreen is { IsCurrent: true })
+        {
+            ViewModel.Status = "Essa é a tela aberta — abra outra antes de excluir.";
+            return;
+        }
+
+        _ = ConfirmAndDeleteAsync(ViewModel.SelectedUiScreen?.FullPath, "a tela de UI",
+            ViewModel.ReloadUiScreens);
+    }
+
+    private void OnDeletePrefab(object? sender, RoutedEventArgs e)
+        => _ = ConfirmAndDeleteAsync(ViewModel.SelectedPrefab?.FullPath, "o prefab",
+            ViewModel.ReloadPrefabs);
+
+    private void OnDeleteScript(object? sender, RoutedEventArgs e)
+        => _ = ConfirmAndDeleteAsync(ViewModel.SelectedScript?.FullPath, "o script",
+            ViewModel.ReloadScripts);
+
+    private void OnDeleteAsset(object? sender, RoutedEventArgs e)
+        => _ = ConfirmAndDeleteAsync(ViewModel.SelectedAsset?.FullPath, "o asset", () =>
+        {
+            ViewModel.ReloadAssets();
+            // O canvas guarda a textura em cache por caminho: sem limpar, o sprite apagado
+            // continuaria desenhado até reabrir o editor.
+            Scene.ClearTextureCache();
+        });
 
     private void OnRefreshUiScreens(object? sender, RoutedEventArgs e) => ViewModel.ReloadUiScreens();
 

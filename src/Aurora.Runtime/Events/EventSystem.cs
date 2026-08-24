@@ -40,6 +40,9 @@ public sealed class EventSystem
     /// <summary>Quando presente, ações AddItem/RemoveItem e gatilho HasItem operam aqui.</summary>
     public InventoryManager? Inventory { get; set; }
 
+    /// <summary>Quando presente, a ação UseItem acha a ficha do item e roda o efeito dela.</summary>
+    public Database.ItemDatabase? Items { get; set; }
+
     /// <summary>Quando presente, ações SetQuestStage/AdvanceQuest e gatilho QuestStageAtLeast operam aqui.</summary>
     public QuestManager? Quests { get; set; }
 
@@ -50,8 +53,10 @@ public sealed class EventSystem
     /// <summary>ShowMessage entrega o texto aqui — a camada de UI do jogo decide como exibir.</summary>
     public event Action<string>? MessageShown;
 
-    /// <summary>Disparado pela ação ChangeScene. O SceneManager assina e executa a transição.</summary>
-    public event Action<string>? SceneChangeRequested;
+    /// <summary>Disparado pela ação ChangeScene, com o caminho da cena e o nome do marcador onde
+    /// o jogador deve aparecer (null = cada entidade fica onde o arquivo da cena manda). O
+    /// SceneManager assina e executa a transição.</summary>
+    public event Action<string, string?>? SceneChangeRequested;
 
     /// <summary>Disparado pela ação Quit. O Game assina e chama Exit() (fecha a janela/app).</summary>
     public event Action? QuitRequested;
@@ -65,6 +70,29 @@ public sealed class EventSystem
     {
         _world = world;
         _state = state;
+        _world.EntityDied += RunDeathTrigger;
+    }
+
+    /// <summary>
+    /// Roda as ações de um gatilho "Death" no instante da morte, com a entidade ainda de pé —
+    /// é a única janela em que dá pra ler a posição dela pra largar o loot no lugar certo.
+    ///
+    /// <para>A sequência sai inteira de uma vez: <c>Wait</c> e <c>ShowChoice</c> não suspendem
+    /// aqui, porque um segundo depois a entidade dona do evento não existe mais e não haveria
+    /// quem retomasse. Pra cutscene depois da morte, ligue um switch aqui e use SwitchOn numa
+    /// entidade que continua viva.</para>
+    /// </summary>
+    private void RunDeathTrigger(Entity entity)
+    {
+        if (entity.Get<EventTrigger>() is not { Trigger: "Death" } trigger)
+            return;
+
+        if (trigger.Once && trigger.Fired)
+            return;
+
+        trigger.Fired = true;
+        foreach (var action in trigger.Actions)
+            ExecuteWithChance(entity, action);
     }
 
     public void Update(float deltaTime)
@@ -93,7 +121,7 @@ public sealed class EventSystem
             if (trigger.Once && trigger.Fired)
                 continue;
 
-            if (ShouldFire(trigger, transform, playerPosition))
+            if (ShouldFire(entity, trigger, transform, playerPosition))
             {
                 if (trigger.Trigger == "Timer")
                     trigger._timer = 0f;
@@ -108,12 +136,40 @@ public sealed class EventSystem
         _sceneStartFired = true;
     }
 
-    private bool ShouldFire(EventTrigger trigger, Transform transform, Vector2? playerPosition)
+    private bool ShouldFire(Entity entity, EventTrigger trigger, Transform transform, Vector2? playerPosition)
         => trigger.Trigger switch
         {
+            "Touch"            => TouchedThisFrame(entity, trigger),
             "SceneStart"       => !_sceneStartFired,
             "PlayerTouch"      => playerPosition is { } p
                                   && Vector2.Distance(p, transform.Position) <= trigger.Radius,
+            // Death não é avaliado aqui: chega por World.EntityDied, no instante da morte. Se
+            // dependesse desta varredura, a entidade já teria sido destruída pelo Health e o
+            // evento nunca veria a posição onde largar o loot.
+            "Death"            => false,
+            _ => ShouldFireRest(trigger),
+        };
+
+    /// <summary>Alguém encostou nesta entidade neste frame, pela forma dos colliders.</summary>
+    private bool TouchedThisFrame(Entity self, EventTrigger trigger)
+    {
+        foreach (var (a, b) in _world.OverlapsThisFrame)
+        {
+            int otherId = a == self.Id ? b : b == self.Id ? a : 0;
+            if (otherId == 0 || !_world.IsAlive(otherId))
+                continue;
+
+            if (trigger.TargetPrefix.Length == 0
+                || _world.GetName(otherId).StartsWith(trigger.TargetPrefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool ShouldFireRest(EventTrigger trigger)
+        => trigger.Trigger switch
+        {
             "SwitchOn"         => trigger.Switch is not null && _state.GetSwitch(trigger.Switch),
             "KeyPress"         => Input?.WasKeyPressed(ParseKey(trigger.Key)) ?? false,
             "Timer"            => trigger._timer >= trigger.Interval,
@@ -147,14 +203,31 @@ public sealed class EventSystem
     /// ações que miram entidade (Teleport, Destroy, PlayAnimation…) precisam de Name explícito.</summary>
     public void RunActions(IEnumerable<EventAction> actions)
     {
-        foreach (var action in actions)
+        // Lista materializada e cursor por índice (em vez de foreach) porque If/Else/EndIf
+        // desviam o fluxo — o botão de HUD tem que condicionar igual a um evento de cena.
+        var list = actions as List<EventAction> ?? [.. actions];
+
+        for (int i = 0; i < list.Count; )
         {
+            var action = list[i];
+
             if (action.Type == "Wait")
+            {
+                i++;
                 continue;
+            }
+
+            if (IsBranch(action.Type))
+            {
+                i = ResolveBranch(list, i);
+                continue;
+            }
+
+            i++;
 
             try
             {
-                Execute(null, action);
+                ExecuteWithChance(null, action);
             }
             catch (Exception ex)
             {
@@ -192,11 +265,19 @@ public sealed class EventSystem
                 continue;
             }
 
+            // Antes do sorteio de Chance de propósito: um If que "não saiu" deixaria o Else e o
+            // EndIf órfãos e a sequência executaria os dois lados.
+            if (IsBranch(action.Type))
+            {
+                trigger.ActionIndex = ResolveBranch(trigger.Actions, trigger.ActionIndex - 1);
+                continue;
+            }
+
             // Uma ação com referência inválida (arquivo, entidade) não deve derrubar o jogo
             // inteiro - loga e segue pra próxima ação/gatilho.
             try
             {
-                Execute(self, action);
+                ExecuteWithChance(self, action);
             }
             catch (Exception ex)
             {
@@ -213,6 +294,101 @@ public sealed class EventSystem
 
         trigger.Running = false;
     }
+
+    /// <summary>Ação de controle de fluxo: não "faz" nada, só desvia o cursor da sequência.</summary>
+    internal static bool IsBranch(string type) => type is "If" or "Else" or "EndIf";
+
+    /// <summary>
+    /// Onde a sequência continua depois de encontrar um If/Else/EndIf.
+    ///
+    /// <para>Marcadores numa lista plana, e não uma árvore de ações aninhadas, porque é assim que
+    /// o editor já edita eventos (uma lista que se arrasta) e assim que o JSON já é lido — uma
+    /// árvore obrigaria a refazer os dois pra ganhar a mesma coisa. Aninhar funciona por contagem
+    /// de profundidade: um If dentro de outro acha o próprio Else.</para>
+    /// </summary>
+    private int ResolveBranch(List<EventAction> actions, int index)
+    {
+        var action = actions[index];
+
+        return action.Type switch
+        {
+            // Condição verdadeira entra no corpo; falsa pula pro Else (se houver) ou pro fim.
+            "If" => EvaluateCondition(action) ? index + 1 : FindMatch(actions, index, stopAtElse: true),
+
+            // Só se chega num Else caindo do corpo de um If verdadeiro — então o corpo do Else
+            // tem que ser pulado inteiro.
+            "Else" => FindMatch(actions, index, stopAtElse: false),
+
+            _ => index + 1,   // EndIf: marcador, segue em frente
+        };
+    }
+
+    /// <summary>Índice logo após o Else (quando stopAtElse) ou o EndIf que fecha este bloco.
+    /// Bloco sem EndIf termina a sequência, em vez de estourar o índice.</summary>
+    private static int FindMatch(List<EventAction> actions, int index, bool stopAtElse)
+    {
+        int depth = 0;
+
+        for (int i = index + 1; i < actions.Count; i++)
+        {
+            switch (actions[i].Type)
+            {
+                case "If":
+                    depth++;
+                    break;
+
+                case "Else" when depth == 0 && stopAtElse:
+                    return i + 1;
+
+                case "EndIf" when depth == 0:
+                    return i + 1;
+
+                case "EndIf":
+                    depth--;
+                    break;
+            }
+        }
+
+        return actions.Count;
+    }
+
+    /// <summary>
+    /// Testa a condição de um If. <c>Text</c> escolhe o que comparar — "Switch", "Item", "Quest"
+    /// ou "Variable" (padrão); <c>Name</c> é o nome consultado, <c>Op</c> o operador e
+    /// <c>Value</c> o valor. Reaproveita os campos que a ação já tinha, sem inventar formato novo.
+    /// </summary>
+    /// <summary>
+    /// Avalia uma condição no formato da ação If, de fora da sequência de eventos. É por aqui que
+    /// as tabelas de spawn testam "zumbi só à noite" — a condição é a mesma coisa nos dois
+    /// lugares, então não existem duas linguagens de condição no projeto.
+    /// </summary>
+    public bool TestCondition(EventAction condition) => EvaluateCondition(condition);
+
+    private bool EvaluateCondition(EventAction action)
+    {
+        if (action.Name is null)
+            return false;
+
+        return (action.Text ?? "Variable") switch
+        {
+            "Switch" => _state.GetSwitch(action.Name) == action.On,
+            "Item"   => Compare(Inventory?.GetCount(action.Name) ?? 0, action.Op ?? ">=", action.Value),
+            "Quest"  => Compare(Quests?.GetStage(action.Name) ?? 0, action.Op ?? ">=", action.Value),
+            _        => Compare(_state.GetVariable(action.Name), action.Op ?? ">=", action.Value),
+        };
+    }
+
+    /// <summary>Sorteia o <see cref="EventAction.Chance"/> e executa se passar.</summary>
+    private bool ExecuteWithChance(Entity? self, EventAction action)
+    {
+        if (action.Chance < 1f && _random.NextDouble() >= action.Chance)
+            return false;
+
+        Execute(self, action);
+        return true;
+    }
+
+    private readonly Random _random = new();
 
     private void Execute(Entity? self, EventAction action)
     {
@@ -241,6 +417,22 @@ public sealed class EventSystem
             case "Destroy":
                 ResolveTarget(self, action.Name)?.Destroy();
                 break;
+
+            case "SetWeather" when action.Name is not null:
+            {
+                // Name = tipo, Value = intensidade, Text = entidade dona do Weather (vazio = a
+                // primeira da cena, que é o caso normal: uma entidade de clima por mapa).
+                var weatherEntity = string.IsNullOrEmpty(action.Text)
+                    ? _world.Query<Weather>().Select(e => (Entity?)e.Entity).FirstOrDefault()
+                    : ResolveTarget(self, action.Text);
+
+                if (weatherEntity?.Get<Weather>() is { } weather)
+                    weather.Set(action.Name, action.Value);
+                else
+                    Console.Error.WriteLine("[EventSystem] SetWeather: nenhuma entidade com Weather na cena.");
+
+                break;
+            }
 
             case "Spawn" when action.Name is not null:
             {
@@ -277,6 +469,32 @@ public sealed class EventSystem
                 Inventory?.Add(action.Name, (int)action.Value);
                 break;
 
+            case "UseItem" when action.Name is not null:
+            {
+                // Text = quem usa (vazio = o jogador). O efeito do item é uma lista de ações
+                // comum, então ele roda com essa entidade como "self" — é o que faz
+                // { "Action": "Heal", "Value": 50 } curar quem tomou a poção, sem nomear ninguém.
+                if (Items?.Get(action.Name) is not { } definition)
+                {
+                    Console.Error.WriteLine($"[EventSystem] UseItem: item '{action.Name}' não está no banco.");
+                    break;
+                }
+
+                if (Inventory is not null && !Inventory.Has(action.Name))
+                    break;
+
+                string userName = string.IsNullOrEmpty(action.Text) ? PlayerEntityName : action.Text;
+                Entity? user = _world.TryFind(userName, out var found) ? found : self;
+
+                foreach (var step in definition.Effect)
+                    ExecuteWithChance(user, step);
+
+                if (definition.Consumable)
+                    Inventory?.Remove(action.Name, 1);
+
+                break;
+            }
+
             case "RemoveItem" when action.Name is not null:
                 Inventory?.Remove(action.Name, (int)action.Value);
                 break;
@@ -302,7 +520,8 @@ public sealed class EventSystem
                 break;
 
             case "ChangeScene" when action.Name is not null:
-                SceneChangeRequested?.Invoke(action.Name);
+                SceneChangeRequested?.Invoke(action.Name,
+                    string.IsNullOrEmpty(action.SpawnPoint) ? null : action.SpawnPoint);
                 break;
 
             // Congela World.Update (behaviors, colisão, partículas, vida) sem descarregar a

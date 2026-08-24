@@ -66,6 +66,16 @@ public abstract class Game : IDisposable
     public GameState State { get; } = new();
     public InventoryManager Inventory { get; } = new();
     public QuestManager Quests { get; } = new();
+
+    /// <summary>Catálogo de itens (nome, ícone, preço, efeito ao usar). Carregado sozinho de
+    /// <c>Assets/database/items.json</c> no boot, se o arquivo existir — jogo sem itens não
+    /// precisa criar nada.</summary>
+    public Database.ItemDatabase Items { get; } = new();
+
+    /// <summary>Tabelas de spawn (grupos de prefabs sorteados por peso, com condição). Carregadas
+    /// de <c>Assets/database/spawns.json</c>. Onde se escreve um prefab também se pode escrever o
+    /// id de uma tabela.</summary>
+    public Database.SpawnTableDatabase SpawnTables { get; } = new();
     public DialogueSystem Dialogue { get; } = new();
     public UIManager UI { get; } = new();
     public EventSystem Events { get; }
@@ -80,7 +90,7 @@ public abstract class Game : IDisposable
     {
         Events = new EventSystem(World, State)
         {
-            Dialogue = Dialogue, Inventory = Inventory, Quests = Quests, UI = UI,
+            Dialogue = Dialogue, Inventory = Inventory, Quests = Quests, UI = UI, Items = Items,
         };
     }
 
@@ -197,7 +207,12 @@ public abstract class Game : IDisposable
         Events.Input = Input;
 
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
-        Events.SceneChangeRequested += path => SceneManager.LoadWithFade(path);
+        Events.SceneChangeRequested += (path, spawnPoint) =>
+            SceneManager.LoadWithFade(path, spawnPoint: spawnPoint);
+
+        // Uma fonte de verdade pra "quem é o jogador": o EventSystem usa no gatilho PlayerTouch,
+        // o SceneManager em qual entidade vai pro marcador de spawn na troca de cena.
+        SceneManager.PlayerEntityName = Events.PlayerEntityName;
         Events.QuitRequested += Exit;
 
         Save = new SaveManager(State, SceneManager, World, GameName, Inventory, Quests);
@@ -217,11 +232,26 @@ public abstract class Game : IDisposable
         World.Camera = Camera;
         World.Assets = Assets;
 
+        // Banco de itens é opcional: jogo sem item nenhum não precisa do arquivo. Erro de sintaxe
+        // no JSON, porém, é avisado — silêncio aqui viraria "por que meu item não faz nada?".
+        LoadDatabase(Database.ItemDatabase.DefaultPath, "itens", Items.Load);
+        LoadDatabase(Database.SpawnTableDatabase.DefaultPath, "tabelas de spawn", SpawnTables.Load);
+
         // World.Spawn("prefabs/slime.json", pos) e a ação de evento Spawn passam por aqui.
         // Erro de arquivo/JSON não derruba o jogo: loga e devolve null, mesma política do
         // load de cena — um prefab com nome errado não pode matar o frame inteiro.
-        World.PrefabFactory = (path, position) =>
+        World.PrefabFactory = (nameOrPath, position) =>
         {
+            // A tradução mora aqui, no único caminho por onde todo spawn passa: assim a ação
+            // Spawn, o Spawner, o AttackSpawner e qualquer script ganham id de tabela e sorteio
+            // de graça, sem nenhum deles precisar saber que tabelas existem.
+            string? path = SpawnTables.Resolve(nameOrPath, Events.TestCondition);
+
+            // Tabela existe mas nenhuma entrada passou na condição — "de dia não nasce zumbi".
+            // Não é erro: é a resposta certa, e nada nasce.
+            if (path is null)
+                return null;
+
             try
             {
                 return Scenes.LoadEntity(Assets.LoadText(path),
@@ -451,6 +481,26 @@ public abstract class Game : IDisposable
     }
 
     /// <summary>Chamado ao fechar, antes da engine liberar os recursos gráficos.</summary>
+    /// <summary>
+    /// Carrega um arquivo de banco, se existir. Banco é opcional — jogo sem item nem tabela de
+    /// spawn não precisa criar nada. Mas JSON quebrado é avisado: silêncio aqui viraria "por que
+    /// meu item não faz nada?" sem nenhuma pista.
+    /// </summary>
+    private void LoadDatabase(string path, string label, Action<string> load)
+    {
+        if (!Assets.Exists(path))
+            return;
+
+        try
+        {
+            load(Assets.LoadText(path));
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] Banco de {label} '{path}' inválido: {ex.Message}");
+        }
+    }
+
     protected virtual void OnUnload()
     {
     }

@@ -153,12 +153,24 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Speed", 100f), ("ArriveThreshold", 4f),
             ("Follow", ""), ("RepathInterval", 0.25f), ("FollowRange", 0f),
+            ("Enabled", true),
+        ],
+        // Perambula em volta de onde nasceu, com pausas — cavalo pastando, galinha, aldeão.
+        // Com NavAgent junto, contorna parede; sem, anda reto. O Rideable liga/desliga isto
+        // sozinho conforme alguém monta ou desce.
+        ["Wander"] =
+        [
+            ("Radius", 80f), ("Speed", 40f),
+            ("PauseMin", 1f), ("PauseMax", 4f), ("ArriveThreshold", 4f),
+            ("FlipSpriteByDirection", true), ("AnimatorSpeedParameter", "Speed"),
+            ("Enabled", true),
         ],
         // Andar do jogador visto de cima. JoystickScreen/JoystickName ligam num UiJoystick da
         // HUD pro mesmo personagem funcionar no celular; AnimatorSpeedParameter alimenta a
         // transição parado↔andando do Animator.
         ["TopDownController"] =
         [
+            ("Movement", "Free"),
             ("Speed", 100f), ("UseKeyboard", true),
             ("JoystickScreen", ""), ("JoystickName", ""),
             ("FlipSpriteByDirection", true), ("AnimatorSpeedParameter", "Speed"),
@@ -197,6 +209,73 @@ public class ComponentViewModel : ViewModelBase
             ("Seconds", 2f), ("DestroyOnAnimationEnd", false),
             ("Enabled", true),
         ],
+        // Faz nascer prefabs num ritmo, com teto de vivos ao mesmo tempo — ninho de inimigo,
+        // onda, recurso que repõe. MaxAlive 0 = sem teto; TotalLimit 0 = infinito.
+        ["Spawner"] =
+        [
+            ("Prefab", ""), ("Interval", 3f), ("MaxAlive", 5f), ("TotalLimit", 0f),
+            ("Radius", 0f), ("StartDelay", 0f),
+            ("RequiredSwitch", ""), ("RequiredSwitchOn", true),
+            ("Enabled", true),
+        ],
+        // Jogo de plataforma: anda no eixo X e cai sozinho. CoyoteTime e JumpBufferTime são o
+        // que separa um pulo que responde de um que "come" comando; JumpCut dá pulo curto e
+        // longo com a mesma tecla. Precisa de Collider sólido — o chão vem da colisão.
+        ["PlatformerController"] =
+        [
+            ("MoveSpeed", 150f), ("Acceleration", 1200f), ("Friction", 1400f), ("AirControl", 0.6f),
+            ("Gravity", 1400f), ("JumpSpeed", 420f), ("JumpCut", 0.45f), ("MaxFallSpeed", 600f),
+            ("CoyoteTime", 0.1f), ("JumpBufferTime", 0.12f),
+            ("JumpKey", "Space"), ("UseKeyboard", true),
+            ("JoystickScreen", ""), ("JoystickName", ""), ("JumpButtonName", ""),
+            ("FlipSpriteByDirection", true),
+            ("AnimatorSpeedParameter", "Speed"), ("AnimatorAirborneParameter", "Airborne"),
+            ("Enabled", true),
+        ],
+        // Veículo com volante: acelera pra onde o bico aponta e vira girando. Carro e nave são o
+        // mesmo movimento — muda só o Grip (a nave ignora, e por isso derrapa).
+        // O sprite deve apontar pra DIREITA pra bater com Transform.Rotation.
+        ["VehicleController"] =
+        [
+            ("Mode", "Car"),
+            ("Acceleration", 420f), ("MaxSpeed", 320f), ("ReverseSpeed", 120f),
+            ("TurnSpeed", 180f), ("TurnRequiresMovement", true),
+            ("Drag", 260f), ("Grip", 0.9f),
+            ("UseKeyboard", true), ("JoystickScreen", ""), ("JoystickName", ""),
+            ("AnimatorSpeedParameter", "Speed"),
+            ("Enabled", true),
+        ],
+        // Montaria/veículo em que o jogador entra e sai: transfere o controle entre o passageiro
+        // e a montaria. Ponha junto com o controlador de movimento DELA (VehicleController pra
+        // carro, TopDownController pra cavalo) — ele fica desligado até alguém montar.
+        ["Rideable"] =
+        [
+            ("InteractKey", "E"), ("Range", 40f), ("RiderName", "Player"),
+            ("SeatOffsetX", 0f), ("SeatOffsetY", -8f), ("HideRiderWhileRiding", false),
+            ("ExitOffsetX", 24f), ("ExitOffsetY", 0f),
+            ("InteractUiScreen", ""), ("InteractUiButton", ""),
+            // Assobio: CallKey vazio desliga. CallRange 0 alcança o mapa inteiro.
+            ("CallKey", ""), ("CallRange", 0f), ("CallSpeed", 90f), ("CallArriveDistance", 28f),
+            ("CallUiScreen", ""), ("CallUiButton", ""),
+            ("Enabled", true),
+        ],
+        // Anda entre pontos fixos: plataforma móvel, ronda de guarda, elevador. Points é
+        // "x,y; x,y" RELATIVO à posição inicial, então o mesmo prefab serve a fase inteira.
+        ["PatrolPath"] =
+        [
+            ("Points", "0,0; 64,0"), ("Speed", 60f), ("WaitAtPoint", 0f),
+            ("PingPong", true), ("FlipSpriteByDirection", false),
+            ("Enabled", true),
+        ],
+        // Clima de cena: monta o emissor e a tinta sozinho e cola na câmera. Type: None | Rain |
+        // Storm | Snow | Fog | Ash. Intensity 0..1 escala partículas e tinta juntas.
+        ["Weather"] =
+        [
+            ("Kind", "Rain"), ("Intensity", 1f), ("Wind", 0f),
+            ("Lightning", false), ("LightningMinInterval", 5f), ("LightningMaxInterval", 16f),
+            ("ThunderSound", ""), ("Texture", ""), ("Layer", 100f), ("Margin", 120f),
+            ("Enabled", true),
+        ],
         // Movimento decorativo: gira e/ou balança sozinho. Os dois efeitos somam.
         ["AutoMotion"] =
         [
@@ -206,11 +285,55 @@ public class ComponentViewModel : ViewModelBase
         ],
     };
 
-    /// <summary>Campos string com valores fixos, editados por ComboBox em vez de texto livre.</summary>
-    private static readonly Dictionary<string, string[]> EnumFields = new()
+    /// <summary>
+    /// Campos de valor fechado: viram ComboBox em vez de texto livre, com rótulo em português e
+    /// o valor em inglês que vai pro arquivo. Digitar "Chuva" num campo que espera "Rain" dá uma
+    /// cena que carrega sem erro e não faz nada — o pior tipo de bug pra quem está montando fase.
+    ///
+    /// <para>A chave é <c>Componente.Campo</c> quando a opção só vale ali, ou só <c>Campo</c>
+    /// quando vale em qualquer componente (o caso das âncoras de UI, que repetem em seis).</para>
+    /// </summary>
+    private static readonly Dictionary<string, EnumOption[]> EnumFields = new()
     {
-        ["AnchorX"] = ["Left", "Center", "Right"],
-        ["AnchorY"] = ["Top", "Center", "Bottom"],
+        ["AnchorX"] = [new("Left", "Left"), new("Center", "Center"), new("Right", "Right")],
+        ["AnchorY"] = [new("Top", "Top"), new("Center", "Center"), new("Bottom", "Bottom")],
+
+        ["TopDownController.Movement"] =
+        [
+            new("Livre (analógico)", "Free"),
+            new("8 direções", "EightWay"),
+            new("4 direções (grade)", "FourWay"),
+        ],
+
+        ["VehicleController.Mode"] =
+        [
+            new("Carro (pneu agarra)", "Car"),
+            new("Nave (inércia, derrapa)", "Ship"),
+        ],
+
+        ["Weather.Kind"] =
+        [
+            new("Nenhum", "None"),
+            new("Chuva", "Rain"),
+            new("Tempestade", "Storm"),
+            new("Neve", "Snow"),
+            new("Neblina", "Fog"),
+            new("Vento", "Wind"),
+            new("Tempestade de areia", "Sandstorm"),
+            new("Cinzas", "Ash"),
+        ],
+
+        ["AttackSpawner.AimMode"] =
+        [
+            new("Direção do movimento", "Facing"),
+            new("Mouse", "Mouse"),
+        ],
+
+        ["Collider.Shape"] =
+        [
+            new("Retângulo", "Box"),
+            new("Círculo", "Circle"),
+        ],
     };
 
     public JsonObject Node { get; }
@@ -273,13 +396,93 @@ public class ComponentViewModel : ViewModelBase
         {
             float number => new NumberPropertyViewModel(Node, name, number),
             bool flag => new BoolPropertyViewModel(Node, name, flag),
-            string text when EnumFields.TryGetValue(name, out var options) => new EnumPropertyViewModel(Node, name, text, options),
+            string text when TryGetEnumOptions(name, out var options)
+                => new EnumPropertyViewModel(Node, name, text, options),
+            string text when TryGetSuggestions(name, out var source, out string hint)
+                => new SuggestPropertyViewModel(Node, name, text, source, hint),
             string text when IsColorField(name, text) => new ColorPropertyViewModel(Node, name, text),
             string when IsTextureField(name) => new TexturePropertyViewModel(Node, name, Owner),
             _ => new TextPropertyViewModel(Node, name, (string)fallback),
         };
         property.Edited += tag => Edited?.Invoke($"{Type}.{tag}");
         Properties.Add(property);
+    }
+
+    /// <summary>Opções do campo, procurando primeiro a chave específica do componente e caindo
+    /// na genérica. Sem a específica, um campo "Kind" em qualquer componente futuro herdaria a
+    /// lista de climas.</summary>
+    private bool TryGetEnumOptions(string name, out EnumOption[] options)
+        => EnumFields.TryGetValue($"{Type}.{name}", out options!)
+           || EnumFields.TryGetValue(name, out options!);
+
+    /// <summary>
+    /// Campos que apontam pra algo DO PROJETO: viram caixa de texto com sugestão, não lista
+    /// fechada. O alvo pode não existir ainda (a entidade que só nasce em jogo, o prefab que você
+    /// vai criar depois), então travar nas opções seria pior que o texto solto — mas mostrar o
+    /// que já existe evita o erro de digitação que só aparece jogando.
+    ///
+    /// <para>Chave em <c>Componente.Campo</c>; valor descreve de onde vêm as sugestões e a dica
+    /// mostrada embaixo do campo.</para>
+    /// </summary>
+    private static readonly Dictionary<string, (string Source, string Hint)> SuggestFields = new()
+    {
+        ["CameraController.Follow"] = ("entities", "entidade que a câmera segue"),
+        ["NavAgent.Follow"] = ("entities", "entidade perseguida — vazio = só SetTarget() por código"),
+        ["FollowTarget.TargetName"] = ("entities", "entidade em que esta gruda"),
+        ["ContactDamage.TargetPrefix"] = ("entities", "só machuca nomes que começam assim — vazio = qualquer um com Health"),
+        ["Projectile.TargetPrefix"] = ("entities", "só acerta nomes que começam assim — vazio = qualquer um com Health"),
+
+        ["Spawner.Prefab"] = ("prefabs", "prefab ou id de tabela de spawn (sorteia entre vários)"),
+        ["AttackSpawner.Prefab"] = ("prefabs", "prefab do golpe/projétil, ou id de tabela de spawn"),
+
+        ["TopDownController.JoystickScreen"] = ("uiScreens", "tela de UI do joystick — vazio = só teclado"),
+        ["AttackSpawner.TriggerUiScreen"] = ("uiScreens", "tela de UI do botão de ataque"),
+        ["TopDownController.JoystickName"] = ("uiElements", "nome do UiJoystick dentro da tela"),
+        ["AttackSpawner.TriggerUiButton"] = ("uiElements", "nome do UiButton dentro da tela"),
+
+        ["AttackSpawner.TriggerKey"] = ("keys", "tecla que dispara — vazio = nenhuma"),
+        ["PlatformerController.JumpKey"] = ("keys", "tecla de pulo — vazio = só o botão de toque"),
+        ["PlatformerController.JoystickScreen"] = ("uiScreens", "tela de UI do joystick e do botão de pulo"),
+        ["PlatformerController.JoystickName"] = ("uiElements", "nome do UiJoystick dentro da tela"),
+        ["PlatformerController.JumpButtonName"] = ("uiElements", "nome do UiButton de pulo dentro da tela"),
+        ["VehicleController.JoystickScreen"] = ("uiScreens", "tela de UI do joystick — vazio = só teclado"),
+        ["VehicleController.JoystickName"] = ("uiElements", "nome do UiJoystick: Y acelera, X vira"),
+        ["Rideable.InteractKey"] = ("keys", "tecla de entrar/sair — vazio = só botão de toque"),
+        ["Rideable.RiderName"] = ("entities", "quem pode montar (nome exato, não prefixo)"),
+        ["Rideable.InteractUiScreen"] = ("uiScreens", "tela de UI do botão de entrar/sair"),
+        ["Rideable.InteractUiButton"] = ("uiElements", "nome do UiButton de entrar/sair"),
+        ["Rideable.CallKey"] = ("keys", "tecla do assobio — vazio = sem chamado"),
+        ["Rideable.CallUiScreen"] = ("uiScreens", "tela de UI do botão de assobiar"),
+        ["Rideable.CallUiButton"] = ("uiElements", "nome do UiButton de assobiar"),
+        ["Weather.ThunderSound"] = ("sounds", "som do trovão — vazio = mudo"),
+        ["Spawner.RequiredSwitch"] = ("switches", "só nasce com este switch no estado abaixo — vazio = sempre"),
+    };
+
+    private bool TryGetSuggestions(string name, out Func<IEnumerable<string>> source, out string hint)
+    {
+        source = () => [];
+        hint = "";
+
+        if (!SuggestFields.TryGetValue($"{Type}.{name}", out var entry))
+            return false;
+
+        hint = entry.Hint;
+        var owner = Owner;
+
+        source = entry.Source switch
+        {
+            "entities" => () => owner?.EntityNames ?? [],
+            "prefabs" => () => owner?.PrefabOrTableNames ?? [],
+            "uiScreens" => () => owner?.UiScreenIds ?? [],
+            "uiElements" => () => owner?.UiElementNames ?? [],
+            "sounds" => () => owner?.SoundAssets ?? [],
+            "keys" => () => MainViewModel.KeyNames,
+            // Switches não têm cadastro: existem por serem usados. Sem fonte confiável, some a
+            // sugestão em vez de mostrar uma lista vazia que parece defeito.
+            _ => () => [],
+        };
+
+        return true;
     }
 
     /// <summary>

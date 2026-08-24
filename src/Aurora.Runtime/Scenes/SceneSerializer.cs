@@ -127,6 +127,20 @@ public sealed class SceneSerializer
     {
         var members = GetScriptableMembers(type);
 
+        // "Type" é o discriminador do componente no JSON da cena. Um campo público com esse nome
+        // vira chave duplicada no mesmo objeto, e o leitor pega a PRIMEIRA — o campo receberia o
+        // nome do componente em vez do valor autorado, calado. Avisa no registro (uma vez, no
+        // boot) e ignora o campo, em vez de deixar o autor caçar isso em jogo.
+        int typeFieldIndex = members.FindIndex(m => m.Name == "Type");
+        if (typeFieldIndex >= 0)
+        {
+            Console.Error.WriteLine(
+                $"[SceneSerializer] '{name}' tem um campo público chamado \"Type\", que colide com o " +
+                $"campo que identifica o componente na cena. Renomeie (ex.: \"Kind\") — por ora ele " +
+                $"não é salvo nem lido.");
+            members.RemoveAt(typeFieldIndex);
+        }
+
         _readers[name] = (json, _) =>
         {
             var instance = (IComponent)Activator.CreateInstance(type)!;
@@ -488,6 +502,7 @@ public sealed class SceneSerializer
                     Trigger      = GetString(json, "Trigger", "PlayerTouch"),
                     Switch       = json.TryGetProperty("Switch", out var sw) ? sw.GetString() : null,
                     Radius       = GetFloat(json, "Radius", 20f),
+                    TargetPrefix = GetString(json, "TargetPrefix", ""),
                     Key          = GetString(json, "Key", "E"),
                     Interval     = GetFloat(json, "Interval", 5f),
                     Variable     = json.TryGetProperty("Variable", out var varProp) ? varProp.GetString() : null,
@@ -509,6 +524,8 @@ public sealed class SceneSerializer
                     json.WriteString("Switch", trigger.Switch);
                 if (trigger.Radius != 20f)
                     json.WriteNumber("Radius", trigger.Radius);
+                if (trigger.TargetPrefix.Length > 0)
+                    json.WriteString("TargetPrefix", trigger.TargetPrefix);
                 if (trigger.Key != "E")
                     json.WriteString("Key", trigger.Key);
                 if (trigger.Interval != 5f)
@@ -872,6 +889,7 @@ public sealed class SceneSerializer
                 Speed = GetFloat(json, "Speed", 100f),
                 ArriveThreshold = GetFloat(json, "ArriveThreshold", 4f),
                 Follow = GetString(json, "Follow", ""),
+                Enabled = GetBool(json, "Enabled", true),
                 RepathInterval = GetFloat(json, "RepathInterval", 0.25f),
                 FollowRange = GetFloat(json, "FollowRange", 0f),
             },
@@ -883,6 +901,7 @@ public sealed class SceneSerializer
                 if (a.Follow.Length > 0) json.WriteString("Follow", a.Follow);
                 if (a.RepathInterval != 0.25f) json.WriteNumber("RepathInterval", a.RepathInterval);
                 if (a.FollowRange != 0f) json.WriteNumber("FollowRange", a.FollowRange);
+                if (!a.Enabled) json.WriteBoolean("Enabled", false);
             });
     }
 
@@ -898,11 +917,18 @@ public sealed class SceneSerializer
     private void RegisterGameplayComponents()
     {
         RegisterReflective(typeof(TopDownController), nameof(TopDownController));
+        RegisterReflective(typeof(PlatformerController), nameof(PlatformerController));
+        RegisterReflective(typeof(VehicleController), nameof(VehicleController));
+        RegisterReflective(typeof(Rideable), nameof(Rideable));
+        RegisterReflective(typeof(Wander), nameof(Wander));
         RegisterReflective(typeof(AttackSpawner), nameof(AttackSpawner));
         RegisterReflective(typeof(ContactDamage), nameof(ContactDamage));
         RegisterReflective(typeof(FollowTarget), nameof(FollowTarget));
         RegisterReflective(typeof(Lifetime), nameof(Lifetime));
         RegisterReflective(typeof(AutoMotion), nameof(AutoMotion));
+        RegisterReflective(typeof(Spawner), nameof(Spawner));
+        RegisterReflective(typeof(PatrolPath), nameof(PatrolPath));
+        RegisterReflective(typeof(Weather), nameof(Weather));
     }
 
     public static float GetFloat(JsonElement json, string name, float fallback)

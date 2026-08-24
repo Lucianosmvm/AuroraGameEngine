@@ -24,6 +24,21 @@ public sealed class EventAction
     public float Seconds;
     public string? Text;
 
+    /// <summary>
+    /// Probabilidade de a ação acontecer, de 0 a 1. 1 (padrão) sempre roda. É o que expressa
+    /// "30% de chance de largar a poção" sem precisar de variável nem script — e vale pra
+    /// qualquer ação, não só Spawn.
+    ///
+    /// <para>O sorteio é por ação, não pela sequência: duas ações a 50% podem sair as duas,
+    /// nenhuma, ou uma só. Pra escolher UMA entre várias, encadeie por switch.</para>
+    /// </summary>
+    public float Chance = 1f;
+
+    /// <summary>ChangeScene: nome da entidade-marcador na cena de destino onde o jogador aparece.
+    /// Vazio = cada entidade fica onde o arquivo da cena diz. Sem isto, uma porta que volta
+    /// sempre joga o jogador no mesmo canto do mapa.</summary>
+    public string? SpawnPoint;
+
     /// <summary>Opções de ShowChoice.</summary>
     public List<EventOption> Options = [];
 
@@ -45,6 +60,8 @@ public sealed class EventAction
                 Y = element.TryGetProperty("Y", out var y) ? y.GetSingle() : 0f,
                 Seconds = element.TryGetProperty("Seconds", out var s) ? s.GetSingle() : 0f,
                 Text = element.TryGetProperty("Text", out var txt) ? txt.GetString() : null,
+                Chance = element.TryGetProperty("Chance", out var chance) ? chance.GetSingle() : 1f,
+                SpawnPoint = element.TryGetProperty("SpawnPoint", out var sp) ? sp.GetString() : null,
             };
 
             if (element.TryGetProperty("Options", out var options))
@@ -80,6 +97,8 @@ public sealed class EventAction
             if (action.Y != 0f) json.WriteNumber("Y", action.Y);
             if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
             if (action.Text is not null) json.WriteString("Text", action.Text);
+            if (action.Chance != 1f) json.WriteNumber("Chance", action.Chance);
+            if (!string.IsNullOrEmpty(action.SpawnPoint)) json.WriteString("SpawnPoint", action.SpawnPoint);
 
             if (action.Options.Count > 0)
             {
@@ -114,8 +133,8 @@ public sealed class EventOption
 /// </summary>
 public sealed class EventTrigger : IComponent
 {
-    /// <summary>SceneStart | PlayerTouch | SwitchOn | KeyPress | Timer | VariableCompare |
-    /// HasItem | QuestStageAtLeast.</summary>
+    /// <summary>SceneStart | PlayerTouch | Touch | Death | SwitchOn | KeyPress | Timer |
+    /// VariableCompare | HasItem | QuestStageAtLeast.</summary>
     public string Trigger = "PlayerTouch";
 
     /// <summary>Switch observado quando Trigger = SwitchOn.</summary>
@@ -123,6 +142,16 @@ public sealed class EventTrigger : IComponent
 
     /// <summary>Distância ao jogador que dispara PlayerTouch (pixels do mundo).</summary>
     public float Radius = 20f;
+
+    /// <summary>
+    /// Prefixo de nome que dispara o gatilho Touch (sem diferenciar maiúsculas). Vazio = qualquer
+    /// entidade com Collider.
+    ///
+    /// <para>Touch usa a FORMA do collider, não a distância entre centros como PlayerTouch — é o
+    /// que faz placa de pressão e zona de gatilho funcionarem com o tamanho que você desenhou, e
+    /// o que permite reagir a algo que não seja o jogador (uma caixa empurrada, um projétil).</para>
+    /// </summary>
+    public string TargetPrefix = "";
 
     /// <summary>Tecla para KeyPress, ex: "Space", "E", "Enter". Nomes do enum Silk.NET.Input.Key.</summary>
     public string Key = "E";

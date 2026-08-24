@@ -16,6 +16,14 @@ public sealed class NavAgent : IComponent
     public float ArriveThreshold = 4f;
 
     /// <summary>
+    /// Desligado, o agente para de andar e de recalcular caminho, mas guarda o destino — religar
+    /// retoma de onde estava. Existe porque um componente de fora precisa poder suspender o
+    /// movimento sem apagar o estado: é assim que o <see cref="Rideable"/> cala a IA do cavalo
+    /// enquanto alguém o cavalga, e devolve na descida.
+    /// </summary>
+    public bool Enabled = true;
+
+    /// <summary>
     /// Nome de uma entidade a perseguir continuamente — o inimigo que corre atrás do jogador,
     /// sem script. O World reaponta o destino pra posição dela a cada <see cref="RepathInterval"/>,
     /// então o alvo pode andar à vontade. Vazio (padrão) = o destino só vem de

@@ -12,9 +12,13 @@ public sealed class AssetViewModel
 
     public Bitmap? Thumbnail { get; }
 
+    /// <summary>Caminho absoluto em disco — usado pela exclusão no painel ASSETS.</summary>
+    public string FullPath { get; }
+
     public AssetViewModel(string assetsRoot, string relativePath)
     {
         RelativePath = relativePath;
+        FullPath = Path.Combine(assetsRoot, relativePath);
 
         try
         {

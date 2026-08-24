@@ -21,6 +21,23 @@ public sealed class TopDownController : Behavior
     /// não é mais rápido que andar reto.</summary>
     public float Speed = 100f;
 
+    /// <summary>
+    /// Como a direção é tratada:
+    /// <list type="bullet">
+    /// <item><c>Free</c> (padrão) — direção contínua. Analógico e joystick de toque entregam
+    /// meio-termo, o personagem anda pra qualquer ângulo. É o de survivor/roguelike.</item>
+    /// <item><c>EightWay</c> — trava nas 8 direções. Casa com spritesheet de 8 poses e dá o
+    /// andar "encaixado" de action-RPG clássico.</item>
+    /// <item><c>FourWay</c> — trava nas 4 retas, sem diagonal. É o andar de RPG de grade
+    /// (Zelda, Pokémon, RPG Maker): o eixo de maior empurrão vence e o outro zera.</item>
+    /// </list>
+    ///
+    /// <para>Os três são o MESMO movimento com tratamento de direção diferente, por isso são um
+    /// campo e não três componentes. Pulo, gravidade e volante são outra física — esses moram no
+    /// <see cref="PlatformerController"/> e no <see cref="VehicleController"/>.</para>
+    /// </summary>
+    public string Movement = "Free";
+
     /// <summary>Lê WASD/setas e o analógico do gamepad (InputManager.AxisX/AxisY).</summary>
     public bool UseKeyboard = true;
 
@@ -53,7 +70,7 @@ public sealed class TopDownController : Behavior
         if (transform is null || World is null)
             return;
 
-        var move = ReadInput();
+        var move = SnapToMode(ReadInput());
 
         // Normaliza só o que passa de 1: o joystick entrega magnitude parcial (empurrão leve =
         // passo lento) e isso tem que sobreviver. O teclado entrega 1 por eixo, então a diagonal
@@ -74,6 +91,35 @@ public sealed class TopDownController : Behavior
 
         if (AnimatorSpeedParameter.Length > 0)
             Get<Animator>()?.SetFloat(AnimatorSpeedParameter, Velocity.Length());
+    }
+
+    /// <summary>
+    /// Aplica o travamento de direção do <see cref="Movement"/>, preservando a intensidade — o
+    /// analógico continua andando devagar quando empurrado de leve, mesmo travado nas 4 direções.
+    /// </summary>
+    private Vector2 SnapToMode(Vector2 move)
+    {
+        if (move.LengthSquared() <= 0.0001f)
+            return move;
+
+        if (Movement.Equals("FourWay", StringComparison.OrdinalIgnoreCase))
+        {
+            // O eixo de maior empurrão vence e o outro zera: é o que tira a diagonal sem deixar
+            // o personagem travado quando os dois eixos estão pressionados.
+            return MathF.Abs(move.X) >= MathF.Abs(move.Y)
+                ? new Vector2(MathF.Sign(move.X) * MathF.Abs(move.X), 0f)
+                : new Vector2(0f, MathF.Sign(move.Y) * MathF.Abs(move.Y));
+        }
+
+        if (Movement.Equals("EightWay", StringComparison.OrdinalIgnoreCase))
+        {
+            float magnitude = MathF.Min(1f, move.Length());
+            float step = MathF.Tau / 8f;
+            float angle = MathF.Round(MathF.Atan2(move.Y, move.X) / step) * step;
+            return new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * magnitude;
+        }
+
+        return move;   // Free
     }
 
     private Vector2 ReadInput()

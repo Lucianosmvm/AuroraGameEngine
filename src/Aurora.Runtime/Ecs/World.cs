@@ -61,6 +61,22 @@ public sealed class World
     /// </summary>
     public Entity? Spawn(string prefabPath, Vector2 position) => SpawnAt(prefabPath, position);
 
+    /// <summary>
+    /// Uma entidade com <see cref="Health"/> acabou de chegar a zero. Disparado ANTES da
+    /// destruição, com a entidade ainda íntegra: é o que permite reagir à morte (largar item,
+    /// dar XP, abrir a porta do chefe) sem script. O EventSystem assina isto pro gatilho "Death".
+    /// </summary>
+    public event Action<Entity>? EntityDied;
+
+    /// <summary>
+    /// Pares de entidades que se sobrepuseram no frame — sólidas e triggers juntas, na ordem em
+    /// que a detecção rodou. Repovoado a cada <see cref="Update"/>. Existe pro gatilho de evento
+    /// "Touch" poder usar a FORMA do collider em vez de distância entre centros.
+    /// </summary>
+    internal IReadOnlyList<(int A, int B)> OverlapsThisFrame => _overlapsThisFrame;
+
+    private readonly List<(int A, int B)> _overlapsThisFrame = [];
+
     /// <summary>Instancia o prefab onde ele foi salvo — mantém o Transform gravado no arquivo.</summary>
     public Entity? Spawn(string prefabPath) => SpawnAt(prefabPath, null);
 
@@ -138,6 +154,7 @@ public sealed class World
         _tilemapBuffer.Clear();
         _activeTriggers.Clear();
         _prevTriggers.Clear();
+        _overlapsThisFrame.Clear();
         _navGrid = null;
         _nextId = 1;
     }
@@ -474,6 +491,9 @@ public sealed class World
     {
         foreach (var (_, transform, agent) in Query<Transform, NavAgent>())
         {
+            if (!agent.Enabled)
+                continue;
+
             if (agent.Follow.Length > 0)
                 RetargetFollower(transform, agent, deltaTime);
 
@@ -643,6 +663,11 @@ public sealed class World
         if (health.Current <= 0f)
         {
             NotifyDeath(target.Id);
+
+            // Antes do Destroy de propósito: quem escuta (o gatilho de evento "Death") precisa
+            // da entidade ainda de pé pra ler a posição dela — é onde o loot cai.
+            EntityDied?.Invoke(target);
+
             if (health.DestroyOnDeath && _alive.Contains(target.Id))
                 Destroy(target.Id);
         }
@@ -663,6 +688,7 @@ public sealed class World
     private void ProcessCollisions()
     {
         _collisionBuffer.Clear();
+        _overlapsThisFrame.Clear();
         foreach (var entry in Query<Transform, Collider>())
             _collisionBuffer.Add(entry);
 
@@ -684,6 +710,8 @@ public sealed class World
                 if (!Overlap(ta.Position + ca.Offset, ca, tb.Position + cb.Offset, cb,
                         out var normal, out var depth))
                     continue;
+
+                _overlapsThisFrame.Add((ea.Id, eb.Id));
 
                 if (ca.IsSolid && cb.IsSolid)
                 {
@@ -1094,6 +1122,9 @@ public sealed class World
     /// </summary>
     public void DrawGlobalTint(SpriteBatch batch, float screenWidth, float screenHeight)
     {
+        // Todos os tints ativos, não só o primeiro: eles se sobrepõem por alpha, que é o que
+        // permite o ciclo dia/noite e a tempestade coexistirem na mesma cena. Parar no primeiro
+        // fazia um dos dois sumir dependendo da ordem das entidades — e a ordem não é autorada.
         foreach (var (_, tint) in Query<GlobalTint>())
         {
             if (!tint.Enabled || tint.Intensity <= 0f)
@@ -1101,7 +1132,6 @@ public sealed class World
 
             batch.DrawRect(Vector2.Zero, new Vector2(screenWidth, screenHeight),
                 tint.Color.WithAlpha(tint.Intensity));
-            break;
         }
     }
 

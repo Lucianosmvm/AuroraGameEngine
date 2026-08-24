@@ -906,6 +906,192 @@ public sealed class MainViewModel : ViewModelBase
             ? Path.Combine(Path.GetDirectoryName(_settings.FilePath)!, "Scripts")
             : "";
 
+    /// <summary>O que está selecionado em cada aba do painel de projeto — sem isso não há como
+    /// saber o que o botão de excluir deve apagar.</summary>
+    public SceneFileViewModel? SelectedSceneFile { get => _selectedSceneFile; set { _selectedSceneFile = value; Raise(); } }
+    public SceneFileViewModel? SelectedUiScreen { get => _selectedUiScreen; set { _selectedUiScreen = value; Raise(); } }
+    public PrefabFileViewModel? SelectedPrefab { get => _selectedPrefab; set { _selectedPrefab = value; Raise(); } }
+    public ScriptFileViewModel? SelectedScript { get => _selectedScript; set { _selectedScript = value; Raise(); } }
+    public AssetViewModel? SelectedAsset { get => _selectedAsset; set { _selectedAsset = value; Raise(); } }
+
+    private SceneFileViewModel? _selectedSceneFile;
+    private SceneFileViewModel? _selectedUiScreen;
+    private PrefabFileViewModel? _selectedPrefab;
+    private ScriptFileViewModel? _selectedScript;
+    private AssetViewModel? _selectedAsset;
+
+    /// <summary>
+    /// Apaga um arquivo do projeto e recarrega a lista correspondente. Devolve o que aconteceu
+    /// pra janela mostrar na barra de status.
+    ///
+    /// <para>Não existe desfazer: o Ctrl+Z do editor volta edição de cena, não arquivo apagado.
+    /// Quem chama tem que ter confirmado antes.</para>
+    /// </summary>
+    public string DeleteProjectFile(string fullPath, Action reload)
+    {
+        if (string.IsNullOrEmpty(fullPath))
+            return "Nada selecionado.";
+
+        string name = Path.GetFileName(fullPath);
+
+        try
+        {
+            if (!File.Exists(fullPath))
+            {
+                reload();
+                return $"'{name}' já não existia — lista atualizada.";
+            }
+
+            File.Delete(fullPath);
+            reload();
+            return $"Excluído: {name}";
+        }
+        catch (Exception ex)
+        {
+            // Arquivo aberto noutro programa, permissão negada, disco somente-leitura.
+            return $"Não deu pra excluir '{name}': {ex.Message}";
+        }
+    }
+
+    /// <summary>Caminho do banco de itens do projeto (Assets/database/items.json).</summary>
+    public string ItemDatabasePath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "items.json");
+
+    /// <summary>Caminho das tabelas de spawn do projeto (Assets/database/spawns.json).</summary>
+    public string SpawnTablePath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "spawns.json");
+
+    // ---------- Sugestões pros campos que apontam pra algo do projeto ----------
+    //
+    // Tudo aqui é calculado na hora, não cacheado: o inspector fica aberto enquanto entidades
+    // nascem, prefabs são salvos e telas são criadas — lista congelada envelheceria na tela.
+
+    /// <summary>Nomes das entidades da cena aberta — pros campos Follow/TargetName/TargetPrefix.</summary>
+    public IEnumerable<string> EntityNames =>
+        Entities.Select(e => e.Name).Where(n => n.Length > 0).Distinct().OrderBy(n => n);
+
+    /// <summary>Prefabs do projeto MAIS os ids das tabelas de spawn: os dois valem no mesmo campo,
+    /// então os dois têm que aparecer na mesma lista.</summary>
+    public IEnumerable<string> PrefabOrTableNames =>
+        Prefabs.Select(p => p.RelativePath).Concat(SpawnTableIds).Distinct();
+
+    /// <summary>Ids das tabelas de spawn cadastradas no banco.</summary>
+    public IEnumerable<string> SpawnTableIds => ReadIds(SpawnTablePath, "Tables");
+
+    /// <summary>Ids das telas de UI (nome do arquivo sem extensão) — é o que ShowUI/HideUI e os
+    /// campos de joystick/botão esperam.</summary>
+    public IEnumerable<string> UiScreenIds =>
+        UiScreens.Select(s => Path.GetFileNameWithoutExtension(s.Name)).Distinct().OrderBy(n => n);
+
+    /// <summary>Nomes dos elementos dentro das telas de UI — pros campos que apontam pra um
+    /// joystick ou botão específico.</summary>
+    public IEnumerable<string> UiElementNames
+    {
+        get
+        {
+            var names = new List<string>();
+
+            foreach (var screen in UiScreens)
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(screen.FullPath));
+                    if (!doc.RootElement.TryGetProperty("Objects", out var objects))
+                        continue;
+
+                    foreach (var obj in objects.EnumerateArray())
+                    {
+                        if (obj.TryGetProperty("Name", out var name)
+                            && name.GetString() is { Length: > 0 } text)
+                            names.Add(text);
+                    }
+                }
+                catch
+                {
+                    // Tela malformada não pode derrubar o inspector — só não sugere nada dela.
+                }
+            }
+
+            return names.Distinct().OrderBy(n => n);
+        }
+    }
+
+    /// <summary>Assets de áudio, pros campos de som.</summary>
+    public IEnumerable<string> SoundAssets =>
+        Assets.Select(a => a.RelativePath)
+            .Where(p => p.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase)
+                     || p.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Teclas comuns, pelos nomes do enum Silk.NET.Input.Key que o runtime usa. Sugestão e não
+    /// lista fechada de propósito: cobre o que 99% dos jogos ligam sem impedir quem precisa de
+    /// uma tecla exótica de digitar o nome dela.
+    /// </summary>
+    public static IEnumerable<string> KeyNames { get; } =
+    [
+        "Space", "Enter", "Escape", "Tab", "Backspace", "Delete",
+        "Left", "Right", "Up", "Down",
+        "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight",
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+        "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+        "Number0", "Number1", "Number2", "Number3", "Number4",
+        "Number5", "Number6", "Number7", "Number8", "Number9",
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+    ];
+
+    /// <summary>Lê os "Id" de um array nomeado num arquivo de banco. Banco ausente ou quebrado
+    /// devolve lista vazia — sugestão que falha não pode impedir de editar a cena.</summary>
+    private static IEnumerable<string> ReadIds(string path, string arrayName)
+    {
+        if (path.Length == 0 || !File.Exists(path))
+            return [];
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            if (!doc.RootElement.TryGetProperty(arrayName, out var items))
+                return [];
+
+            return items.EnumerateArray()
+                .Select(i => i.TryGetProperty("Id", out var id) ? id.GetString() ?? "" : "")
+                .Where(id => id.Length > 0)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Ids do banco de itens, pros seletores das ações UseItem/AddItem. Lido do arquivo
+    /// a cada consulta em vez de cacheado: o banco é pequeno e pode ser editado por fora.</summary>
+    public IEnumerable<string> ItemIds
+    {
+        get
+        {
+            string path = ItemDatabasePath;
+            if (path.Length == 0 || !File.Exists(path))
+                return [];
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+                if (!doc.RootElement.TryGetProperty("Items", out var items))
+                    return [];
+
+                return items.EnumerateArray()
+                    .Select(i => i.TryGetProperty("Id", out var id) ? id.GetString() ?? "" : "")
+                    .Where(id => id.Length > 0)
+                    .ToList();
+            }
+            catch
+            {
+                return [];   // banco malformado não pode derrubar o inspector
+            }
+        }
+    }
+
     /// <summary>Varre a pasta Scripts do projeto por arquivos .cs (para o painel SCRIPTS).</summary>
     public void ReloadScripts()
     {

@@ -11,10 +11,14 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     private readonly MainViewModel? _owner;
 
     public string[] TriggerTypes { get; } =
-        ["SceneStart", "PlayerTouch", "SwitchOn", "KeyPress", "Timer", "VariableCompare",
-         "HasItem", "QuestStageAtLeast"];
+        ["SceneStart", "PlayerTouch", "Touch", "Death", "SwitchOn", "KeyPress", "Timer",
+         "VariableCompare", "HasItem", "QuestStageAtLeast"];
 
     public string[] CompareOps { get; } = [">=", "<=", ">", "<", "==", "!="];
+
+    /// <summary>Teclas comuns pro gatilho KeyPress — sugestão, não lista fechada: cobre o que a
+    /// maioria dos jogos liga sem impedir uma tecla exótica de ser digitada.</summary>
+    public IEnumerable<string> KeyNames => MainViewModel.KeyNames;
 
     public ICommand AddActionCommand { get; }
 
@@ -81,6 +85,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     }
 
     public bool ShowRadius   => TriggerType == "PlayerTouch";
+    public bool ShowTargetPrefix => TriggerType == "Touch";
     public bool ShowSwitch   => TriggerType == "SwitchOn";
     public bool ShowKey      => TriggerType == "KeyPress";
     public bool ShowInterval => TriggerType == "Timer";
@@ -98,6 +103,8 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     {
         "SceneStart"        => "Disparado ao carregar a cena",
         "PlayerTouch"       => "Disparado quando o jogador entra no raio",
+        "Touch"             => "Disparado pela sobreposição dos colliders (usa a forma, não a distância)",
+        "Death"             => "Disparado quando esta entidade morre — Wait/ShowChoice não suspendem aqui",
         "SwitchOn"          => "Disparado quando um switch é ativado",
         "KeyPress"          => "Disparado ao pressionar uma tecla",
         "Timer"             => "Disparado em intervalos regulares",
@@ -111,6 +118,14 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     {
         get => _triggerNode["Key"]?.GetValue<string>() ?? "E";
         set { _triggerNode["Key"] = value; Raise(); RaiseEdited("key"); }
+    }
+
+    /// <summary>Filtro do gatilho Touch: só entidades cujo nome comece com isto disparam.
+    /// Vazio = qualquer uma com Collider.</summary>
+    public string TargetPrefix
+    {
+        get => _triggerNode["TargetPrefix"]?.GetValue<string>() ?? "";
+        set { _triggerNode["TargetPrefix"] = value; Raise(); RaiseEdited("targetPrefix"); }
     }
 
     public float Interval

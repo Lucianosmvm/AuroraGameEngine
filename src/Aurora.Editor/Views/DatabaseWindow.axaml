@@ -1,0 +1,287 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Aurora.Editor.Views.DatabaseWindow"
+        Width="920" Height="680" WindowStartupLocation="CenterOwner"
+        Background="#F2F4F7"
+        Title="Banco de Dados">
+
+  <DockPanel>
+
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#D7DEE8" Padding="10,8">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding Items.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding Spawns.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <Button Grid.Column="1" Content="Salvar" FontSize="12" Padding="14,4"
+                Margin="0,0,6,0" Click="OnSave"/>
+        <Button Grid.Column="2" Content="Fechar" FontSize="12" Padding="14,4" Click="OnClose"/>
+      </Grid>
+    </Border>
+
+    <TabControl Padding="0">
+
+      <!-- ==================== ITENS ==================== -->
+      <TabItem Header="Itens" FontSize="12">
+        <DockPanel>
+
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="#D7DEE8"
+                  DataContext="{Binding Items}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Item" FontSize="11" Padding="8,2" Command="{Binding AddCommand}"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                       Background="Transparent" FontSize="12">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding EffectSummary}" FontSize="10" Opacity="0.45"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <ScrollViewer Padding="12,10" DataContext="{Binding Items}"
+                        IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="10">
+
+              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8"
+                      DataContext="{Binding Selected}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="IDENTIFICAÇÃO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Id" VerticalAlignment="Center" Opacity="0.7" FontSize="12"
+                               ToolTip.Tip="Chave usada em AddItem/RemoveItem/UseItem e no gatilho HasItem."/>
+                    <TextBox Grid.Column="1" Text="{Binding Id}" FontSize="12" Padding="6,4"
+                             Watermark="pocao, chave_mestra…"/>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="12" Padding="6,4"
+                             Watermark="o que o jogador lê na tela"/>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Ícone" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Icon}" FontSize="12" Padding="6,4"
+                             Watermark="sprites/pocao.png"/>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Descrição" VerticalAlignment="Top" Opacity="0.7" FontSize="12"
+                               Margin="0,6,0,0"/>
+                    <TextBox Grid.Column="1" Text="{Binding Description}" FontSize="12" Padding="6,4"
+                             TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="70"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8"
+                      DataContext="{Binding Selected}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="REGRAS" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+
+                  <Grid ColumnDefinitions="90,*">
+                    <TextBlock Text="Tipo" VerticalAlignment="Center" Opacity="0.7" FontSize="12"
+                               ToolTip.Tip="Categoria livre — a engine não impõe significado. Serve pra HUD e loja filtrarem."/>
+                    <TextBox Grid.Column="1" Text="{Binding Type}" FontSize="12" Padding="6,4"
+                             Watermark="Consumivel, Arma, Material, Chave…"/>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="90,*,60,*">
+                    <TextBlock Text="Máx. pilha" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding MaxStackText}" FontSize="12" Padding="6,4"/>
+                    <TextBlock Grid.Column="2" Text="Preço" VerticalAlignment="Center" Opacity="0.7"
+                               FontSize="12" Margin="10,0,0,0"/>
+                    <TextBox Grid.Column="3" Text="{Binding PriceText}" FontSize="12" Padding="6,4"/>
+                  </Grid>
+
+                  <CheckBox Content="Consome uma unidade ao usar" IsChecked="{Binding Consumable}"
+                            FontSize="12"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="EFEITO AO USAR" FontSize="10" FontWeight="Bold" Opacity="0.5"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="+ ação" FontSize="11" Padding="8,2"
+                            Command="{Binding AddEffectCommand}"/>
+                  </Grid>
+
+                  <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+                    As ações rodam em quem usou o item (o jogador, por padrão). "Heal 50" é uma
+                    poção; "SetSwitch PortaAberta" é uma chave.
+                  </TextBlock>
+
+                  <ItemsControl ItemsSource="{Binding Effects}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#FFFFFF" CornerRadius="3" Padding="8,6" Margin="0,3">
+                          <StackPanel Spacing="4">
+                            <Grid ColumnDefinitions="*,Auto">
+                              <ComboBox ItemsSource="{Binding ActionTypes}" SelectedItem="{Binding ActionType}"
+                                        FontSize="11" HorizontalAlignment="Stretch"/>
+                              <Button Grid.Column="1" Content="×" FontSize="12" Padding="7,0"
+                                      Margin="4,0,0,0" Command="{Binding RemoveCommand}"/>
+                            </Grid>
+
+                            <TextBlock Text="{Binding ActionDescription}" FontSize="10" Opacity="0.45"
+                                       TextWrapping="Wrap"/>
+
+                            <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNameText}">
+                              <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
+                                         Opacity="0.6" FontSize="11"/>
+                              <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowValue}">
+                              <TextBlock Text="{Binding ValueLabel}" VerticalAlignment="Center"
+                                         Opacity="0.6" FontSize="11"/>
+                              <TextBox Grid.Column="1" Text="{Binding ValueText}" FontSize="11" Padding="4,3"/>
+                            </Grid>
+
+                            <CheckBox Content="{Binding OnLabel}" IsChecked="{Binding On}"
+                                      FontSize="11" IsVisible="{Binding ShowOn}"/>
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- ==================== TABELAS DE SPAWN ==================== -->
+      <TabItem Header="Tabelas de Spawn" FontSize="12">
+        <DockPanel DataContext="{Binding Spawns}">
+
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0" BorderBrush="#D7DEE8">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Tabela" FontSize="11" Padding="8,2" Command="{Binding AddTableCommand}"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveTableCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Tables}" SelectedItem="{Binding Selected}"
+                       Background="Transparent" FontSize="12">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Summary}" FontSize="10" Opacity="0.45"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <ScrollViewer Padding="12,10" IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="10">
+
+              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="GRUPO" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+                  <Grid ColumnDefinitions="90,*" DataContext="{Binding Selected}">
+                    <TextBlock Text="Id" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                    <TextBox Grid.Column="1" Text="{Binding Id}" FontSize="12" Padding="6,4"
+                             Watermark="inimigos_floresta, loot_bau…"/>
+                  </Grid>
+                  <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
+                    Escreva este id no lugar do caminho do prefab — no Spawner, na ação Spawn ou no
+                    AttackSpawner. Cada nascimento sorteia uma entrada pelo peso.
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#EDF2FA" CornerRadius="4" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="ENTRADAS" FontSize="10" FontWeight="Bold" Opacity="0.5"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="+ entrada" FontSize="11" Padding="8,2"
+                            Command="{Binding AddEntryCommand}"/>
+                  </Grid>
+
+                  <ItemsControl ItemsSource="{Binding Entries}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Border Background="#FFFFFF" CornerRadius="3" Padding="8,6" Margin="0,3">
+                          <StackPanel Spacing="4">
+
+                            <Grid ColumnDefinitions="*,60,Auto">
+                              <ComboBox ItemsSource="{Binding PrefabOptions}" SelectedItem="{Binding Prefab}"
+                                        FontSize="11" HorizontalAlignment="Stretch"/>
+                              <TextBox Grid.Column="1" Text="{Binding WeightText}" FontSize="11"
+                                       Padding="4,3" Margin="4,0,0,0"
+                                       ToolTip.Tip="Peso no sorteio. 3 contra 1 sai três vezes mais; 0 desliga a entrada."/>
+                              <Button Grid.Column="2" Content="×" FontSize="12" Padding="7,0"
+                                      Margin="4,0,0,0" Command="{Binding RemoveCommand}"/>
+                            </Grid>
+
+                            <CheckBox Content="Só quando…" IsChecked="{Binding HasCondition}"
+                                      FontSize="11"
+                                      ToolTip.Tip="Condição pra esta entrada entrar no sorteio (zumbi só à noite)"/>
+
+                            <StackPanel Spacing="4" DataContext="{Binding Condition}"
+                                        IsVisible="{Binding $parent[StackPanel].DataContext.HasCondition}">
+                              <Grid ColumnDefinitions="65,*">
+                                <TextBlock Text="Comparar" VerticalAlignment="Center" Opacity="0.6"
+                                           FontSize="11"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding ConditionKinds}"
+                                          SelectedItem="{Binding ConditionKind}" FontSize="11"
+                                          HorizontalAlignment="Stretch"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="65,*">
+                                <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+                                <TextBox Grid.Column="1" Text="{Binding Name}" FontSize="11" Padding="4,3"/>
+                              </Grid>
+                              <Grid ColumnDefinitions="65,*,65,*">
+                                <TextBlock Text="Operador" VerticalAlignment="Center" Opacity="0.6"
+                                           FontSize="11"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding OpTypes}"
+                                          SelectedItem="{Binding Op}" FontSize="11"
+                                          HorizontalAlignment="Stretch"/>
+                                <TextBlock Grid.Column="2" Text="Valor" VerticalAlignment="Center"
+                                           Opacity="0.6" FontSize="11" Margin="8,0,0,0"/>
+                                <TextBox Grid.Column="3" Text="{Binding ValueText}" FontSize="11" Padding="4,3"/>
+                              </Grid>
+                              <CheckBox Content="Switch ligado" IsChecked="{Binding On}" FontSize="11"/>
+                            </StackPanel>
+
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
+      </TabItem>
+
+    </TabControl>
+
+  </DockPanel>
+</Window>
