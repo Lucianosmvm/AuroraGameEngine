@@ -33,6 +33,10 @@ public sealed class UIManager
     /// </summary>
     public Database.ItemDatabase? Items { get; set; }
 
+    /// <summary>Textos de interface, pro token <c>{Term:chave}</c> do UiText. Null = o token
+    /// devolve a própria chave.</summary>
+    public Database.TermDatabase? Terms { get; set; }
+
     /// <summary>Carrega (ou recarrega) uma tela a partir do arquivo. Fica visível por padrão.</summary>
     public UiScreen Load(string path, AssetManager assets)
     {
@@ -590,6 +594,7 @@ public sealed class UIManager
     ///   <item><c>{Item:id}</c> — quantidade no inventário;</item>
     ///   <item><c>{ItemName:id}</c>, <c>{ItemDesc:id}</c>, <c>{ItemPrice:id}</c> — campos da ficha
     ///   do item no banco (os três existiam no cadastro sem nada no jogo que os lesse);</item>
+    ///   <item><c>{Term:chave}</c> — texto de interface do banco de termos;</item>
     ///   <item><c>{Quest:id}</c> — estágio da quest;</item>
     ///   <item>qualquer outra coisa — variável do GameState.</item>
     /// </list>
@@ -598,6 +603,8 @@ public sealed class UIManager
         => TokenPattern.Replace(template, match =>
         {
             string token = match.Groups[1].Value;
+            if (token.StartsWith("Term:", StringComparison.OrdinalIgnoreCase))
+                return Terms?.Get(token[5..]) ?? token[5..];
             if (token.StartsWith("ItemName:", StringComparison.OrdinalIgnoreCase))
                 return Items?.DisplayName(token[9..]) ?? token[9..];
             if (token.StartsWith("ItemDesc:", StringComparison.OrdinalIgnoreCase))

@@ -89,6 +89,14 @@ public abstract class Game : IDisposable
     /// <summary>Efeitos de status (veneno, lentidão, blindagem). Carregados de
     /// <c>Assets/database/status.json</c>; aplicados pelas ações AddStatus/RemoveStatus.</summary>
     public Database.StatusDatabase StatusDatabase { get; } = new();
+
+    /// <summary>Listas de categorias do jogo (ItemTypes e as que o seu jogo inventar). Carregadas
+    /// de <c>Assets/database/types.json</c>.</summary>
+    public Database.TypeDatabase Types { get; } = new();
+
+    /// <summary>Textos de interface ("Comprar", "Sair"…). Carregados de
+    /// <c>Assets/database/terms.json</c>; sem o arquivo valem os padrões em português.</summary>
+    public Database.TermDatabase Terms { get; } = new();
     public DialogueSystem Dialogue { get; } = new();
     public UIManager UI { get; } = new();
     public EventSystem Events { get; }
@@ -104,7 +112,7 @@ public abstract class Game : IDisposable
         Events = new EventSystem(World, State)
         {
             Dialogue = Dialogue, Inventory = Inventory, Quests = Quests, UI = UI, Items = Items,
-            CommonEvents = CommonEvents, Status = StatusDatabase,
+            CommonEvents = CommonEvents, Status = StatusDatabase, Terms = Terms,
         };
     }
 
@@ -270,6 +278,7 @@ public abstract class Game : IDisposable
         // ninguém no jogo que os consulte.
         Inventory.Database = Items;
         UI.Items = Items;
+        UI.Terms = Terms;
         World.StatusDatabase = StatusDatabase;
 
         World.Inventory = Inventory;
@@ -287,6 +296,9 @@ public abstract class Game : IDisposable
         LoadDatabase(Database.SpawnTableDatabase.DefaultPath, "tabelas de spawn", SpawnTables.Load);
         LoadDatabase(Database.CommonEventDatabase.DefaultPath, "eventos comuns", CommonEvents.Load);
         LoadDatabase(Database.StatusDatabase.DefaultPath, "status", StatusDatabase.Load);
+        LoadDatabase(Database.TypeDatabase.DefaultPath, "tipos", Types.Load);
+        LoadDatabase(Database.TermDatabase.DefaultPath, "termos", Terms.Load);
+        WarnAboutUnknownItemTypes();
 
         // World.Spawn("prefabs/slime.json", pos) e a ação de evento Spawn passam por aqui.
         // Erro de arquivo/JSON não derruba o jogo: loga e devolve null, mesma política do
@@ -590,6 +602,28 @@ public abstract class Game : IDisposable
     /// spawn não precisa criar nada. Mas JSON quebrado é avisado: silêncio aqui viraria "por que
     /// meu item não faz nada?" sem nenhuma pista.
     /// </summary>
+    /// <summary>
+    /// Avisa sobre item cujo Type não está na lista ItemTypes cadastrada. Só avisa: a lista é
+    /// opcional (sem ela, qualquer texto vale), e derrubar o boot por causa de uma categoria
+    /// escrita torto seria pior que a categoria torta. O ponto é pegar "Consumível" vs
+    /// "Consumivel" no console em vez de na loja que filtra errado.
+    /// </summary>
+    private void WarnAboutUnknownItemTypes()
+    {
+        if (Types.Get(Database.TypeDatabase.ItemTypes).Count == 0)
+            return;
+
+        foreach (var (id, item) in Items.Items)
+        {
+            if (!Types.Contains(Database.TypeDatabase.ItemTypes, item.Type))
+            {
+                Console.Error.WriteLine(
+                    $"[Game] Item '{id}': tipo '{item.Type}' não está na lista ItemTypes do banco " +
+                    $"de tipos. Erro de digitação, ou falta cadastrar a categoria.");
+            }
+        }
+    }
+
     private void LoadDatabase(string path, string label, Action<string> load)
     {
         if (!Assets.Exists(path))

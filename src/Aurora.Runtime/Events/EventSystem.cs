@@ -50,6 +50,9 @@ public sealed class EventSystem
     /// <summary>Quando presente, as ações AddStatus/RemoveStatus acham a ficha do efeito.</summary>
     public Database.StatusDatabase? Status { get; set; }
 
+    /// <summary>Quando presente, os textos de interface da loja saem daqui.</summary>
+    public Database.TermDatabase? Terms { get; set; }
+
     /// <summary>Quando presente, ações SetQuestStage/AdvanceQuest e gatilho QuestStageAtLeast operam aqui.</summary>
     public QuestManager? Quests { get; set; }
 
@@ -585,7 +588,7 @@ public sealed class EventSystem
 
                 var goods = action.Name.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries
                                                         | StringSplitOptions.TrimEntries);
-                _shop ??= new ShopSystem(Dialogue, Inventory, Items, _state);
+                _shop ??= new ShopSystem(Dialogue, Inventory, Items, _state, Terms);
                 _shop.Open(goods, action.Text ?? "", action.Op ?? "Buy", action.Value);
                 break;
             }

@@ -20,18 +20,26 @@ public sealed class ShopSystem
     private readonly InventoryManager _inventory;
     private readonly ItemDatabase _items;
     private readonly GameState _state;
+    private readonly TermDatabase? _terms;
 
     /// <summary>Fração do preço paga ao jogador na venda quando a ação não manda outra. Meio
     /// preço é a convenção do gênero — comprar e revender no mesmo balcão não pode dar lucro.</summary>
     public const float DefaultSellRate = 0.5f;
 
-    public ShopSystem(DialogueSystem dialogue, InventoryManager inventory, ItemDatabase items, GameState state)
+    /// <param name="terms">Banco de termos, pra trocar as palavras da loja sem mexer em código
+    /// ("Comprar" virar "Trocar"). Null = os padrões em português.</param>
+    public ShopSystem(DialogueSystem dialogue, InventoryManager inventory, ItemDatabase items,
+        GameState state, TermDatabase? terms = null)
     {
         _dialogue = dialogue;
         _inventory = inventory;
         _items = items;
         _state = state;
+        _terms = terms;
     }
+
+    /// <summary>Texto de interface da loja, com o padrão embutido quando não há cadastro.</summary>
+    private string Term(string key, string fallback) => _terms?.Get(key, fallback) ?? fallback;
 
     /// <summary>
     /// Abre a loja.
@@ -60,7 +68,8 @@ public sealed class ShopSystem
     /// <summary>Balcão do modo "Both": escolher entre comprar e vender antes de ver a lista.</summary>
     private void ShowCounter(IReadOnlyList<string> goods, string currency, float sellRate)
     {
-        _dialogue.ShowChoice(Wallet(currency), ["Comprar", "Vender", "Sair"], index =>
+        string[] options = [Term("shop.buy", "Comprar"), Term("shop.sell", "Vender"), Term("shop.exit", "Sair")];
+        _dialogue.ShowChoice(Wallet(currency), options, index =>
         {
             if (index == 0) ShowBuyList(goods, currency, sellRate, backToCounter: true);
             else if (index == 1) ShowSellList(goods, currency, sellRate, backToCounter: true);
@@ -80,12 +89,12 @@ public sealed class ShopSystem
 
         if (offers.Count == 0)
         {
-            _dialogue.ShowMessage("Não tenho nada pra vender hoje.");
+            _dialogue.ShowMessage(Term("shop.empty", "Não tenho nada pra vender hoje."));
             return;
         }
 
         var options = offers.Select(o => $"{Label(o)} — {o.Price}").ToList();
-        options.Add("Sair");
+        options.Add(Term("shop.exit", "Sair"));
 
         _dialogue.ShowChoice(Wallet(currency), options, index =>
         {
@@ -113,7 +122,7 @@ public sealed class ShopSystem
 
         if (sellable.Count == 0)
         {
-            _dialogue.ShowMessage("Você não tem nada que eu queira comprar.");
+            _dialogue.ShowMessage(Term("shop.nothingToSell", "Você não tem nada que eu queira comprar."));
             if (backToCounter)
                 ShowCounter(goods, currency, sellRate);
             return;
@@ -122,7 +131,7 @@ public sealed class ShopSystem
         var options = sellable
             .Select(definition => $"{Label(definition)} x{_inventory.GetCount(definition.Id)} — {SellPrice(definition, sellRate)}")
             .ToList();
-        options.Add("Sair");
+        options.Add(Term("shop.exit", "Sair"));
 
         _dialogue.ShowChoice(Wallet(currency), options, index =>
         {
@@ -142,7 +151,7 @@ public sealed class ShopSystem
         float money = _state.GetVariable(currency);
         if (money < definition.Price)
         {
-            _dialogue.ShowMessage("Não dá pro seu bolso.");
+            _dialogue.ShowMessage(Term("shop.cantAfford", "Não dá pro seu bolso."));
             return;
         }
 
@@ -151,7 +160,7 @@ public sealed class ShopSystem
         int added = _inventory.Add(definition.Id, 1);
         if (added <= 0)
         {
-            _dialogue.ShowMessage("Você já carrega o quanto pode disso.");
+            _dialogue.ShowMessage(Term("shop.full", "Você já carrega o quanto pode disso."));
             return;
         }
 

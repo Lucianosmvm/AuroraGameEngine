@@ -18,6 +18,10 @@
                      TextTrimming="CharacterEllipsis"/>
           <TextBlock Text="{Binding Status.Status}" FontSize="11" Opacity="0.6"
                      TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding Types.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="{Binding Terms.Status}" FontSize="11" Opacity="0.6"
+                     TextTrimming="CharacterEllipsis"/>
         </StackPanel>
         <Button Grid.Column="1" Content="Salvar" FontSize="12" Padding="14,4"
                 Margin="0,0,6,0" Click="OnSave"/>
@@ -99,8 +103,11 @@
                   <Grid ColumnDefinitions="90,*">
                     <TextBlock Text="Tipo" VerticalAlignment="Center" Opacity="0.7" FontSize="12"
                                ToolTip.Tip="Categoria livre — a engine não impõe significado. Serve pra HUD e loja filtrarem."/>
-                    <TextBox Grid.Column="1" Text="{Binding Type}" FontSize="12" Padding="6,4"
-                             Watermark="Consumivel, Arma, Material, Chave…"/>
+                    <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding TypeOptions}"
+                                     Text="{Binding Type}" FontSize="12"
+                                     FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                                     HorizontalAlignment="Stretch"
+                                     Watermark="Consumivel, Arma, Material, Chave…"/>
                   </Grid>
 
                   <Grid ColumnDefinitions="90,*,60,*">
@@ -464,6 +471,99 @@
               </Border>
 
             </StackPanel>
+          </ScrollViewer>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- ==================== TIPOS ==================== -->
+      <TabItem Header="Tipos" FontSize="12">
+        <DockPanel DataContext="{Binding Types}">
+
+          <Border DockPanel.Dock="Left" Width="240" BorderThickness="0,0,1,0"
+                  BorderBrush="{DynamicResource EditorBorder}">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="8,6">
+                <Button Content="+ Lista" FontSize="11" Padding="8,2" Command="{Binding AddCommand}"/>
+                <Button Content="+ ItemTypes" FontSize="11" Padding="8,2"
+                        Command="{Binding AddItemTypesCommand}"
+                        IsVisible="{Binding CanAddItemTypes}"
+                        ToolTip.Tip="Cria a lista que a engine confere, já com categorias comuns"/>
+                <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveCommand}"
+                        IsEnabled="{Binding HasSelection}"/>
+              </StackPanel>
+              <ListBox ItemsSource="{Binding Lists}" SelectedItem="{Binding Selected}"
+                       Background="Transparent" FontSize="12">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Spacing="1">
+                      <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Summary}" FontSize="10" Opacity="0.45"
+                                 TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </DockPanel>
+          </Border>
+
+          <DockPanel Margin="12,10" IsVisible="{Binding HasSelection}">
+            <StackPanel DockPanel.Dock="Top" Spacing="8" DataContext="{Binding Selected}">
+              <Grid ColumnDefinitions="90,*">
+                <TextBlock Text="Id da lista" VerticalAlignment="Center" Opacity="0.7" FontSize="12"/>
+                <TextBox Grid.Column="1" Text="{Binding Id}" FontSize="12" Padding="6,4"
+                         IsEnabled="{Binding !IsEngineList}"
+                         Watermark="ItemTypes, CategoriasDePista…"/>
+              </Grid>
+              <TextBlock Text="{Binding ListHint}" FontSize="10" Opacity="0.45" TextWrapping="Wrap"/>
+              <TextBlock Text="VALORES (um por linha)" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
+            </StackPanel>
+
+            <TextBox DataContext="{Binding Selected}" Text="{Binding ValuesText}"
+                     AcceptsReturn="True" TextWrapping="NoWrap" FontSize="12" Padding="8,6"
+                     Margin="0,6,0,0" VerticalContentAlignment="Top"
+                     Watermark="Consumivel&#x0a;Arma&#x0a;Chave"/>
+          </DockPanel>
+
+        </DockPanel>
+      </TabItem>
+
+      <!-- ==================== TERMOS ==================== -->
+      <TabItem Header="Termos" FontSize="12">
+        <DockPanel DataContext="{Binding Terms}">
+
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="12,8">
+            <Button Content="+ Chave do jogo" FontSize="11" Padding="8,2" Command="{Binding AddCommand}"
+                    ToolTip.Tip="Uma chave sua, lida pelo token {Term:chave} do UiText"/>
+            <Button Content="Excluir" FontSize="11" Padding="8,2" Command="{Binding RemoveCommand}"
+                    IsEnabled="{Binding CanRemove}"/>
+          </StackPanel>
+
+          <TextBlock DockPanel.Dock="Top" Margin="12,0,12,8" FontSize="10" Opacity="0.45"
+                     TextWrapping="Wrap">
+            Textos que a ENGINE escreve na tela. Em branco = fica o padrão mostrado no campo.
+            Diálogo e nome de item não moram aqui — aquilo é conteúdo, e já tem lugar próprio.
+          </TextBlock>
+
+          <ScrollViewer Padding="12,0,12,10">
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="{DynamicResource EditorCard}" CornerRadius="4"
+                          Padding="10,8" Margin="0,3">
+                    <StackPanel Spacing="4">
+                      <Grid ColumnDefinitions="170,*">
+                        <TextBox Text="{Binding Key}" FontSize="11" Padding="6,3"
+                                 IsEnabled="{Binding CanEditKey}"/>
+                        <TextBox Grid.Column="1" Text="{Binding Text}" FontSize="12" Padding="6,3"
+                                 Margin="6,0,0,0" Watermark="{Binding Standard}"/>
+                      </Grid>
+                      <TextBlock Text="{Binding Description}" FontSize="10" Opacity="0.45"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
           </ScrollViewer>
 
         </DockPanel>

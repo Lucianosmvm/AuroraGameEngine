@@ -21,6 +21,10 @@
   <ItemGroup>
     <Compile Include="..\Aurora.Runtime\Graphics\TextWrapper.cs" Link="Models\TextWrapper.cs" />
     <Compile Include="..\Aurora.Runtime\UI\UiAnchor.cs" Link="Models\UiAnchor.cs" />
+    <!-- Lista das chaves de texto que a engine consulta, com o padrao de cada uma. Por link pelo
+         mesmo motivo dos outros: duplicar a lista no editor faria a aba Termos oferecer chave que
+         o runtime nao le (ou esquecer chave nova) sem nada avisar. So depende de System.Text.Json. -->
+    <Compile Include="..\Aurora.Runtime\Database\TermDatabase.cs" Link="Models\TermDatabase.cs" />
   </ItemGroup>
 
   <!-- Fonte padrão copiada pra saida do editor: o scaffolder de "Novo Projeto" a copia pro

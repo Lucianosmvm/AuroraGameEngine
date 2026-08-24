@@ -1196,6 +1196,14 @@ public sealed class MainViewModel : ViewModelBase
     public string StatusPath =>
         _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "status.json");
 
+    /// <summary>Listas de categorias do projeto (Assets/database/types.json).</summary>
+    public string TypesPath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "types.json");
+
+    /// <summary>Textos de interface do projeto (Assets/database/terms.json).</summary>
+    public string TermsPath =>
+        _document is null ? "" : Path.Combine(_document.AssetsRoot, "database", "terms.json");
+
     // ---------- Sugestões pros campos que apontam pra algo do projeto ----------
     //
     // Tudo aqui é calculado na hora, não cacheado: o inspector fica aberto enquanto entidades
@@ -1234,6 +1242,46 @@ public sealed class MainViewModel : ViewModelBase
     /// <summary>Ids dos efeitos de status cadastrados — pras ações AddStatus/RemoveStatus e pro
     /// campo Initial do componente Status.</summary>
     public IEnumerable<string> StatusIds => ReadIds(StatusPath, "Status");
+
+    /// <summary>
+    /// Valores da lista ItemTypes do banco de tipos — pro campo Tipo do item. Lista vazia (ou sem
+    /// arquivo) significa "sem controle": o campo continua aceitando texto livre.
+    /// </summary>
+    public IEnumerable<string> ItemTypeValues => TypeValues("ItemTypes");
+
+    /// <summary>Valores de uma lista do banco de tipos, lidos na hora do arquivo.</summary>
+    public IEnumerable<string> TypeValues(string listId)
+    {
+        string path = TypesPath;
+        if (path.Length == 0 || !File.Exists(path))
+            return [];
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+            if (!doc.RootElement.TryGetProperty("Types", out var lists))
+                return [];
+
+            foreach (var list in lists.EnumerateArray())
+            {
+                if (!list.TryGetProperty("Id", out var id)
+                    || !string.Equals(id.GetString(), listId, StringComparison.OrdinalIgnoreCase)
+                    || !list.TryGetProperty("Values", out var values))
+                    continue;
+
+                return values.EnumerateArray()
+                    .Select(v => v.GetString() ?? "")
+                    .Where(v => v.Length > 0)
+                    .ToList();
+            }
+        }
+        catch
+        {
+            // Arquivo quebrado é problema da aba Tipos, que mostra o erro. Aqui só não sugere nada.
+        }
+
+        return [];
+    }
 
     /// <summary>Ids das telas de UI (nome do arquivo sem extensão) — é o que ShowUI/HideUI e os
     /// campos de joystick/botão esperam.</summary>

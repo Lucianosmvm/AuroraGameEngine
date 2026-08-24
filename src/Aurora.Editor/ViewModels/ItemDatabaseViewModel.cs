@@ -11,15 +11,22 @@ public sealed class ItemRowViewModel : ViewModelBase
 {
     private readonly JsonObject _node;
     private readonly Action _onEdited;
+    private readonly MainViewModel? _owner;
 
     /// <summary>Nó cru do item — a lista de efeitos é editada por cima dele.</summary>
     public JsonObject Node => _node;
 
-    public ItemRowViewModel(JsonObject node, Action onEdited)
+    public ItemRowViewModel(JsonObject node, Action onEdited, MainViewModel? owner = null)
     {
         _node = node;
         _onEdited = onEdited;
+        _owner = owner;
     }
+
+    /// <summary>Categorias cadastradas na lista ItemTypes. Sugestão e não lista fechada: a
+    /// categoria pode ser criada agora e cadastrada depois — o que o cadastro evita é o
+    /// "Consumivel" de um item virar "Consumível" no outro sem ninguém ver.</summary>
+    public IEnumerable<string> TypeOptions => _owner?.ItemTypeValues ?? [];
 
     /// <summary>Rótulo da lista: o nome quando existe, senão o id — item recém-criado ainda não
     /// tem nome e sumiria da lista se o rótulo dependesse só dele.</summary>
@@ -205,7 +212,7 @@ public sealed class ItemDatabaseViewModel : ViewModelBase
             _root["Items"] = array = new JsonArray();
 
         foreach (var node in array.OfType<JsonObject>())
-            Items.Add(new ItemRowViewModel(node, MarkDirty));
+            Items.Add(new ItemRowViewModel(node, MarkDirty, _owner));
 
         Status = $"{Items.Count} item(ns).";
     }
@@ -217,7 +224,7 @@ public sealed class ItemDatabaseViewModel : ViewModelBase
         var node = new JsonObject { ["Id"] = UniqueId(), ["Effect"] = new JsonArray() };
         ((JsonArray)_root["Items"]!).Add(node);
 
-        var row = new ItemRowViewModel(node, MarkDirty);
+        var row = new ItemRowViewModel(node, MarkDirty, _owner);
         Items.Add(row);
         Selected = row;
         MarkDirty();

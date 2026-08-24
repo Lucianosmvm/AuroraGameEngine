@@ -14,6 +14,8 @@ public sealed class DatabaseViewModel : ViewModelBase
     public SpawnTableEditorViewModel Spawns { get; }
     public CommonEventEditorViewModel CommonEvents { get; }
     public StatusEditorViewModel Status { get; }
+    public TypeEditorViewModel Types { get; }
+    public TermEditorViewModel Terms { get; }
 
     public DatabaseViewModel(MainViewModel owner)
     {
@@ -21,6 +23,8 @@ public sealed class DatabaseViewModel : ViewModelBase
         Spawns = new SpawnTableEditorViewModel(owner.SpawnTablePath, owner);
         CommonEvents = new CommonEventEditorViewModel(owner.CommonEventPath, owner);
         Status = new StatusEditorViewModel(owner.StatusPath);
+        Types = new TypeEditorViewModel(owner.TypesPath);
+        Terms = new TermEditorViewModel(owner.TermsPath);
     }
 
     /// <summary>Grava as duas abas. Se uma recusar (id repetido, por exemplo), a outra ainda é
@@ -31,5 +35,7 @@ public sealed class DatabaseViewModel : ViewModelBase
         Spawns.Save();
         CommonEvents.Save();
         Status.Save();
+        Types.Save();
+        Terms.Save();
     }
 }
