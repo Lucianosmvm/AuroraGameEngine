@@ -864,6 +864,8 @@ UiText
 | Curar | `World?.Heal(target, amount)` |
 | Perseguir alvo | `Get<NavAgent>()?.SetTarget(pos)` |
 | Ler teclado/gamepad | `World?.Input?.AxisX/AxisY`, `WasKeyPressed`, `WasGamepadButtonPressed` |
+| Interagir perto de algo | gatilho `PlayerInteract` (Radius + Controle) — sem código |
+| Controle por nome | `InputBinding.WasPressed(input, "E"/"MouseLeft"/"GamepadA")` |
 | Ouro/pontos | `World?.Inventory?.Add("Gold", n)` / `GetCount` |
 | Flag global | `World?.State?.SetSwitch("X", true)` / `GetSwitch` |
 | Progresso de quest | `World?.Quests?.SetStage/GetStage/Advance` |

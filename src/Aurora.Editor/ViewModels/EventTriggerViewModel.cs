@@ -11,7 +11,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     private readonly MainViewModel? _owner;
 
     public string[] TriggerTypes { get; } =
-        ["SceneStart", "PlayerTouch", "Touch", "Death", "SwitchOn", "KeyPress", "Timer",
+        ["SceneStart", "PlayerTouch", "PlayerInteract", "Touch", "Death", "SwitchOn", "KeyPress", "Timer",
          "VariableCompare", "HasItem", "QuestStageAtLeast"];
 
     public string[] CompareOps { get; } = [">=", "<=", ">", "<", "==", "!="];
@@ -84,10 +84,10 @@ public sealed class EventTriggerViewModel : ComponentViewModel
         }
     }
 
-    public bool ShowRadius   => TriggerType == "PlayerTouch";
+    public bool ShowRadius   => TriggerType is "PlayerTouch" or "PlayerInteract";
     public bool ShowTargetPrefix => TriggerType == "Touch";
     public bool ShowSwitch   => TriggerType == "SwitchOn";
-    public bool ShowKey      => TriggerType == "KeyPress";
+    public bool ShowKey      => TriggerType is "KeyPress" or "PlayerInteract";
     public bool ShowInterval => TriggerType == "Timer";
     public bool ShowCompare  => TriggerType is "VariableCompare" or "HasItem" or "QuestStageAtLeast";
 
@@ -103,10 +103,11 @@ public sealed class EventTriggerViewModel : ComponentViewModel
     {
         "SceneStart"        => "Disparado ao carregar a cena",
         "PlayerTouch"       => "Disparado quando o jogador entra no raio",
+        "PlayerInteract"    => "Disparado quando o jogador aperta o controle escolhido ESTANDO dentro do raio — é o \"encoste e aperte E\" de porta, NPC e alavanca",
         "Touch"             => "Disparado pela sobreposição dos colliders (usa a forma, não a distância)",
         "Death"             => "Disparado quando esta entidade morre — Wait/ShowChoice não suspendem aqui",
         "SwitchOn"          => "Disparado quando um switch é ativado",
-        "KeyPress"          => "Disparado ao pressionar uma tecla",
+        "KeyPress"          => "Disparado ao pressionar o controle em qualquer lugar do mapa (sem exigir proximidade)",
         "Timer"             => "Disparado em intervalos regulares",
         "VariableCompare"   => "Disparado quando variável atinge o valor",
         "HasItem"           => "Disparado quando a quantidade do item atinge o valor",

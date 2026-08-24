@@ -156,6 +156,14 @@ public sealed class EventSystem
             "SceneStart"       => !_sceneStartFired,
             "PlayerTouch"      => playerPosition is { } p
                                   && Vector2.Distance(p, transform.Position) <= trigger.Radius,
+
+            // Encostar E apertar, junto. Tipo próprio em vez de dar Radius ao KeyPress: Radius
+            // vem com 20 por padrão em TODO gatilho, então passar a respeitá-lo no KeyPress
+            // transformaria em silêncio todo "aperte E pra abrir o menu" já existente num
+            // gatilho que só funciona perto de alguma coisa.
+            "PlayerInteract"   => playerPosition is { } near
+                                  && Vector2.Distance(near, transform.Position) <= trigger.Radius
+                                  && InputBinding.WasPressed(Input, trigger.Key),
             // Death não é avaliado aqui: chega por World.EntityDied, no instante da morte. Se
             // dependesse desta varredura, a entidade já teria sido destruída pelo Health e o
             // evento nunca veria a posição onde largar o loot.
@@ -184,7 +192,10 @@ public sealed class EventSystem
         => trigger.Trigger switch
         {
             "SwitchOn"         => trigger.Switch is not null && _state.GetSwitch(trigger.Switch),
-            "KeyPress"         => Input?.WasKeyPressed(ParseKey(trigger.Key)) ?? false,
+            // Pelo InputBinding: aceita tecla, botão do mouse (= toque no Android) e botão de
+            // gamepad. Adição pura — antes, um nome que não fosse de tecla virava Key.Unknown e
+            // o gatilho nunca disparava.
+            "KeyPress"         => InputBinding.WasPressed(Input, trigger.Key),
             "Timer"            => trigger._timer >= trigger.Interval,
             "VariableCompare"  => trigger.Variable is not null
                                   && Compare(_state.GetVariable(trigger.Variable),
@@ -197,9 +208,6 @@ public sealed class EventSystem
                                              trigger.CompareOp, trigger.CompareValue),
             _ => false,
         };
-
-    private static Key ParseKey(string name)
-        => Enum.TryParse<Key>(name, ignoreCase: true, out var k) ? k : Key.Unknown;
 
     private static bool Compare(float actual, string op, float value) => op switch
     {

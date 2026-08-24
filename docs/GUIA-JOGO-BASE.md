@@ -491,6 +491,54 @@ entidade do efeito (`Entity.Destroy()` num Behavior com timer, ou reaproveite `E
 
 ---
 
+## 11-A. Porta trancada: encostar, apertar, e só abrir com a chave
+
+Zero código. O gatilho **`PlayerInteract`** exige as duas coisas juntas: o jogador dentro do
+raio **e** o controle escolhido pressionado. (`PlayerTouch` só mede distância; `KeyPress` só
+olha o controle, de qualquer canto do mapa.)
+
+Na entidade `Porta`:
+
+1. **"+Add Componente" → Transform** — onde a porta fica.
+2. **"+Add Componente" → SpriteRenderer** — o desenho dela.
+3. **"+Add Componente" → EventTrigger** — Trigger:`PlayerInteract`, Radius:`24`,
+   Controle:`E`, **`Once` desmarcado** (senão só dá pra tentar uma vez na vida).
+4. **"+Add Componente" → Persistent** — pra ela continuar aberta quando você voltar na sala.
+5. **"+ Adicionar Ação"**, nesta ordem:
+
+```
+If            Condição:Item   Nome:Chave   Op:>=   Valor:1
+  ShowMessage   "Você usa a chave. A porta destranca."
+  RemoveItem    Item:Chave   Quantidade:1
+  ChangeScene   scenes/sala2.json
+Else
+  ShowMessage   "Trancada. Você precisa de uma chave."
+EndIf
+```
+
+A sequência **espera a mensagem ser fechada** antes de seguir, então o `ChangeScene` não
+atropela o texto. Tire o `RemoveItem` se a chave for permanente.
+
+### Escolhendo o controle
+
+O campo **Controle** aceita bem mais que letra:
+
+| Escreva | Vale por |
+|---|---|
+| `E`, `Space`, `Enter`, `F`, `Number1`… | qualquer tecla |
+| `MouseLeft`, `MouseRight`, `MouseMiddle` | botão do mouse — **e o toque na tela no Android** |
+| `GamepadA`, `GamepadB`, `GamepadX`, `GamepadY` | botão do controle |
+
+`MouseLeft` é a única opção que serve desktop e celular ao mesmo tempo: no Android o toque
+entra pelo mesmo caminho do clique esquerdo.
+
+> Nome que a engine não reconhece não dá erro — o gatilho simplesmente nunca dispara. Se apertar
+> e não acontecer nada, confira o texto do campo antes de procurar em outro lugar.
+
+O mesmo gatilho serve pra NPC que só fala quando você aperta, alavanca, placa e baú.
+
+---
+
 ## 11. Diálogo com NPC
 
 Zero código. `PlayerTouch` funciona só por distância entre Transforms — não precisa de

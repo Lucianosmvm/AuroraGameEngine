@@ -76,6 +76,33 @@ public class ScaffoldedProjectAssetsTests : IDisposable
         Assert.True(File.Exists(scene), $"a cena inicial devolvida não existe: {scene}");
     }
 
+    [Fact]
+    public void GeneratedGame_DrawsTheDialogue_SoShowMessageIsVisible()
+    {
+        // ShowMessage é uma ação oferecida no editor desde o primeiro dia. Sem Dialogue.Draw no
+        // OnRenderUI ela registra o texto e NADA aparece na tela: o evento parece ignorado, e não
+        // existe erro nenhum pra investigar. Mesma família do bug da fonte — o template
+        // prometendo algo que não liga.
+        Create();
+
+        string gameClass = File.ReadAllText(Path.Combine(_projectDir, "MeuJogoGame.cs"));
+
+        Assert.Contains("Dialogue.Draw(", gameClass);
+    }
+
+    [Fact]
+    public void GeneratedGame_DrawsTheDialogueAfterTheUi()
+    {
+        // A caixa de fala tem que ficar POR CIMA do HUD, não atrás dele.
+        Create();
+
+        string gameClass = File.ReadAllText(Path.Combine(_projectDir, "MeuJogoGame.cs"));
+
+        Assert.True(gameClass.IndexOf("UI.Draw(", StringComparison.Ordinal)
+                    < gameClass.IndexOf("Dialogue.Draw(", StringComparison.Ordinal),
+            "Dialogue.Draw precisa vir depois de UI.Draw.");
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_projectDir, recursive: true); } catch { /* melhor esforço */ }

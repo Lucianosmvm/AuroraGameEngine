@@ -238,6 +238,11 @@ public static class GameProjectScaffolder
                 // dos botões (e que respeita o DesignResolution). Ler os dois diferentes desenha o
                 // botão num lugar e detecta o clique em outro.
                 UI.Draw(SpriteBatch, _font, State, Inventory, Quests, ScreenSize.X, ScreenSize.Y);
+
+                // Depois da UI, pra caixa de fala ficar por cima do HUD. Sem esta linha a acao
+                // ShowMessage registra o texto e NADA aparece na tela — o jogo parece ignorar o
+                // evento, e nao ha erro nenhum pra investigar.
+                Dialogue.Draw(SpriteBatch, _font, ScreenSize.X, ScreenSize.Y);
             }
         }
         """;

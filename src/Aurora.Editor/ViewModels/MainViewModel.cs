@@ -1245,6 +1245,11 @@ public sealed class MainViewModel : ViewModelBase
     /// </summary>
     public static IEnumerable<string> KeyNames { get; } =
     [
+        // Mouse primeiro: "MouseLeft" e o toque na tela no Android (o InputManager dobra o
+        // ponteiro da MainActivity no mesmo caminho do mouse), entao e a escolha certa pra
+        // interacao que precisa funcionar nas duas plataformas.
+        "MouseLeft", "MouseRight", "MouseMiddle",
+        "GamepadA", "GamepadB", "GamepadX", "GamepadY",
         "Space", "Enter", "Escape", "Tab", "Backspace", "Delete",
         "Left", "Right", "Up", "Down",
         "ShiftLeft", "ShiftRight", "ControlLeft", "ControlRight", "AltLeft", "AltRight",
