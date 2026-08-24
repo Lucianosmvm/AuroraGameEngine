@@ -157,9 +157,16 @@ public static class AndroidExporter
 
           <ItemGroup>
             <!-- Não referencia o .csproj do jogo direto (NETSDK1150) - compila os mesmos
-                 .cs aqui, exceto o Program.cs (entry point desktop). -->
-            <Compile Include="{relativeGameDir}\*.cs" Exclude="{relativeProgramFile}"
-                     Link="GameSource\%(Filename)%(Extension)" />
+                 .cs aqui, exceto o Program.cs (entry point desktop).
+                 Glob RECURSIVO: os scripts de comportamento moram em Scripts/, e com "*.cs"
+                 (só a raiz) o APK saía sem eles - a cena carregava, o SceneSerializer só
+                 logava "componente nao registrado" no logcat e o jogo rodava sem aquele
+                 comportamento, calado. bin/obj do jogo saem à mão: DefaultItemExcludes não
+                 alcança pasta fora do projeto, e o AssemblyInfo gerado lá dentro duplica
+                 atributo de assembly (CS0579). -->
+            <Compile Include="{relativeGameDir}\**\*.cs"
+                     Exclude="{relativeProgramFile};{relativeGameDir}\bin\**;{relativeGameDir}\obj\**"
+                     Link="GameSource\%(RecursiveDir)%(Filename)%(Extension)" />
             <AndroidAsset Include="{relativeGameDir}\Assets\**"
                           Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
           </ItemGroup>

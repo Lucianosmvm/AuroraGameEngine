@@ -87,6 +87,38 @@ public static class GameScriptDiscovery
         return line ?? "veja o detalhe (passe o mouse na status bar).";
     }
 
+    /// <summary>Resumo curto de um processo de JOGO que morreu — o formato é diferente do
+    /// dotnet build: uma exceção sem handler sai como "Unhandled exception. System.X: msg" e
+    /// não contém a palavra "error", então <see cref="FirstErrorLine"/> devolveria só o texto
+    /// de fallback. Sem isto, um crash de runtime (asset faltando, cena inválida) aparecia
+    /// pro usuário como "abriu e fechou sozinho" e nada mais.</summary>
+    internal static string FirstCrashLine(string stdout, string stderr)
+    {
+        string combined = stderr.Trim().Length > 0 ? stderr : stdout;
+        var lines = combined.Split('\n')
+            .Select(l => l.Trim())
+            .Where(l => l.Length > 0)
+            .ToList();
+
+        int unhandled = lines.FindIndex(l => l.StartsWith("Unhandled exception", StringComparison.OrdinalIgnoreCase));
+        if (unhandled >= 0)
+        {
+            // "Unhandled exception. System.IO.FileNotFoundException: msg" (tudo numa linha) ou
+            // "Unhandled exception." com o tipo/mensagem na linha seguinte — os dois acontecem.
+            string tail = lines[unhandled];
+            int dot = tail.IndexOf('.');
+            tail = dot >= 0 && dot + 1 < tail.Length ? tail[(dot + 1)..].Trim() : "";
+            if (tail.Length > 0)
+                return tail;
+            if (unhandled + 1 < lines.Count)
+                return lines[unhandled + 1];
+        }
+
+        return lines.FirstOrDefault(l => l.Contains("error", StringComparison.OrdinalIgnoreCase))
+            ?? lines.FirstOrDefault()
+            ?? "sem saída no stdout/stderr (passe o mouse na status bar).";
+    }
+
     /// <summary>Junta stdout+stderr num texto só, pra tooltip da status bar — não existe
     /// console nenhum pra apontar o usuário (esses processos rodam com CreateNoWindow=true).</summary>
     internal static string CombineLog(string stdout, string stderr)

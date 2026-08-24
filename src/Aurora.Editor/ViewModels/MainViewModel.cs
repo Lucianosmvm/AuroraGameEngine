@@ -352,20 +352,98 @@ public sealed class MainViewModel : ViewModelBase
 
         try
         {
-            ProcessStartInfo psi = isExe
-                ? new ProcessStartInfo(project, $"--scene \"{scenePath}\"")
-                  { UseShellExecute = true }
-                : new ProcessStartInfo("dotnet",
-                      $"run --project \"{project}\" -- --scene \"{scenePath}\"")
-                  { UseShellExecute = true };
+            // UseShellExecute=false + redirect: sem isto o processo do jogo era largado sem
+            // ninguém olhando, e QUALQUER falha depois do build (asset faltando, cena inválida,
+            // driver de GL) virava só "a janela abriu e fechou" — a exceção morria junto com o
+            // processo. O jogo cria a própria janela de GL, então CreateNoWindow só esconde o
+            // console, não o jogo.
+            var psi = new ProcessStartInfo(isExe ? project : "dotnet")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            };
 
-            Process.Start(psi);
+            // Com UseShellExecute=false o processo herda o diretório atual do EDITOR. Pro exe,
+            // roda a partir da pasta dele — é o que acontece quando o jogador abre o jogo pelo
+            // Explorer, e é o que o Play deve reproduzir.
+            if (isExe)
+                psi.WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(project)) ?? "";
+
+            if (!isExe)
+            {
+                psi.ArgumentList.Add("run");
+                psi.ArgumentList.Add("--project");
+                psi.ArgumentList.Add(project);
+                psi.ArgumentList.Add("--");
+            }
+
+            psi.ArgumentList.Add("--scene");
+            psi.ArgumentList.Add(scenePath);
+
+            var process = Process.Start(psi)
+                ?? throw new InvalidOperationException("Não consegui iniciar o processo do jogo.");
+
             Status = $"Jogo iniciado — cena: {Path.GetFileName(scenePath)}";
+            StatusDetail = null;
+
+            // Sem await: o editor continua usável enquanto o jogo roda. Como Play() está na
+            // thread de UI, as continuações de WatchGameAsync voltam pra ela pelo
+            // SynchronizationContext do Avalonia — Status/StatusDetail seguem sendo escritos
+            // da thread certa.
+            _ = WatchGameAsync(process, Path.GetFileName(scenePath));
         }
         catch (Exception ex)
         {
             Status = $"Erro ao iniciar jogo: {ex.Message}";
             StatusDetail = ex.ToString();
+        }
+    }
+
+    /// <summary>Acompanha o processo do jogo até ele morrer e, se morreu com código != 0,
+    /// joga o motivo na status bar (resumo) e no tooltip (stdout+stderr inteiro). É o que
+    /// transforma "fechou sozinho" numa mensagem acionável.</summary>
+    private async Task WatchGameAsync(Process process, string sceneName)
+    {
+        using (process)
+        {
+            string stdout, stderr;
+            try
+            {
+                // Os dois lidos em paralelo: ler um até o fim antes do outro trava se o
+                // processo encher o buffer do que ficou esperando.
+                var stdoutTask = process.StandardOutput.ReadToEndAsync();
+                var stderrTask = process.StandardError.ReadToEndAsync();
+                await Task.WhenAll(stdoutTask, stderrTask);
+                await process.WaitForExitAsync();
+
+                stdout = stdoutTask.Result;
+                stderr = stderrTask.Result;
+            }
+            catch (Exception ex)
+            {
+                Status = $"Perdi o acompanhamento do jogo: {ex.Message}";
+                StatusDetail = ex.ToString();
+                return;
+            }
+
+            if (process.ExitCode == 0)
+            {
+                Status = $"Jogo encerrado — cena: {sceneName}";
+                StatusDetail = null;
+                return;
+            }
+
+            // Exceção sem handler no .NET sai como 0xE0434352, que em int vira um negativo
+            // ilegível — hex pra esses, decimal pros códigos que o jogo escolheu (Exit(1)).
+            string code = process.ExitCode is < 0 or > 0xFFFF
+                ? $"0x{process.ExitCode:X8}"
+                : process.ExitCode.ToString();
+
+            Status = $"Jogo fechou sozinho (código {code}): "
+                + GameScriptDiscovery.FirstCrashLine(stdout, stderr);
+            StatusDetail = GameScriptDiscovery.CombineLog(stdout, stderr);
         }
     }
 

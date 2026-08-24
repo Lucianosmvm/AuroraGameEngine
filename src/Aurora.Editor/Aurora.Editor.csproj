@@ -10,6 +10,10 @@
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aurora.Editor.Tests" />
+  </ItemGroup>
+
   <!-- Quebra de linha do runtime reusada por link, não por referência de projeto: o editor é
        independente do Aurora.Runtime de propósito (mexe só no JSON da cena, sem GL), mas se o
        preview quebrasse linha diferente do jogo o editor voltaria a mentir. TextWrapper é
