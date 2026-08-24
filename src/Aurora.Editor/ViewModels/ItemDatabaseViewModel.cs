@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -66,7 +67,7 @@ public sealed class ItemRowViewModel : ViewModelBase
 
     public string MaxStackText
     {
-        get => (_node["MaxStack"]?.GetValue<int>() ?? 0).ToString();
+        get => _node["MaxStack"].AsInt(0).ToString();
         set
         {
             if (!int.TryParse(value, out int parsed)) return;
@@ -78,7 +79,7 @@ public sealed class ItemRowViewModel : ViewModelBase
 
     public string PriceText
     {
-        get => (_node["Price"]?.GetValue<int>() ?? 0).ToString();
+        get => _node["Price"].AsInt(0).ToString();
         set
         {
             if (!int.TryParse(value, out int parsed)) return;
@@ -275,7 +276,7 @@ public sealed class ItemDatabaseViewModel : ViewModelBase
         if (Selected is not { } row || row.Node["Effect"] is not JsonArray effect)
             return;
 
-        var action = new JsonObject { ["Action"] = "Heal", ["Value"] = 50 };
+        var action = new JsonObject { ["Action"] = "Heal", ["Value"] = 50f };
         effect.Add(action);
         Effects.Add(BuildEffectViewModel(action, effect));
         MarkDirty();

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -57,7 +58,7 @@ public sealed class AnimatorTransitionViewModel : ViewModelBase
 
     public float CompareValue
     {
-        get => _node["CompareValue"]?.GetValue<float>() ?? 0f;
+        get => _node["CompareValue"].AsFloat(0f);
         set { _node["CompareValue"] = value; Raise(); Raise(nameof(CompareValueText)); _onEdited(); }
     }
 

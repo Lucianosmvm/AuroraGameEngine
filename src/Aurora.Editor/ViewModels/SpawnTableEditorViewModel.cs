@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -37,7 +38,7 @@ public sealed class SpawnEntryViewModel : ViewModelBase
 
     public string WeightText
     {
-        get => (_node["Weight"]?.GetValue<float>() ?? 1f)
+        get => _node["Weight"].AsFloat(1f)
             .ToString(System.Globalization.CultureInfo.InvariantCulture);
         set
         {

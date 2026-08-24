@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -58,7 +59,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 
     public float Radius
     {
-        get => _triggerNode["Radius"]?.GetValue<float>() ?? 20f;
+        get => _triggerNode["Radius"].AsFloat(20f);
         set { _triggerNode["Radius"] = value; Raise(); Raise(nameof(RadiusText)); RaiseEdited("radius"); }
     }
 
@@ -131,7 +132,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 
     public float Interval
     {
-        get => _triggerNode["Interval"]?.GetValue<float>() ?? 5f;
+        get => _triggerNode["Interval"].AsFloat(5f);
         set { _triggerNode["Interval"] = value; Raise(); Raise(nameof(IntervalText)); RaiseEdited("interval"); }
     }
 
@@ -166,7 +167,7 @@ public sealed class EventTriggerViewModel : ComponentViewModel
 
     public float CompareValue
     {
-        get => _triggerNode["CompareValue"]?.GetValue<float>() ?? 0f;
+        get => _triggerNode["CompareValue"].AsFloat(0f);
         set { _triggerNode["CompareValue"] = value; Raise(); Raise(nameof(CompareValueText)); RaiseEdited("compare-value"); }
     }
 

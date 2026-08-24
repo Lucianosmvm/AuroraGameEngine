@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -26,7 +27,7 @@ public sealed class AnimationClipViewModel : ViewModelBase
 
     public float FrameDuration
     {
-        get => _node["Duration"]?.GetValue<float>() ?? 0.1f;
+        get => _node["Duration"].AsFloat(0.1f);
         set { _node["Duration"] = value; Raise(); Raise(nameof(FrameDurationText)); _onEdited(); }
     }
 
@@ -52,7 +53,7 @@ public sealed class AnimationClipViewModel : ViewModelBase
         {
             if (_node["Frames"] is not JsonArray arr)
                 return "";
-            return string.Join(", ", arr.Select(f => f?.GetValue<int>() ?? 0));
+            return string.Join(", ", arr.Select(f => f.AsInt(0)));
         }
         set
         {

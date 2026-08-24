@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -443,7 +444,7 @@ public sealed class EntityViewModel : ViewModelBase
             tiles.Add(-1);
 
         int cell = y * width + x;
-        if (tiles[cell]?.GetValue<int>() == index)
+        if (tiles[cell].AsInt(int.MinValue) == index)
             return;
 
         tiles[cell] = index;

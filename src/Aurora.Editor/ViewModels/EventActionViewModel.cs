@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Windows.Input;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.ViewModels;
 
@@ -137,7 +138,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public float ValueFloat
     {
-        get => _node["Value"]?.GetValue<float>() ?? 0f;
+        get => _node["Value"].AsFloat(0f);
         set { _node["Value"] = value; Raise(); Raise(nameof(ValueText)); _onEdited(); }
     }
 
@@ -172,7 +173,7 @@ public sealed class EventActionViewModel : ViewModelBase
     /// toda cena com um campo que quase sempre vale o padrão.</summary>
     public float ChanceFloat
     {
-        get => _node["Chance"]?.GetValue<float>() ?? 1f;
+        get => _node["Chance"].AsFloat(1f);
         set
         {
             float clamped = Math.Clamp(value, 0f, 1f);
@@ -224,7 +225,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public float X
     {
-        get => _node["X"]?.GetValue<float>() ?? 0f;
+        get => _node["X"].AsFloat(0f);
         set { _node["X"] = value; Raise(); Raise(nameof(XText)); _onEdited(); }
     }
 
@@ -240,7 +241,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public float Y
     {
-        get => _node["Y"]?.GetValue<float>() ?? 0f;
+        get => _node["Y"].AsFloat(0f);
         set { _node["Y"] = value; Raise(); Raise(nameof(YText)); _onEdited(); }
     }
 
@@ -256,7 +257,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public float Seconds
     {
-        get => _node["Seconds"]?.GetValue<float>() ?? 1f;
+        get => _node["Seconds"].AsFloat(1f);
         set { _node["Seconds"] = value; Raise(); Raise(nameof(SecondsText)); _onEdited(); }
     }
 

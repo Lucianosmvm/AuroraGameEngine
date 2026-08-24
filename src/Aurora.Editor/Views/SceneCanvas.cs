@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Aurora.Editor.Models;
 
 namespace Aurora.Editor.Views;
 
@@ -301,7 +302,7 @@ public sealed class SceneCanvas : Control
 
         for (int cell = 0; cell < total; cell++)
         {
-            if (!solid.Contains(tiles[cell]?.GetValue<int>() ?? -1))
+            if (!solid.Contains(tiles[cell].AsInt(-1)))
                 continue;
 
             context.DrawRectangle(fill, pen, new Rect(
@@ -816,7 +817,7 @@ public sealed class SceneCanvas : Control
 
         for (int cell = 0; cell < total; cell++)
         {
-            int index = tilesNode[cell]?.GetValue<int>() ?? -1;
+            int index = tilesNode[cell].AsInt(-1);
             if (index < 0)
                 continue;
 
