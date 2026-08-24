@@ -45,9 +45,15 @@ public static class GameProjectScaffolder
         File.WriteAllText(Path.Combine(scriptsDir, "Spin.cs"), BuildExampleScript(identifier));
         File.WriteAllBytes(Path.Combine(spritesDir, "placeholder.png"), Convert.FromBase64String(PlaceholderPngBase64));
 
-        string? fontSource = FindDefaultFont();
-        if (fontSource is not null)
-            File.Copy(fontSource, Path.Combine(fontsDir, "DejaVuSans.ttf"), overwrite: true);
+        // Falha aqui em vez de gerar um projeto que compila e morre no primeiro OnLoad: o Game
+        // do template chama Assets.LoadFont("fonts/DejaVuSans.ttf") sem checar, então projeto
+        // sem TTF = janela que abre e fecha sozinha com FileNotFoundException.
+        string fontSource = FindDefaultFont()
+            ?? throw new InvalidOperationException(
+                "Não encontrei a fonte padrão DejaVuSans.ttf (esperada em " +
+                Path.Combine(AppContext.BaseDirectory, "Assets", "fonts") +
+                "). Recompile o editor: o Aurora.Editor.csproj copia a fonte pra saída.");
+        File.Copy(fontSource, Path.Combine(fontsDir, "DejaVuSans.ttf"), overwrite: true);
 
         // Tela de UI carregada e desenhada automaticamente pelo template do Game (ver
         // BuildGameClass) — "Novo Projeto" já sai com um menu clicável funcionando no Play,
@@ -136,10 +142,17 @@ public static class GameProjectScaffolder
         return null;
     }
 
-    /// <summary>Sobe a partir da pasta do executável até achar a fonte padrão usada pelos samples,
-    /// pra todo projeto novo já sair com texto de UI (botão do menu, HUD) desenhando de cara.</summary>
+    /// <summary>Acha a fonte padrão pra todo projeto novo já sair com texto de UI (botão do menu,
+    /// HUD) desenhando de cara. Primeiro na saída do editor — a cópia que o Aurora.Editor.csproj
+    /// garante estar sempre lá; o walk por samples/ fica só como fallback pra clones antigos que
+    /// ainda tenham essa pasta (ela foi removida do repo, e era a única fonte que este método
+    /// procurava: sem ela o projeto gerado saía sem TTF e fechava sozinho no Play).</summary>
     private static string? FindDefaultFont()
     {
+        string shipped = Path.Combine(AppContext.BaseDirectory, "Assets", "fonts", "DejaVuSans.ttf");
+        if (File.Exists(shipped))
+            return shipped;
+
         for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
         {
             string candidate = Path.Combine(dir.FullName, "samples", "Aurora.Sandbox.Core", "Assets", "fonts", "DejaVuSans.ttf");

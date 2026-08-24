@@ -19,6 +19,14 @@
     <Compile Include="..\Aurora.Runtime\UI\UiAnchor.cs" Link="Models\UiAnchor.cs" />
   </ItemGroup>
 
+  <!-- Fonte padrão copiada pra saida do editor: o scaffolder de "Novo Projeto" a copia pro
+       Assets/fonts do jogo gerado (ver GameProjectScaffolder.FindDefaultFont). Antes ela vinha
+       de samples/, que foi removido do repo — projeto novo saía sem fonte e fechava sozinho
+       no Play com FileNotFoundException. -->
+  <ItemGroup>
+    <Content Include="Assets\fonts\DejaVuSans.ttf" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.18" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
