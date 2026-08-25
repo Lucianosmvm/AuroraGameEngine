@@ -285,6 +285,14 @@ public sealed class EventSystem
             trigger.WaitingDialogue = false;
         }
 
+        if (trigger.WaitingMove)
+        {
+            if (_world.IsAlive(trigger.WaitingMoveEntityId)
+                && _world.GetEntity(trigger.WaitingMoveEntityId).Get<NavAgent>() is { HasTarget: true })
+                return;
+            trigger.WaitingMove = false;
+        }
+
         while (trigger.ActionIndex < trigger.Actions.Count)
         {
             var action = trigger.Actions[trigger.ActionIndex];
@@ -321,6 +329,17 @@ public sealed class EventSystem
             if (action.Type is "ShowMessage" or "ShowChoice" && Dialogue?.IsActive == true)
             {
                 trigger.WaitingDialogue = true;
+                return;
+            }
+
+            // Movimento em andamento: pausa até chegar (ou desistir — destino bloqueado também
+            // zera HasTarget, senão um alvo inalcançável travaria a cutscene pra sempre).
+            if (action.Type == "MoveTo"
+                && ResolveTarget(self, action.Name) is { } moving
+                && moving.Get<NavAgent>() is { HasTarget: true })
+            {
+                trigger.WaitingMove = true;
+                trigger.WaitingMoveEntityId = moving.Id;
                 return;
             }
         }
@@ -494,10 +513,28 @@ public sealed class EventSystem
                 break;
 
             case "ShowMessage" when action.Text is not null:
-                // Name = nome do falante (opcional).
-                Dialogue?.ShowMessage(action.Text, action.Name);
+                // Name = nome do falante (opcional), Portrait = retrato ao lado do texto (opcional).
+                Dialogue?.ShowMessage(action.Text, action.Name, action.Portrait);
                 MessageShown?.Invoke(action.Text);
                 break;
+
+            // Anda até X,Y contornando parede (mesmo NavAgent que já existia pra IA — aqui é só
+            // controlado por evento em vez de script). Cria o componente na hora se faltar, do
+            // mesmo jeito que AddStatus faz: nem todo alvo de cutscene nasce preparado pra ela.
+            // O bloqueio de sequência (ver Advance) é quem faz isto parecer um passo síncrono —
+            // "anda até ali, DEPOIS mostra a mensagem" — em vez de andar e falar ao mesmo tempo.
+            case "MoveTo":
+            {
+                if (ResolveTarget(self, action.Name) is not { } moveTarget)
+                    break;
+
+                var agent = moveTarget.Get<NavAgent>() ?? moveTarget.Add(new NavAgent());
+                agent.Enabled = true; // a cutscene manda agora, mesmo que algo tivesse desligado
+                if (action.Value > 0f)
+                    agent.Speed = action.Value;
+                agent.SetTarget(action.X, action.Y);
+                break;
+            }
 
             case "Save":
                 Save?.Save((int)action.Value);

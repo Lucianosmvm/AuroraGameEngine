@@ -34,6 +34,9 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
   existem pro editor sugerir e pros seus scripts lerem
 - ✅ **Termos** (`database/terms.json`): as palavras que a engine escreve na tela ("Comprar",
   "Sair"). Trocar o vocabulário ou traduzir sem mexer em código; token `{Term:chave}` no UiText
+- ✅ **Cutscene básica** (ação `MoveTo`): anda até X,Y contornando parede (mesmo pathfinding
+  da IA) e PAUSA a sequência até chegar — "anda até aqui, então fala" em vez dos dois ao mesmo
+  tempo. `ShowMessage` ganhou `Portrait`: retrato ao lado do texto na caixa de diálogo
 - ✅ **Loja** (ação `OpenShop`): compra e venda pela caixa de diálogo, usando o `Price` do banco de
   itens. A moeda é uma variável do `GameState` escolhida por você — a engine não impõe "ouro"
 - ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações

@@ -1,12 +1,15 @@
 using System.Numerics;
+using Aurora.Runtime.Assets;
 using Aurora.Runtime.Graphics;
 
 namespace Aurora.Runtime.UI;
 
 public abstract record DialogueEntry;
 
-/// <summary>Mensagem simples; avança com <see cref="DialogueSystem.Advance"/>.</summary>
-public sealed record DialogueMessage(string Text, string? Speaker) : DialogueEntry;
+/// <summary>Mensagem simples; avança com <see cref="DialogueSystem.Advance"/>. <paramref name="Portrait"/>
+/// é o caminho de uma textura (relativo a Assets) desenhada ao lado do texto — null/vazio = sem retrato,
+/// a caixa fica do jeito de sempre.</summary>
+public sealed record DialogueMessage(string Text, string? Speaker, string? Portrait = null) : DialogueEntry;
 
 /// <summary>Escolha; navegue com SelectNext/Previous e confirme com Advance.</summary>
 public sealed record DialogueChoice(string Prompt, IReadOnlyList<string> Options, Action<int> OnChosen) : DialogueEntry;
@@ -19,6 +22,18 @@ public sealed record DialogueChoice(string Prompt, IReadOnlyList<string> Options
 public sealed class DialogueSystem
 {
     private const float Padding = 16f;
+
+    /// <summary>Lado do retrato, em pixels — quadrado, a caixa cresce pra caber.</summary>
+    private const float PortraitSize = 96f;
+
+    /// <summary>
+    /// Catálogo de texturas, pro retrato do <see cref="DialogueMessage"/>. Propriedade e não
+    /// parâmetro de <see cref="Draw"/> de propósito: a assinatura do Draw está escrita à mão no
+    /// Game.cs de todo jogo já gerado por este editor (<c>Dialogue.Draw(SpriteBatch, _font,
+    /// ScreenSize.X, ScreenSize.Y)</c>), e mexer nela quebraria todos eles pra ganhar nada. O
+    /// Game (motor) é quem seta isto sozinho — ver Game.HandleLoad.
+    /// </summary>
+    public AssetManager? Assets { get; set; }
 
     /// <summary>Recuo do marcador "» " das opções — as linhas de continuação de uma opção
     /// quebrada não são recuadas, mas a largura disponível já desconta o marcador.</summary>
@@ -58,8 +73,8 @@ public sealed class DialogueSystem
         _layoutOptions.Clear();
     }
 
-    public void ShowMessage(string text, string? speaker = null)
-        => _queue.Enqueue(new DialogueMessage(text, speaker));
+    public void ShowMessage(string text, string? speaker = null, string? portrait = null)
+        => _queue.Enqueue(new DialogueMessage(text, speaker, portrait));
 
     public void ShowChoice(string prompt, IReadOnlyList<string> options, Action<int> onChosen)
         => _queue.Enqueue(new DialogueChoice(prompt, options, onChosen));
@@ -113,23 +128,41 @@ public sealed class DialogueSystem
         var speakerColor = Color.FromBytes(251, 242, 54);
 
         string? speaker = (Current as DialogueMessage)?.Speaker;
+        string? portraitPath = (Current as DialogueMessage)?.Portrait;
+        var portrait = portraitPath is { Length: > 0 } && Assets is not null ? Assets.LoadTexture(portraitPath) : null;
+
+        // Retrato empurra o texto pra direita — a largura da caixa não muda por causa dele
+        // (senão a caixa "pularia" de tamanho entre uma fala com retrato e outra sem).
+        float textOffsetX = portrait is not null ? PortraitSize + Padding : 0f;
 
         float boxWidth = MathF.Min(screenWidth * 0.85f, 720f);
-        EnsureLayout(font, boxWidth);
+        EnsureLayout(font, boxWidth - textOffsetX);
 
         float textHeight = font.MeasureText(_layoutBody).Y
             + (speaker is not null ? font.LineHeight : 0f);
         foreach (string option in _layoutOptions)
             textHeight += font.MeasureText(option).Y;
 
-        float boxHeight = textHeight + Padding * 2f + 8f;
+        float boxHeight = MathF.Max(textHeight, portrait is not null ? PortraitSize : 0f) + Padding * 2f + 8f;
 
         var boxPosition = new Vector2((screenWidth - boxWidth) / 2f, screenHeight - boxHeight - 20f);
 
         batch.DrawRect(boxPosition, new Vector2(boxWidth, boxHeight), background);
         batch.DrawRect(boxPosition, new Vector2(boxWidth, 2f), accent);
 
-        var pen = boxPosition + new Vector2(Padding, Padding);
+        if (portrait is not null)
+        {
+            // "Contain": encolhe preservando proporção em vez de esticar num quadrado — um
+            // retrato retangular (rosto num busto vertical) não pode virar rosto largo.
+            float portraitScale = MathF.Min(PortraitSize / portrait.Width, PortraitSize / portrait.Height);
+            var portraitDrawSize = new Vector2(portrait.Width * portraitScale, portrait.Height * portraitScale);
+            var portraitPosition = boxPosition + new Vector2(
+                Padding + (PortraitSize - portraitDrawSize.X) / 2f,
+                (boxHeight - PortraitSize) / 2f + (PortraitSize - portraitDrawSize.Y) / 2f);
+            batch.Draw(portrait, portraitPosition, portraitDrawSize, Vector2.Zero, 0f, Color.White);
+        }
+
+        var pen = boxPosition + new Vector2(Padding + textOffsetX, Padding);
 
         if (speaker is not null)
         {

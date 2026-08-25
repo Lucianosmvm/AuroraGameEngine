@@ -30,6 +30,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "AddItem", "RemoveItem", "UseItem", "OpenShop",
         "CallEvent",
         "AddStatus", "RemoveStatus",
+        "MoveTo",
         "If", "Else", "EndIf",
         "SetQuestStage", "AdvanceQuest",
         "SetActive",
@@ -92,7 +93,7 @@ public sealed class EventActionViewModel : ViewModelBase
         // nome exato pega uma entidade só (a mais antiga viva com aquele nome).
         "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation"
             or "SetActive" => TagTargets.Concat(_owner?.EntityNames ?? []),
-        "SetWeather" => _owner?.EntityNames ?? [],
+        "SetWeather" or "MoveTo" => _owner?.EntityNames ?? [],
         "PlaySound" or "PlayMusic" => _owner?.SoundAssets ?? [],
         "AddItem" or "RemoveItem" or "OpenShop" => _owner?.ItemIds ?? [],
         _ => [],
@@ -140,6 +141,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "CallEvent" => "Evento",
         "AddStatus" or "RemoveStatus" => "Status",
         "OpenShop" => "À venda",
+        "MoveTo" => "Entidade",
         "ShowUI" or "HideUI" or "ToggleUI" => "Tela UI",
         _ => "Falante",
     };
@@ -208,6 +210,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "AdvanceQuest" => "Incremento",
         "Damage" or "Heal" => "Quantidade",
         "OpenShop" => "Venda (fração)",
+        "MoveTo" => "Velocidade (0 = atual)",
         _ => "Valor",
     };
 
@@ -339,18 +342,40 @@ public sealed class EventActionViewModel : ViewModelBase
         _ => "Texto",
     };
 
+    /// <summary>Caminho de uma textura desenhada ao lado da mensagem — o retrato de quem fala.
+    /// Só existe em ShowMessage; vazio = sem retrato, a caixa fica do jeito de sempre.</summary>
+    public string Portrait
+    {
+        get => _node["Portrait"]?.GetValue<string>() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value)) _node.Remove("Portrait");
+            else _node["Portrait"] = value;
+            Raise();
+            _onEdited();
+        }
+    }
+
+    public bool ShowPortrait => ActionType == "ShowMessage";
+
+    /// <summary>Texturas do projeto, pro campo Portrait — mesma fonte do asset browser do
+    /// editor. Sugestão, não lista fechada: o retrato pode ser desenhado depois de escrever
+    /// o caminho.</summary>
+    public IEnumerable<string> PortraitSuggestions => _owner?.Assets.Select(a => a.RelativePath) ?? [];
+
     public string ActionDescription => ActionType switch
     {
         "Wait"           => "Espera X segundos antes da próxima ação",
         "SetVariable"    => "Define ou soma um valor numa variável do GameState",
         "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
-        "ShowMessage"    => "Mostra uma caixa de diálogo com texto",
+        "ShowMessage"    => "Mostra uma caixa de diálogo com texto — Nome é o falante, Retrato (opcional) é a imagem ao lado",
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
         "Teleport"       => "Move a entidade (ou o grupo #etiqueta) pra posição X,Y",
         "Destroy"        => "Remove da cena a entidade — ou todas do grupo, com #etiqueta",
         "Spawn"          => "Instancia um prefab (ou sorteia de uma tabela de spawn); X,Y é o deslocamento a partir de quem disparou o evento",
         "SetWeather"     => "Troca o clima da cena — Nome é o tipo (Rain/Storm/Snow/Fog/Ash/None) e Valor a intensidade 0..1",
         "UseItem"        => "Usa um item do banco: roda o efeito dele e consome, se for consumível",
+        "MoveTo"         => "Anda até X,Y contornando parede (mesmo pathfinding da IA). Pausa a sequência até chegar — é o passo de cutscene \"personagem anda até aqui\"",
         "OpenShop"       => "Abre a loja com os itens listados (separados por vírgula). Moeda = variável do dinheiro; Op = comprar, vender ou os dois",
         "CallEvent"      => "Roda um evento comum do banco — a mesma sequência cadastrada uma vez e chamada de qualquer lugar",
         "AddStatus"      => "Aplica um efeito de status (veneno, lentidão) no alvo. Segundos > 0 manda na duração cadastrada",
@@ -388,7 +413,7 @@ public sealed class EventActionViewModel : ViewModelBase
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "UseItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
         or "ShowUI" or "HideUI" or "ToggleUI" or "If"
-        or "OpenShop" or "CallEvent" or "AddStatus" or "RemoveStatus";
+        or "OpenShop" or "CallEvent" or "AddStatus" or "RemoveStatus" or "MoveTo";
     public bool ShowOp => ActionType is "SetVariable" or "If" or "OpenShop";
 
     /// <summary>Chance vale pra qualquer ação de verdade, mas não pras de fluxo: um If sorteado
@@ -398,9 +423,9 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowSpawnPoint => ActionType == "ChangeScene";
     public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "Load" or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage"
-        or "Heal" or "If" or "SetWeather" or "OpenShop";
+        or "Heal" or "If" or "SetWeather" or "OpenShop" or "MoveTo";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause" or "If";
-    public bool ShowXY => ActionType is "Teleport" or "Spawn";
+    public bool ShowXY => ActionType is "Teleport" or "Spawn" or "MoveTo";
 
     /// <summary>Alcance só aparece nas ações que miram entidade — é onde "#etiqueta" pode pegar
     /// meio mapa e o campo tem o que limitar.</summary>
@@ -429,6 +454,7 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(ValueLabel));
         Raise(nameof(OnLabel));
         Raise(nameof(TextLabel));
+        Raise(nameof(ShowPortrait));
         Raise(nameof(ActionDescription));
         Raise(nameof(ShowChance));
         Raise(nameof(ShowConditionKind));

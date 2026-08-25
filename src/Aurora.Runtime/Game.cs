@@ -281,6 +281,10 @@ public abstract class Game : IDisposable
         UI.Terms = Terms;
         World.StatusDatabase = StatusDatabase;
 
+        // Retrato de ShowMessage/cutscene: sem isto DialogueSystem.Assets fica null e o campo
+        // Portrait é ignorado em silêncio (a caixa desenha sem imagem, nunca quebra).
+        Dialogue.Assets = Assets;
+
         World.Inventory = Inventory;
         World.Quests = Quests;
         World.Dialogue = Dialogue;

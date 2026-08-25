@@ -34,6 +34,10 @@ public sealed class EventAction
     public float Seconds;
     public string? Text;
 
+    /// <summary>ShowMessage: caminho de uma textura (relativa a Assets) desenhada ao lado do
+    /// texto — o retrato do personagem falando. Vazio/null = sem retrato.</summary>
+    public string? Portrait;
+
     /// <summary>
     /// Probabilidade de a ação acontecer, de 0 a 1. 1 (padrão) sempre roda. É o que expressa
     /// "30% de chance de largar a poção" sem precisar de variável nem script — e vale pra
@@ -71,6 +75,7 @@ public sealed class EventAction
                 Y = element.TryGetProperty("Y", out var y) ? y.GetSingle() : 0f,
                 Seconds = element.TryGetProperty("Seconds", out var s) ? s.GetSingle() : 0f,
                 Text = element.TryGetProperty("Text", out var txt) ? txt.GetString() : null,
+                Portrait = element.TryGetProperty("Portrait", out var portrait) ? portrait.GetString() : null,
                 Chance = element.TryGetProperty("Chance", out var chance) ? chance.GetSingle() : 1f,
                 SpawnPoint = element.TryGetProperty("SpawnPoint", out var sp) ? sp.GetString() : null,
             };
@@ -109,6 +114,7 @@ public sealed class EventAction
             if (action.Y != 0f) json.WriteNumber("Y", action.Y);
             if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
             if (action.Text is not null) json.WriteString("Text", action.Text);
+            if (action.Portrait is not null) json.WriteString("Portrait", action.Portrait);
             if (action.Chance != 1f) json.WriteNumber("Chance", action.Chance);
             if (!string.IsNullOrEmpty(action.SpawnPoint)) json.WriteString("SpawnPoint", action.SpawnPoint);
 
@@ -191,5 +197,11 @@ public sealed class EventTrigger : IComponent
     internal int ActionIndex;
     internal float WaitTimer;
     internal bool WaitingDialogue;
+
+    /// <summary>Sequência pausada esperando a ação MoveTo chegar ao destino (ver
+    /// EventSystem.Advance). Guarda o id da entidade em vez de uma referência: entidade pode
+    /// morrer no meio do trajeto, e Entity é só um handle — checar IsAlive é o jeito de saber.</summary>
+    internal bool WaitingMove;
+    internal int WaitingMoveEntityId;
     internal float _timer; // acumulador para Timer
 }

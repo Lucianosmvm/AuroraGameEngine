@@ -1,7 +1,165 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Aurora.Editor.ViewModels"
              x:Class="Aurora.Editor.App"
              RequestedThemeVariant="Dark">
+  <!--
+    DataTemplate GLOBAL (não de uma janela específica): Avalonia resolve
+    Application.DataTemplates pra qualquer DataContext do tipo certo, em QUALQUER janela do app.
+
+    Fica aqui, e não em Window.DataTemplates de uma janela, porque EventActionViewModel aparece em
+    duas janelas — MainWindow (ações de EventTrigger e de UiButton.OnClick) e DatabaseWindow (o
+    efeito de um item, os eventos comuns). Antes o template morava só no Window.DataTemplates do
+    MainWindow: a aba "Eventos Comuns" do banco usava a mesma lista de ações mas não tinha template
+    nenhum pra ela, e cada linha da lista aparecia como o nome cru da classe C# em vez do editor de
+    ação. Duplicar o template nas duas janelas resolveria hoje e voltaria a divergir na próxima
+    ação nova — um template só, visível em toda janela, é a única versão que não pode desalinhar.
+  -->
+  <Application.DataTemplates>
+    <!-- Uma ação dentro de EventTrigger -->
+    <DataTemplate DataType="{x:Type vm:EventActionViewModel}">
+      <Border Background="{DynamicResource EditorCard}" CornerRadius="4" Margin="0,2" Padding="6,5">
+        <StackPanel Spacing="3">
+
+          <!-- Tipo + botão remover -->
+          <Grid ColumnDefinitions="*,Auto">
+            <ComboBox ItemsSource="{Binding ActionTypes}"
+                      SelectedItem="{Binding ActionType}" FontSize="12"/>
+            <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                    Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
+                    Background="Transparent" BorderThickness="0"/>
+          </Grid>
+          <TextBlock Text="{Binding ActionDescription}" FontSize="10" FontStyle="Italic"
+                     Opacity="0.5" Margin="0,-1,0,2"/>
+
+          <!-- Nome (variável, entidade, item, arquivo de som…). AutoCompleteBox e não TextBox:
+               aceita qualquer texto (a entidade alvo pode nascer só em jogo) mas lista o que já
+               existe no projeto, que é onde mora o erro de digitação difícil de achar. -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNameText}">
+            <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding NameSuggestions}"
+                             Text="{Binding Name}" FontSize="11"
+                             FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                             HorizontalAlignment="Stretch"/>
+          </Grid>
+
+          <!-- Nome via seletor (ChangeScene: cenas do projeto; ShowUI/HideUI/ToggleUI: telas de UI) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowNamePicker}">
+            <TextBlock Text="{Binding NameLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding NamePickerOptions}"
+                      SelectedItem="{Binding Name}" FontSize="11"/>
+          </Grid>
+
+          <!-- Op: Set / Add (SetVariable) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowOp}">
+            <TextBlock Text="Op" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding OpTypes}"
+                      SelectedItem="{Binding Op}" FontSize="11"/>
+          </Grid>
+
+          <!-- Valor numérico -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowValue}">
+            <TextBlock Text="{Binding ValueLabel}" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding ValueText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- On / Loop (SetSwitch, PlayMusic) -->
+          <CheckBox Content="{Binding OnLabel}" IsChecked="{Binding On}"
+                    FontSize="11" IsVisible="{Binding ShowOn}" Margin="0,1"/>
+
+          <!-- X / Y (Teleport) -->
+          <Grid ColumnDefinitions="28,*,8,28,*" IsVisible="{Binding ShowXY}">
+            <TextBlock Text="X" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding XText}" FontSize="11" Padding="4,3"/>
+            <TextBlock Grid.Column="3" Text="Y" VerticalAlignment="Center"
+                       Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="4" Text="{Binding YText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Alcance (ações que miram entidade) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowRadius}">
+            <TextBlock Text="Alcance" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                       ToolTip.Tip="Em pixels, a partir de quem disparou o evento. 0 = cena inteira. Só limita alvo por #etiqueta."/>
+            <TextBox Grid.Column="1" Text="{Binding RadiusText}" FontSize="11" Padding="4,3"
+                     Watermark="0 = cena inteira"/>
+          </Grid>
+
+          <!-- Tipo da condição (If) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowConditionKind}">
+            <TextBlock Text="Comparar" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <ComboBox Grid.Column="1" ItemsSource="{Binding ConditionKinds}"
+                      SelectedItem="{Binding ConditionKind}" FontSize="11" HorizontalAlignment="Stretch"/>
+          </Grid>
+
+          <!-- Ponto de spawn (ChangeScene) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowSpawnPoint}">
+            <TextBlock Text="Chegar em" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding SpawnPoint}" FontSize="11" Padding="4,3"
+                     Watermark="nome do marcador na cena de destino"/>
+          </Grid>
+
+          <!-- Chance (qualquer ação que não seja de fluxo) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowChance}">
+            <TextBlock Text="Chance" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                       ToolTip.Tip="0 a 1. 1 = sempre acontece."/>
+            <TextBox Grid.Column="1" Text="{Binding ChanceText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Segundos (Wait) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowSeconds}">
+            <TextBlock Text="Segundos" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding SecondsText}" FontSize="11" Padding="4,3"/>
+          </Grid>
+
+          <!-- Texto / Clipe (ShowMessage, ShowChoice, PlayAnimation) -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowText}">
+            <TextBlock Text="{Binding TextLabel}" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+            <TextBox Grid.Column="1" Text="{Binding Text}" FontSize="11" Padding="4,3"
+                     TextWrapping="Wrap"/>
+          </Grid>
+
+          <!-- Retrato (ShowMessage): imagem ao lado do texto — o "picture" do personagem falando.
+               AutoCompleteBox porque o arquivo pode ainda não existir no projeto quando se está
+               montando a cutscene. -->
+          <Grid ColumnDefinitions="65,*" IsVisible="{Binding ShowPortrait}">
+            <TextBlock Text="Retrato" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                       ToolTip.Tip="Textura desenhada ao lado da mensagem. Vazio = sem retrato."/>
+            <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding PortraitSuggestions}"
+                             Text="{Binding Portrait}" FontSize="11"
+                             FilterMode="ContainsOrdinal" MinimumPrefixLength="0"
+                             HorizontalAlignment="Stretch" Watermark="sprites/retratos/npc.png"/>
+          </Grid>
+
+          <!-- Opções de ShowChoice -->
+          <StackPanel IsVisible="{Binding ShowOptions}" Margin="0,4,0,0">
+            <TextBlock Text="Opções:" FontSize="10" Opacity="0.6" Margin="0,0,0,2"/>
+            <ItemsControl ItemsSource="{Binding Options}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,76,Auto" Margin="0,1" ColumnSpacing="4">
+                    <TextBox Text="{Binding Text}" FontSize="11" Padding="4,2"
+                             Watermark="Texto da opção…"/>
+                    <TextBox Grid.Column="1" Text="{Binding SwitchName}" FontSize="11"
+                             Padding="4,2" Watermark="Switch"/>
+                    <Button Grid.Column="2" Content="✕" FontSize="10" Padding="4,2"
+                            Command="{Binding RemoveCommand}" Foreground="{DynamicResource EditorDanger}"
+                            Background="Transparent" BorderThickness="0"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Content="+ Opção" Command="{Binding AddOptionCommand}"
+                    FontSize="11" Margin="0,2"/>
+          </StackPanel>
+
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </Application.DataTemplates>
+
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
