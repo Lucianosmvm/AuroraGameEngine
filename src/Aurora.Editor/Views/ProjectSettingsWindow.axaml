@@ -56,6 +56,9 @@
               <TextBlock Grid.Column="3" Text="fonte" VerticalAlignment="Center" Margin="8,0,4,0" Opacity="0.6" FontSize="11"/>
               <TextBox Grid.Column="4" Text="{Binding UiFontSize}" FontSize="11" Padding="6,3" Width="46"/>
             </Grid>
+            <TextBlock Text="{Binding DesignResolutionMismatch}" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource EditorWarn}"
+                       IsVisible="{Binding HasDesignResolutionMismatch}"/>
             <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
               Tamanho de tela que o viewport usa pra desenhar a moldura e resolver AnchorX/AnchorY,
               e o tamanho de fonte usado pra medir UiText. Precisa bater com o código do jogo:
@@ -71,6 +74,11 @@
             <TextBlock Text="ORIENTAÇÃO ANDROID" FontSize="10" FontWeight="Bold" Opacity="0.5"/>
             <ComboBox ItemsSource="{Binding AndroidOrientations}" SelectedItem="{Binding AndroidOrientation}"
                       FontSize="11" HorizontalAlignment="Stretch"/>
+            <!-- Orientação do APK contra proporção da tela de referência: brigadas, o jogo vira
+                 uma faixa no meio do aparelho, e isso só aparece depois de instalar. -->
+            <TextBlock Text="{Binding AndroidOrientationWarning}" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{DynamicResource EditorWarn}"
+                       IsVisible="{Binding HasAndroidOrientationWarning}"/>
             <TextBlock FontSize="10" Opacity="0.45" TextWrapping="Wrap">
               Landscape/Portrait não giram nunca. Sensor* giram com o aparelho — testado sem crash
               num device Android 14 real, mas pode variar por aparelho; se crashar ao girar, volte

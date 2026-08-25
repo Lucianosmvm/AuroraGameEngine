@@ -61,6 +61,18 @@ public sealed class SceneCanvas : Control
 
     private MainViewModel? _viewModel;
 
+    /// <summary>
+    /// Zoom e deslocamento da MOLDURA da UI, separados do zoom do mundo.
+    ///
+    /// <para>São dois espaços diferentes: o mundo tem câmera, a UI é pixel de tela. Numa tela de
+    /// referência grande (1920x1080) a moldura inteira encolhia pra caber no painel e não havia
+    /// como aproximar — dava pra montar o menu, mas não pra enxergar o que se estava montando.
+    /// Com zoom próprio, rolar o scroll aproxima a folha da UI sem mexer na câmera do mundo (e
+    /// vice-versa), que é o que mantém o HUD parado enquanto se navega a cena.</para>
+    /// </summary>
+    private double _uiZoom = 1.0;
+    private Point _uiPan;
+
     /// <summary>Ponto do mundo no centro do viewport — onde entidades novas nascem.</summary>
     public Point CameraCenter => _cameraPosition;
 
@@ -71,6 +83,8 @@ public sealed class SceneCanvas : Control
     {
         _zoom = 0.5;
         _cameraPosition = default;
+        _uiZoom = 1.0;
+        _uiPan = default;
         InvalidateVisual();
     }
 
@@ -368,13 +382,43 @@ public sealed class SceneCanvas : Control
     {
         double designWidth = Math.Max(1, _viewModel?.DesignWidth ?? 1280);
         double designHeight = Math.Max(1, _viewModel?.DesignHeight ?? 720);
-        double scale = Math.Min(Bounds.Width / designWidth, Bounds.Height / designHeight);
+
+        // Com comparação ligada, quem tem que caber no painel é a tela do APARELHO (que é maior
+        // que a do jogo numa das direções) — senão a moldura do aparelho nasceria fora da vista.
+        var (outerWidth, outerHeight) = DeviceSize(designWidth, designHeight);
+
+        double scale = Math.Min(Bounds.Width / outerWidth, Bounds.Height / outerHeight);
         if (scale <= 0 || double.IsNaN(scale) || double.IsInfinity(scale))
             scale = 1;
 
+        // A escala base é a que faz a tela do jogo caber no painel; o zoom da UI multiplica em
+        // cima dela. Com zoom 1 a moldura aparece inteira, como sempre apareceu.
+        scale *= _uiZoom;
+
         double width = designWidth * scale;
         double height = designHeight * scale;
-        return (new Rect((Bounds.Width - width) / 2, (Bounds.Height - height) / 2, width, height), scale);
+        return (new Rect(
+            (Bounds.Width - width) / 2 + _uiPan.X,
+            (Bounds.Height - height) / 2 + _uiPan.Y,
+            width, height), scale);
+    }
+
+    /// <summary>
+    /// Tamanho da tela do aparelho comparado, na mesma unidade da resolução de referência: a menor
+    /// tela com a proporção dele que contém o jogo inteiro. É exatamente a conta do runtime
+    /// (Game.ApplyViewport): o jogo é encaixado inteiro e o resto vira barra.
+    /// </summary>
+    private (double Width, double Height) DeviceSize(double designWidth, double designHeight)
+    {
+        if (_viewModel?.CompareDevice is not { Width: > 0, Height: > 0 } device)
+            return (designWidth, designHeight);
+
+        double designAspect = designWidth / designHeight;
+        double deviceAspect = device.Width / (double)device.Height;
+
+        return deviceAspect > designAspect
+            ? (designHeight * deviceAspect, designHeight)   // sobra nas laterais
+            : (designWidth, designWidth / deviceAspect);    // sobra em cima e embaixo
     }
 
     /// <summary>Pixel do canvas → pixel de tela do jogo (o X/Y que o UiElement guarda).</summary>
@@ -549,7 +593,9 @@ public sealed class SceneCanvas : Control
     /// tela" que os Anchor Right/Bottom/Center usam como referência.</summary>
     private void DrawUiFrame(DrawingContext context)
     {
-        var (frame, _) = UiFrame();
+        var (frame, scale) = UiFrame();
+
+        DrawCompareDevice(context, frame, scale);
 
         var shade = new SolidColorBrush(Colors.Black, 0.28);
         context.FillRectangle(shade, new Rect(0, 0, Bounds.Width, frame.Y));
@@ -567,9 +613,44 @@ public sealed class SceneCanvas : Control
         context.DrawText(label, new Point(frame.X + 4, Math.Max(0, frame.Y - label.Height - 2)));
     }
 
+    /// <summary>
+    /// Tela do aparelho escolhido em "Ver em", desenhada em volta da moldura do jogo. As faixas
+    /// entre uma e outra são as barras pretas que o jogador veria — a resposta visual pra "vai
+    /// caber no celular?": o conteúdo não é cortado nem se desloca, só encolhe junto.
+    /// </summary>
+    private void DrawCompareDevice(DrawingContext context, Rect frame, double scale)
+    {
+        if (_viewModel?.CompareDevice is not { Width: > 0, Height: > 0 } device)
+            return;
+
+        var (deviceWidth, deviceHeight) = DeviceSize(
+            Math.Max(1, _viewModel.DesignWidth), Math.Max(1, _viewModel.DesignHeight));
+
+        var outer = new Rect(
+            frame.Center.X - deviceWidth * scale / 2,
+            frame.Center.Y - deviceHeight * scale / 2,
+            deviceWidth * scale,
+            deviceHeight * scale);
+
+        // Preto de verdade nas barras: é o que a janela do jogo mostra ali (o glClear pinta o
+        // fundo inteiro e o viewport do jogo cobre só o miolo).
+        context.FillRectangle(Brushes.Black, outer);
+        context.DrawRectangle(new Pen(new SolidColorBrush(Colors.White, 0.35), 1)
+        {
+            DashStyle = DashStyle.Dash,
+        }, outer);
+
+        var label = new Avalonia.Media.FormattedText(
+            $"{device.Label}  ({device.Width}x{device.Height})",
+            System.Globalization.CultureInfo.CurrentCulture, Avalonia.Media.FlowDirection.LeftToRight,
+            new Avalonia.Media.Typeface("Sans-Serif"), 11, new SolidColorBrush(Colors.White, 0.55));
+        context.DrawText(label, new Point(outer.X + 4, Math.Max(0, outer.Y + 3)));
+    }
+
     private void DrawUiElements(DrawingContext context)
     {
-        var (_, uiScale) = UiFrame();
+        var (frame, uiScale) = UiFrame();
+        int outOfBounds = 0;
 
         foreach (var element in VisibleUiElements())
         {
@@ -674,10 +755,43 @@ public sealed class SceneCanvas : Control
                 }
             }
 
+            // Fora da moldura = fora da tela em QUALQUER aparelho (a resolução de referência é a
+            // tela inteira do jogo, não o pedaço visível de um monitor). Marca em vermelho: o
+            // elemento continua desenhado onde está, mas para de passar por "só está escondido".
+            if (!ContainsWithTolerance(frame, rect))
+            {
+                outOfBounds++;
+                context.DrawRectangle(new Pen(new SolidColorBrush(Color.FromRgb(224, 87, 93)), 1.5)
+                {
+                    DashStyle = DashStyle.Dash,
+                }, rect);
+            }
+
             if (ReferenceEquals(element.Entity, _viewModel?.SelectedEntity))
                 context.DrawRectangle(new Pen(Brushes.Cyan, 1.5), rect);
         }
+
+        if (outOfBounds > 0)
+        {
+            string texto = outOfBounds == 1
+                ? "1 elemento fora da tela"
+                : $"{outOfBounds} elementos fora da tela";
+
+            var aviso = new Avalonia.Media.FormattedText(texto,
+                System.Globalization.CultureInfo.CurrentCulture, Avalonia.Media.FlowDirection.LeftToRight,
+                new Avalonia.Media.Typeface("Sans-Serif"), 12,
+                new SolidColorBrush(Color.FromRgb(224, 87, 93)));
+            context.DrawText(aviso, new Point(frame.X + 6, frame.Bottom - aviso.Height - 6));
+        }
     }
+
+    /// <summary>Contém, perdoando meio pixel. Elemento encostado na borda cai em arredondamento e
+    /// seria acusado de estar fora — aviso que aparece sozinho ensina a ignorar aviso.</summary>
+    private static bool ContainsWithTolerance(Rect frame, Rect element)
+        => element.X >= frame.X - 0.5
+           && element.Y >= frame.Y - 0.5
+           && element.Right <= frame.Right + 0.5
+           && element.Bottom <= frame.Bottom + 0.5;
 
     // ---- Renderização ----
 
@@ -815,18 +929,72 @@ public sealed class SceneCanvas : Control
         int perRow = Math.Max(1, (int)map.Tileset.Size.Width / map.TileWidth);
         int total = Math.Min(tilesNode.Count, map.Columns * map.Rows);
 
-        for (int cell = 0; cell < total; cell++)
-        {
-            int index = tilesNode[cell].AsInt(-1);
-            if (index < 0)
-                continue;
+        // Só as células que aparecem no painel. Sem isto o editor desenha o mapa INTEIRO todo
+        // frame: num mapa de 200x200 são 40 mil DrawImage por quadro, e mexer no viewport vira
+        // um arrastão — enquanto o jogo, que já corta pelo campo de visão da câmera
+        // (World.DrawTilemap), roda liso no mesmo mapa. Quem faz mapa grande batia nisso só no
+        // editor e concluía que a engine não aguentava o mapa.
+        var (firstColumn, firstRow, lastColumn, lastRow) = VisibleCells(map);
 
-            var source = new Rect(index % perRow * map.TileWidth, index / perRow * map.TileHeight,
-                map.TileWidth, map.TileHeight);
-            var dest = new Rect(cell % map.Columns * map.CellWidth, cell / map.Columns * map.CellHeight,
-                map.CellWidth, map.CellHeight);
-            context.DrawImage(map.Tileset, source, dest);
+        for (int row = firstRow; row <= lastRow; row++)
+        {
+            for (int column = firstColumn; column <= lastColumn; column++)
+            {
+                int cell = row * map.Columns + column;
+                if (cell < 0 || cell >= total)
+                    continue;
+
+                int index = tilesNode[cell].AsInt(-1);
+                if (index < 0)
+                    continue;
+
+                var source = new Rect(index % perRow * map.TileWidth, index / perRow * map.TileHeight,
+                    map.TileWidth, map.TileHeight);
+                var dest = new Rect(column * map.CellWidth, row * map.CellHeight,
+                    map.CellWidth, map.CellHeight);
+                context.DrawImage(map.Tileset, source, dest);
+            }
         }
+    }
+
+    /// <summary>
+    /// Faixa de células do tilemap que cai dentro do painel, em índices de coluna/linha.
+    ///
+    /// <para>Trabalha com a caixa dos quatro cantos do painel levados pro espaço do mapa: assim a
+    /// conta continua valendo com o mapa girado ou escalado, no lugar de assumir que ele está
+    /// alinhado com a tela. Se a matriz não puder ser invertida (escala zero), devolve o mapa
+    /// inteiro — desenhar demais é lento, desenhar de menos é bug.</para>
+    /// </summary>
+    private (int FirstColumn, int FirstRow, int LastColumn, int LastRow) VisibleCells(TilemapView map)
+    {
+        if (map.CellWidth <= 0 || map.CellHeight <= 0
+            || !map.LocalToScreen.TryInvert(out var screenToLocal))
+            return (0, 0, map.Columns - 1, map.Rows - 1);
+
+        Span<Point> corners =
+        [
+            screenToLocal.Transform(new Point(0, 0)),
+            screenToLocal.Transform(new Point(Bounds.Width, 0)),
+            screenToLocal.Transform(new Point(0, Bounds.Height)),
+            screenToLocal.Transform(new Point(Bounds.Width, Bounds.Height)),
+        ];
+
+        double minX = double.MaxValue, minY = double.MaxValue;
+        double maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var corner in corners)
+        {
+            minX = Math.Min(minX, corner.X);
+            minY = Math.Min(minY, corner.Y);
+            maxX = Math.Max(maxX, corner.X);
+            maxY = Math.Max(maxY, corner.Y);
+        }
+
+        int firstColumn = Math.Max(0, (int)Math.Floor(minX / map.CellWidth));
+        int firstRow = Math.Max(0, (int)Math.Floor(minY / map.CellHeight));
+        int lastColumn = Math.Min(map.Columns - 1, (int)Math.Ceiling(maxX / map.CellWidth));
+        int lastRow = Math.Min(map.Rows - 1, (int)Math.Ceiling(maxY / map.CellHeight));
+
+        return (firstColumn, firstRow, lastColumn, lastRow);
     }
 
     /// <summary>Moldura ciana + grade de células quando o pincel está ativo.</summary>
@@ -1121,6 +1289,16 @@ public sealed class SceneCanvas : Control
 
         switch (_drag)
         {
+            case DragMode.Pan when _viewModel?.IsUiScreenDocument == true:
+                // Arrasta a folha da UI junto com o cursor (a moldura segue o mouse), em vez de
+                // mover uma câmera que não existe neste documento.
+                _uiPan = new Point(
+                    _uiPan.X + (position.X - _lastPointer.X),
+                    _uiPan.Y + (position.Y - _lastPointer.Y));
+                _lastPointer = position;
+                InvalidateVisual();
+                break;
+
             case DragMode.Pan:
                 _cameraPosition = new Point(
                     _cameraPosition.X - (position.X - _lastPointer.X) / _zoom,
@@ -1214,6 +1392,17 @@ public sealed class SceneCanvas : Control
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
+        // Documento de tela de UI não tem mundo pra navegar: o scroll aproxima a folha da UI.
+        // Numa cena de gameplay o scroll continua sendo a câmera do mundo, e a moldura do HUD
+        // fica parada — que é como ela se comporta em jogo.
+        if (_viewModel?.IsUiScreenDocument == true)
+        {
+            ZoomUi(e.GetPosition(this), e.Delta.Y > 0 ? 1.15 : 1 / 1.15);
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         // Zoom ancorado no cursor: o ponto do mundo sob o mouse não se move.
         var anchor = ScreenToWorld(e.GetPosition(this));
         _zoom = Math.Clamp(_zoom * (e.Delta.Y > 0 ? 1.15 : 1 / 1.15), 0.05, 20.0);
@@ -1225,5 +1414,19 @@ public sealed class SceneCanvas : Control
 
         InvalidateVisual();
         e.Handled = true;
+    }
+
+    /// <summary>Aproxima/afasta a moldura da UI mantendo parado o ponto sob o cursor — sem isso o
+    /// zoom foge do lugar que se estava olhando e edição vira caça ao elemento.</summary>
+    private void ZoomUi(Point cursor, double factor)
+    {
+        var before = CanvasToUi(cursor);
+        _uiZoom = Math.Clamp(_uiZoom * factor, 0.1, 8.0);
+
+        var (_, scale) = UiFrame();
+        var after = CanvasToUi(cursor);
+        _uiPan = new Point(
+            _uiPan.X + (after.X - before.X) * scale,
+            _uiPan.Y + (after.Y - before.Y) * scale);
     }
 }

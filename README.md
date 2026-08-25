@@ -56,6 +56,31 @@ dotnet run --project src/Aurora.Editor -- samples/Aurora.Sandbox.Core/Assets/sce
   O campo de texto continua aceitando `#RRGGBBAA` para quem prefere digitar
 - **Ctrl+S** salva de volta no JSON — componentes que o editor não conhece são preservados intactos
 
+### Tela de referência: o preview de menu é fiel
+
+O jogo tem UMA tela lógica, a **tela de referência** (`Game.DesignResolution`, padrão 1280x720).
+Em qualquer aparelho o runtime encaixa ela inteira na janela e pinta o resto de preto
+(letterbox — ver `Game.ApplyViewport`). Consequência prática: **posição e tamanho de UI são os
+mesmos em todo aparelho**. Nada é cortado, nada reflui, nada muda de lugar — muda só o tamanho
+das barras pretas em volta.
+
+Por isso o que o viewport mostra dentro da moldura é o que o jogador vê. O editor resolve
+`AnchorX/AnchorY` com o mesmo código do runtime (`UiAnchor`, incluído por link nos dois projetos)
+e mede texto com o TTF de verdade (`TrueTypeMetrics`).
+
+Na barra de ferramentas:
+
+- **Tela** — escolhe a resolução de referência (PC, tablet, celular retrato…). Grava no projeto:
+  é o tamanho que o jogo usa de verdade. O botão ⇄ gira (troca largura por altura)
+- **Ver em** — só visualização: desenha a tela do aparelho em volta da moldura, mostrando onde
+  caem as barras pretas e quanto da tela dele sobra
+- Elemento de UI **fora da moldura** ganha contorno vermelho tracejado e entra na contagem
+  "N elementos fora da tela" — fora da moldura é fora da tela em qualquer aparelho
+
+Duas coisas continuam sendo responsabilidade sua: o `DesignResolution` no código do jogo tem que
+ser igual ao daqui (o campo em Configurações do Projeto avisa disso), e a orientação do APK
+Android tem que combinar com a proporção da tela — se brigarem, o editor avisa.
+
 ## Rodando a demo
 
 ```bash
@@ -163,6 +188,28 @@ samples/Aurora.SlandSurvivor Sandbox de mundo procedural estilo Terraria
 samples/Aurora.Coop.Core    Jogo coop de teste do multiplayer (desktop + Android)
 tests/Aurora.Runtime.Tests  Testes da lógica pura do runtime (xUnit)
 ```
+
+## Mapa maior que a tela
+
+É o caso normal, e o custo não vem do tamanho do mapa:
+
+- **Tile é desenhado e colidido só perto** — o desenho corta pelo campo de visão da câmera
+  (`World.DrawTilemap`) e a colisão só olha os tiles que a caixa do collider toca
+  (`CheckTilemapCollision`). Mapa 10x maior custa o mesmo
+- **Sprite fora da tela não é desenhado** — teste conservador por raio, então rotação e `Origin`
+  não somem com nada na borda
+- **Colisão usa grade espacial** acima de 32 colliders: cada um só testa contra quem divide
+  célula. Abaixo disso segue o todos-contra-todos, que é mais barato em cena pequena
+- **`CameraController.ClampBounds`** com `BoundsWidth`/`BoundsHeight` em 0 tira os limites dos
+  tilemaps da cena — a câmera trava na borda do mapa sem ninguém redigitar o tamanho dele. Limite
+  menor que a tela centraliza em vez de estourar
+- **`SleepOffscreen`** (opcional) congela os Behaviors de uma entidade longe da câmera. É decisão
+  de jogo, não de performance: quem dorme não persegue nem produz — não ponha em ninho, chefe ou
+  plataforma móvel
+
+No editor, o tilemap também é cortado pelo que aparece no painel, e a moldura da UI tem zoom e
+arrasto próprios (scroll e botão do meio, em documento de tela de UI) — resolução grande deixava
+de caber sem jeito de aproximar.
 
 ## Nada disso é obrigatório
 

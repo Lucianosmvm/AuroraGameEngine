@@ -339,6 +339,11 @@ public partial class MainWindow : Window
 
     /// <summary>Abre (ou traz pra frente) a janela de Configurações do Projeto. Uma só instância,
     /// porque abrir duas deixaria os mesmos campos editáveis em dois lugares.</summary>
+    /// <summary>Gira a tela de referência. Botão e não campo porque montar o menu na orientação
+    /// errada é erro de um clique pra desfazer, mas de uma tarde pra descobrir.</summary>
+    private void OnSwapScreenOrientation(object? sender, RoutedEventArgs e)
+        => ViewModel.SwapScreenOrientation();
+
     private void OnOpenProjectSettings(object? sender, RoutedEventArgs e)
     {
         if (_projectSettings is not null)

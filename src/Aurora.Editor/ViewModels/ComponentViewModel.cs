@@ -74,6 +74,13 @@ public class ComponentViewModel : ViewModelBase
         [
             ("Initial", ""),
         ],
+        // Congela os Behaviors da entidade enquanto ela estiver fora da vista. Vale pro bicho de
+        // enfeite no canto do mapa; NÃO ponha em ninho, chefe ou plataforma móvel que precisa
+        // continuar funcionando longe do jogador.
+        ["SleepOffscreen"] =
+        [
+            ("Margin", 256f),
+        ],
         // Ataque à distância — Velocity/Source são setados em código no spawn (não fazem
         // sentido numa cena estática), só aparecem os campos abaixo pra editar/prefab.
         ["Projectile"] =

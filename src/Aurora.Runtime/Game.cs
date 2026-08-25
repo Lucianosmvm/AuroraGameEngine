@@ -453,16 +453,48 @@ public abstract class Game : IDisposable
             Camera.Zoom = ctrl.Zoom;
 
             if (ctrl.ClampBounds)
-            {
-                float hw = Camera.ViewportWidth  / (2f * MathF.Max(Camera.Zoom, 0.001f));
-                float hh = Camera.ViewportHeight / (2f * MathF.Max(Camera.Zoom, 0.001f));
-                Camera.Position = new System.Numerics.Vector2(
-                    Math.Clamp(Camera.Position.X, ctrl.BoundsX + hw, ctrl.BoundsX + ctrl.BoundsWidth  - hw),
-                    Math.Clamp(Camera.Position.Y, ctrl.BoundsY + hh, ctrl.BoundsY + ctrl.BoundsHeight - hh));
-            }
+                ClampCameraToBounds(ctrl);
 
             break; // apenas a primeira câmera ativa conta
         }
+    }
+
+    /// <summary>
+    /// Trava a câmera dentro dos limites, pra ela não mostrar o vazio além da borda do mapa.
+    ///
+    /// <para>Com <c>BoundsWidth</c>/<c>BoundsHeight</c> em 0, os limites saem dos tilemaps da cena
+    /// — mapa grande passa a travar sozinho, sem ninguém redigitar o tamanho do mapa aqui toda vez
+    /// que ele cresce (e sem o limite envelhecer calado quando alguém esquece).</para>
+    ///
+    /// <para>Quando o limite é MENOR que a tela (sala pequena, mapa de teste), não há o que
+    /// clampear: a câmera fica no meio dele. Antes essa conta chamava Math.Clamp com mínimo maior
+    /// que o máximo, que joga ArgumentException — todo frame, derrubando o jogo.</para>
+    /// </summary>
+    private void ClampCameraToBounds(CameraController ctrl)
+    {
+        float x = ctrl.BoundsX, y = ctrl.BoundsY;
+        float width = ctrl.BoundsWidth, height = ctrl.BoundsHeight;
+
+        if (width <= 0f || height <= 0f)
+        {
+            if (World.TilemapWorldBounds() is not { } bounds)
+                return;
+
+            x = bounds.Min.X;
+            y = bounds.Min.Y;
+            width = bounds.Max.X - bounds.Min.X;
+            height = bounds.Max.Y - bounds.Min.Y;
+        }
+
+        float halfWidth = Camera.ViewportWidth / (2f * MathF.Max(Camera.Zoom, 0.001f));
+        float halfHeight = Camera.ViewportHeight / (2f * MathF.Max(Camera.Zoom, 0.001f));
+
+        float minX = x + halfWidth, maxX = x + width - halfWidth;
+        float minY = y + halfHeight, maxY = y + height - halfHeight;
+
+        Camera.Position = new System.Numerics.Vector2(
+            minX <= maxX ? Math.Clamp(Camera.Position.X, minX, maxX) : x + width / 2f,
+            minY <= maxY ? Math.Clamp(Camera.Position.Y, minY, maxY) : y + height / 2f);
     }
 
     private void HandleRender(double deltaTime)

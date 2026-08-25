@@ -162,6 +162,8 @@ public sealed class World
         _destroyQueue.Clear();
         _renderList.Clear();
         _collisionBuffer.Clear();
+        _grid.Clear();
+        _testedPairs.Clear();
         _tilemapBuffer.Clear();
         _activeTriggers.Clear();
         _prevTriggers.Clear();
@@ -441,10 +443,20 @@ public sealed class World
         {
             _updating = true;
 
+            // Só custa alguma coisa se ALGUÉM na cena pediu pra dormir fora da tela; cena sem
+            // o componente nem faz a pergunta.
+            bool anySleeper = _stores.ContainsKey(typeof(SleepOffscreen)) && Camera is not null;
+            var (sleepMin, sleepMax) = anySleeper
+                ? Camera!.GetVisibleBounds()
+                : (Vector2.Zero, Vector2.Zero);
+
             for (int i = 0; i < _behaviors.Count; i++)
             {
                 var behavior = _behaviors[i];
                 if (!behavior.Enabled || behavior.Removed || !_alive.Contains(behavior.Entity.Id))
+                    continue;
+
+                if (anySleeper && IsSleeping(behavior.Entity, sleepMin, sleepMax))
                     continue;
 
                 try
@@ -494,6 +506,29 @@ public sealed class World
         }
 
         CompactBehaviors();
+    }
+
+    /// <summary>
+    /// A entidade tem <see cref="SleepOffscreen"/> e está fora da vista (com a folga dela)?
+    /// Entidade sem Transform nunca dorme: sem posição não dá pra dizer que está longe.
+    /// </summary>
+    private bool IsSleeping(Entity entity, Vector2 viewMin, Vector2 viewMax)
+    {
+        if (entity.Get<SleepOffscreen>() is not { } sleep)
+            return false;
+
+        if (entity.Get<Transform>() is not { } transform)
+            return false;
+
+        var position = transform.Position;
+        float margin = MathF.Max(0f, sleep.Margin);
+
+        sleep.Sleeping = position.X < viewMin.X - margin
+                         || position.X > viewMax.X + margin
+                         || position.Y < viewMin.Y - margin
+                         || position.Y > viewMax.Y + margin;
+
+        return sleep.Sleeping;
     }
 
     /// <summary>
@@ -895,6 +930,17 @@ public sealed class World
         health.Current = MathF.Min(health.Max, health.Current + amount);
     }
 
+    /// <summary>Abaixo disto, varrer todos contra todos é mais barato que montar a grade — e é o
+    /// tamanho da esmagadora maioria das cenas. O caminho antigo continua sendo o caminho normal.</summary>
+    private const int GridThreshold = 32;
+
+    /// <summary>Lado da célula quando a grade entra em ação, nunca menor que isto: célula
+    /// pequena demais espalha um collider grande por dezenas de células e o custo volta.</summary>
+    private const float MinCellSize = 32f;
+
+    private readonly Dictionary<long, List<int>> _grid = new();
+    private readonly HashSet<long> _testedPairs = new();
+
     private void ProcessCollisions()
     {
         _collisionBuffer.Clear();
@@ -906,42 +952,10 @@ public sealed class World
         (_prevTriggers, _activeTriggers) = (_activeTriggers, _prevTriggers);
         _activeTriggers.Clear();
 
-        for (int i = 0; i < _collisionBuffer.Count; i++)
-        {
-            var (ea, ta, ca) = _collisionBuffer[i];
-
-            for (int j = i + 1; j < _collisionBuffer.Count; j++)
-            {
-                var (eb, tb, cb) = _collisionBuffer[j];
-
-                if ((ca.Mask & cb.Layer) == 0 && (cb.Mask & ca.Layer) == 0)
-                    continue;
-
-                if (!Overlap(ta.Position + ca.Offset, ca, tb.Position + cb.Offset, cb,
-                        out var normal, out var depth))
-                    continue;
-
-                _overlapsThisFrame.Add((ea.Id, eb.Id));
-
-                if (ca.IsSolid && cb.IsSolid)
-                {
-                    Resolve(ta, ca, tb, cb, normal, depth);
-                    NotifyCollision(ea.Id, eb, new CollisionInfo(-normal, depth));
-                    NotifyCollision(eb.Id, ea, new CollisionInfo(normal, depth));
-                }
-                else
-                {
-                    long key = PairKey(ea.Id, eb.Id);
-                    _activeTriggers.Add(key);
-
-                    if (!_prevTriggers.Contains(key))
-                    {
-                        NotifyTriggerEnter(ea.Id, eb);
-                        NotifyTriggerEnter(eb.Id, ea);
-                    }
-                }
-            }
-        }
+        if (_collisionBuffer.Count < GridThreshold)
+            PairsBruteForce();
+        else
+            PairsByGrid();
 
         foreach (long key in _prevTriggers)
         {
@@ -954,6 +968,124 @@ public sealed class World
         }
 
         ProcessTilemapCollisions();
+    }
+
+    /// <summary>Todos contra todos. Barato e sem estado enquanto a cena é pequena.</summary>
+    private void PairsBruteForce()
+    {
+        for (int i = 0; i < _collisionBuffer.Count; i++)
+        {
+            for (int j = i + 1; j < _collisionBuffer.Count; j++)
+                TestPair(i, j);
+        }
+    }
+
+    /// <summary>
+    /// Grade uniforme: cada collider entra nas células que a caixa dele cobre, e só quem divide
+    /// célula é testado.
+    ///
+    /// <para>É o que separa "mapa grande" de "mapa grande travando": todos-contra-todos cresce ao
+    /// quadrado (mil colliders = meio milhão de pares por frame) enquanto a grade cresce com a
+    /// vizinhança, que não muda quando o mapa estica.</para>
+    ///
+    /// <para>O par é testado uma vez só mesmo quando os dois se encontram em várias células —
+    /// <see cref="_testedPairs"/> guarda quem já passou. Sem isso, dois colliders grandes dividindo
+    /// quatro células receberiam quatro empurrões no mesmo frame.</para>
+    /// </summary>
+    private void PairsByGrid()
+    {
+        float cellSize = MinCellSize;
+        for (int i = 0; i < _collisionBuffer.Count; i++)
+        {
+            var (_, _, collider) = _collisionBuffer[i];
+            float extent = collider.Shape == ColliderShape.Circle
+                ? collider.Radius * 2f
+                : MathF.Max(collider.Width, collider.Height);
+            cellSize = MathF.Max(cellSize, extent);
+        }
+
+        _grid.Clear();
+        _testedPairs.Clear();
+
+        for (int i = 0; i < _collisionBuffer.Count; i++)
+        {
+            var (minCell, maxCell) = CellRange(i, cellSize);
+
+            for (int cy = minCell.Y; cy <= maxCell.Y; cy++)
+            {
+                for (int cx = minCell.X; cx <= maxCell.X; cx++)
+                {
+                    long key = CellKey(cx, cy);
+                    if (!_grid.TryGetValue(key, out var bucket))
+                        _grid[key] = bucket = [];
+                    bucket.Add(i);
+                }
+            }
+        }
+
+        foreach (var bucket in _grid.Values)
+        {
+            for (int a = 0; a < bucket.Count; a++)
+            {
+                for (int b = a + 1; b < bucket.Count; b++)
+                {
+                    if (_testedPairs.Add(PairKey(bucket[a], bucket[b])))
+                        TestPair(bucket[a], bucket[b]);
+                }
+            }
+        }
+    }
+
+    /// <summary>Faixa de células que a caixa do collider cobre.</summary>
+    private ((int X, int Y) Min, (int X, int Y) Max) CellRange(int index, float cellSize)
+    {
+        var (_, transform, collider) = _collisionBuffer[index];
+        var center = transform.Position + collider.Offset;
+
+        float halfWidth = collider.Shape == ColliderShape.Circle ? collider.Radius : collider.Width * 0.5f;
+        float halfHeight = collider.Shape == ColliderShape.Circle ? collider.Radius : collider.Height * 0.5f;
+
+        return (
+            ((int)MathF.Floor((center.X - halfWidth) / cellSize), (int)MathF.Floor((center.Y - halfHeight) / cellSize)),
+            ((int)MathF.Floor((center.X + halfWidth) / cellSize), (int)MathF.Floor((center.Y + halfHeight) / cellSize)));
+    }
+
+    /// <summary>Coordenada de célula → chave. Empacota os dois inteiros inteiros (não é hash), pra
+    /// duas células distantes nunca caírem no mesmo balde e inventarem uma colisão.</summary>
+    private static long CellKey(int x, int y) => ((long)x << 32) | (uint)y;
+
+    /// <summary>Um par de colliders: filtro de camada, sobreposição e a consequência (empurrão
+    /// sólido ou entrada de trigger). Mesma regra dos dois caminhos de emparelhamento.</summary>
+    private void TestPair(int i, int j)
+    {
+        var (ea, ta, ca) = _collisionBuffer[i];
+        var (eb, tb, cb) = _collisionBuffer[j];
+
+        if ((ca.Mask & cb.Layer) == 0 && (cb.Mask & ca.Layer) == 0)
+            return;
+
+        if (!Overlap(ta.Position + ca.Offset, ca, tb.Position + cb.Offset, cb, out var normal, out var depth))
+            return;
+
+        _overlapsThisFrame.Add((ea.Id, eb.Id));
+
+        if (ca.IsSolid && cb.IsSolid)
+        {
+            Resolve(ta, ca, tb, cb, normal, depth);
+            NotifyCollision(ea.Id, eb, new CollisionInfo(-normal, depth));
+            NotifyCollision(eb.Id, ea, new CollisionInfo(normal, depth));
+        }
+        else
+        {
+            long key = PairKey(ea.Id, eb.Id);
+            _activeTriggers.Add(key);
+
+            if (!_prevTriggers.Contains(key))
+            {
+                NotifyTriggerEnter(ea.Id, eb);
+                NotifyTriggerEnter(eb.Id, ea);
+            }
+        }
     }
 
     private void ProcessTilemapCollisions()
@@ -1233,10 +1365,21 @@ public sealed class World
     {
         _renderList.Clear();
 
+        // Campo de visão com folga, pra decidir quem nem entra na lista de desenho. Tile já era
+        // cortado assim; sprite não era, e num mapa grande a maior parte do trabalho de desenho
+        // era de coisa fora da tela. Sem câmera (ferramenta, teste) não há o que cortar.
+        var (viewMin, viewMax) = camera?.GetVisibleBounds() ?? (Vector2.Zero, Vector2.Zero);
+        bool culling = camera is not null;
+
         foreach (var (entity, transform, sprite) in Query<Transform, SpriteRenderer>())
         {
-            if (sprite.Visible)
-                _renderList.Add((sprite.Layer, entity.Id, transform, sprite));
+            if (!sprite.Visible)
+                continue;
+
+            if (culling && !SpriteMaybeVisible(transform, sprite, viewMin, viewMax))
+                continue;
+
+            _renderList.Add((sprite.Layer, entity.Id, transform, sprite));
         }
 
         foreach (var (entity, transform, tilemap) in Query<Transform, Tilemap>())
@@ -1283,6 +1426,57 @@ public sealed class World
 
         DrawParticles(batch);
         DrawLights(batch);
+    }
+
+    /// <summary>
+    /// O sprite pode aparecer na tela? Teste conservador: usa um raio (a meia-diagonal da caixa)
+    /// em vez do retângulo exato, porque rotação e <c>Origin</c> mudam onde a caixa cai, e errar
+    /// pra menos some com sprite que devia aparecer — um bug muito pior que desenhar um punhado
+    /// de sprites a mais na borda.
+    /// </summary>
+    private static bool SpriteMaybeVisible(Transform transform, SpriteRenderer sprite, Vector2 viewMin, Vector2 viewMax)
+    {
+        var size = sprite.Size ?? (sprite.Texture is { } texture
+            ? new Vector2(texture.Width, texture.Height)
+            : new Vector2(32f, 32f));
+
+        size *= new Vector2(MathF.Abs(transform.Scale.X), MathF.Abs(transform.Scale.Y));
+
+        // Origin desloca a caixa em até um tamanho inteiro pra cada lado; entra no raio junto.
+        float radius = (MathF.Abs(size.X) + MathF.Abs(size.Y)) * 1.5f;
+
+        var position = transform.Position;
+        return position.X + radius >= viewMin.X
+            && position.X - radius <= viewMax.X
+            && position.Y + radius >= viewMin.Y
+            && position.Y - radius <= viewMax.Y;
+    }
+
+    /// <summary>
+    /// Retângulo que cobre todos os tilemaps da cena, em coordenadas de mundo. Null quando não há
+    /// tilemap nenhum. É o que a câmera usa pra se travar no mapa sem ninguém digitar os limites.
+    /// </summary>
+    public (Vector2 Min, Vector2 Max)? TilemapWorldBounds()
+    {
+        bool any = false;
+        Vector2 min = new(float.MaxValue), max = new(float.MinValue);
+
+        foreach (var (_, transform, tilemap) in Query<Transform, Tilemap>())
+        {
+            if (tilemap.Width <= 0 || tilemap.Height <= 0)
+                continue;
+
+            var origin = transform.Position;
+            var size = new Vector2(
+                tilemap.Width * tilemap.TileWidth * transform.Scale.X,
+                tilemap.Height * tilemap.TileHeight * transform.Scale.Y);
+
+            min = Vector2.Min(min, origin);
+            max = Vector2.Max(max, origin + size);
+            any = true;
+        }
+
+        return any ? (min, max) : null;
     }
 
     /// <summary>Desenha as partículas de todo emissor, por camada (não interoperam com o

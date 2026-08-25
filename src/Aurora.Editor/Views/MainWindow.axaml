@@ -563,15 +563,39 @@
                        VerticalAlignment="Center" HorizontalContentAlignment="Left"
                        IsEnabled="{Binding SnapToGrid}"
                        ToolTip.Tip="Tamanho da grade em pixels de mundo."/>
-        <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
-                   VerticalAlignment="Center" FontSize="11" Opacity="0.5"
-                   IsVisible="{Binding !CanPlay}"/>
+        <Border Width="1" Background="{DynamicResource EditorBorder}" Margin="4,2"/>
+
+        <!-- Tela de referência: é a tela INTEIRA do jogo em qualquer aparelho (o runtime encaixa
+             ela na janela e o resto vira barra preta). Ter os tamanhos comuns aqui evita montar o
+             menu deitado e só descobrir no celular que o jogo é retrato. -->
+        <TextBlock Text="Tela" VerticalAlignment="Center" FontSize="12" Opacity="0.6"/>
+        <ComboBox ItemsSource="{Binding ScreenPresets}" SelectedItem="{Binding SelectedScreenPreset}"
+                  FontSize="11" Width="210" VerticalAlignment="Center"
+                  ToolTip.Tip="Resolução de referência do jogo. Grava no projeto — é o tamanho que o jogo usa de verdade."/>
+        <Button Content="&#x21C4;" FontSize="12" Padding="8,3" Click="OnSwapScreenOrientation"
+                VerticalAlignment="Center"
+                ToolTip.Tip="Gira a tela de referência (troca largura por altura)"/>
+        <TextBlock Text="{Binding ScreenAspectLabel}" VerticalAlignment="Center" FontSize="11" Opacity="0.5"/>
+
+        <TextBlock Text="Ver em" VerticalAlignment="Center" FontSize="12" Opacity="0.6" Margin="6,0,0,0"/>
+        <ComboBox ItemsSource="{Binding ComparePresets}" SelectedItem="{Binding CompareDevice}"
+                  FontSize="11" Width="190" VerticalAlignment="Center"
+                  ToolTip.Tip="Só visualização: desenha a tela do aparelho em volta pra mostrar onde ficam as barras pretas. Não muda nada no jogo."/>
+
       </StackPanel>
     </Border>
 
     <Border DockPanel.Dock="Bottom" Background="{DynamicResource EditorPanel}" Padding="8,4">
-      <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"
-                 ToolTip.Tip="{Binding StatusDetail}"/>
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.8"
+                   ToolTip.Tip="{Binding StatusDetail}"/>
+        <TextBlock Text="{Binding CompareHint}" FontSize="12" Opacity="0.6"
+                   IsVisible="{Binding CompareHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <!-- Saiu da barra de cima: lá ele disputava espaço com os controles de tela e era o
+             primeiro a ser cortado numa janela estreita. -->
+        <TextBlock Text="Projeto não configurado — preencha o campo PROJETO no inspector."
+                   FontSize="12" Opacity="0.5" IsVisible="{Binding !CanPlay}"/>
+      </StackPanel>
     </Border>
 
     <!-- Painel de SAÍDA: stdout+stderr do jogo ao vivo. Ancorado embaixo (acima da status

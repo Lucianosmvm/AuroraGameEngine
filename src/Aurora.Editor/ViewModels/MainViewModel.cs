@@ -235,6 +235,109 @@ public sealed class MainViewModel : ViewModelBase
         set => SetDesign(fontSize: value);
     }
 
+    /// <summary>
+    /// Tamanhos de tela comuns, pro campo de resolução de referência não ser um par de números que
+    /// ninguém sabe de cor. Escolher aqui grava no projeto — é a resolução do JOGO, não um modo de
+    /// visualização.
+    /// </summary>
+    public IReadOnlyList<ScreenPreset> ScreenPresets { get; } =
+    [
+        new("PC / paisagem — 1280x720", 1280, 720),
+        new("PC / paisagem — 1920x1080", 1920, 1080),
+        new("Tablet 4:3 — 1024x768", 1024, 768),
+        new("Celular retrato — 720x1280", 720, 1280),
+        new("Celular retrato alto — 1080x2400", 1080, 2400),
+        new("Celular deitado alto — 2400x1080", 2400, 1080),
+    ];
+
+    /// <summary>Preset que bate com a resolução atual, ou null quando ela foi digitada à mão.</summary>
+    public ScreenPreset? SelectedScreenPreset
+    {
+        get => ScreenPresets.FirstOrDefault(p => p.Width == DesignWidth && p.Height == DesignHeight);
+        set
+        {
+            if (value is { Width: > 0, Height: > 0 })
+                SetDesign(value.Width, value.Height);
+        }
+    }
+
+    /// <summary>
+    /// Aparelho contra o qual comparar no viewport. É SÓ visualização — não grava nada e não muda
+    /// o jogo: desenha a tela do aparelho em volta da moldura pra mostrar onde caem as barras
+    /// pretas quando a proporção dele é diferente da do seu jogo.
+    /// </summary>
+    public IReadOnlyList<ScreenPreset> ComparePresets { get; } =
+    [
+        ScreenPreset.None,
+        new("Celular 20:9 (retrato)", 1080, 2400),
+        new("Celular 20:9 (deitado)", 2400, 1080),
+        new("Celular 16:9 (deitado)", 1280, 720),
+        new("Tablet 4:3", 1024, 768),
+        new("Monitor 16:10", 1920, 1200),
+        new("Monitor ultrawide 21:9", 2560, 1080),
+    ];
+
+    private ScreenPreset _compareDevice = ScreenPreset.None;
+
+    /// <summary>Aparelho da comparação. <see cref="ScreenPreset.None"/> = desligada.</summary>
+    public ScreenPreset CompareDevice
+    {
+        get => _compareDevice;
+        set
+        {
+            _compareDevice = value ?? ScreenPreset.None;
+            Raise();
+            Raise(nameof(CompareHint));
+            SceneEdited?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Quanto da tela do aparelho sobra em barra preta, na proporção atual. É a resposta curta pra
+    /// "como fica no celular": com resolução de referência, a engine encaixa o jogo inteiro na
+    /// tela (letterbox) — nada é cortado, nada se move de lugar, só sobra borda.
+    /// </summary>
+    public string CompareHint
+    {
+        get
+        {
+            if (_compareDevice.Width <= 0 || _compareDevice.Height <= 0)
+                return "";
+
+            double gameAspect = DesignWidth / (double)DesignHeight;
+            double deviceAspect = _compareDevice.Width / (double)_compareDevice.Height;
+
+            if (Math.Abs(gameAspect - deviceAspect) < 0.001)
+                return "Mesma proporção: o jogo ocupa a tela inteira do aparelho.";
+
+            double used = deviceAspect > gameAspect
+                ? gameAspect / deviceAspect       // sobra nas laterais
+                : deviceAspect / gameAspect;      // sobra em cima e embaixo
+
+            string onde = deviceAspect > gameAspect ? "nas laterais" : "em cima e embaixo";
+            return $"Barras {onde}: {(1 - used) * 100:0}% da tela do aparelho. " +
+                   $"Nada é cortado nem muda de lugar — a tela inteira do jogo encolhe junto.";
+        }
+    }
+
+    /// <summary>Proporção da resolução atual, em texto ("16:9"). Não existe conta exata pra todo
+    /// tamanho, então cai pra "W:H" reduzido pelo MDC — 2400x1080 vira 20:9.</summary>
+    public string ScreenAspectLabel
+    {
+        get
+        {
+            int w = DesignWidth, h = DesignHeight;
+            int divisor = Mdc(w, h);
+            return $"{w / divisor}:{h / divisor}";
+        }
+    }
+
+    private static int Mdc(int a, int b) => b == 0 ? Math.Max(1, a) : Mdc(b, a % b);
+
+    /// <summary>Troca largura por altura. Montar o menu deitado e depois descobrir que o jogo é
+    /// retrato é o erro que isto evita em um clique.</summary>
+    public void SwapScreenOrientation() => SetDesign(DesignHeight, DesignWidth);
+
     private void SetDesign(int? width = null, int? height = null, float? fontSize = null)
     {
         if (_settings is null)
@@ -253,6 +356,12 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(DesignWidth));
         Raise(nameof(DesignHeight));
         Raise(nameof(UiFontSize));
+        Raise(nameof(SelectedScreenPreset));
+        Raise(nameof(ScreenAspectLabel));
+        Raise(nameof(CompareHint));
+        Raise(nameof(AndroidOrientationWarning));
+        Raise(nameof(DesignResolutionMismatch));
+        Raise(nameof(HasDesignResolutionMismatch));
         SceneEdited?.Invoke();
     }
 
@@ -368,6 +477,102 @@ public sealed class MainViewModel : ViewModelBase
 
     /// <summary>Opções de orientação pro APK gerado por "Exportar Android…" — as duas primeiras
     /// (fixas) não giram nunca; as três últimas (Sensor*) giram com o aparelho.</summary>
+    /// <summary>
+    /// Avisa quando a orientação do APK briga com a proporção da tela de referência: exportar em
+    /// retrato um jogo desenhado em 1280x720 dá uma faixa no meio do celular com barra preta em
+    /// cima e embaixo, e o autor só descobre instalando.
+    /// </summary>
+    public string AndroidOrientationWarning
+    {
+        get
+        {
+            bool telaDeitada = DesignWidth >= DesignHeight;
+            bool apkRetrato = AndroidOrientation.Contains("Portrait", StringComparison.OrdinalIgnoreCase);
+            bool apkDeitado = AndroidOrientation.Contains("Landscape", StringComparison.OrdinalIgnoreCase);
+
+            if (telaDeitada && apkRetrato)
+                return $"A tela de referência é deitada ({DesignWidth}x{DesignHeight}) e o APK abre em retrato — "
+                     + "o jogo vira uma faixa no meio do celular. Gire a tela de referência ou a orientação.";
+
+            if (!telaDeitada && apkDeitado)
+                return $"A tela de referência é em pé ({DesignWidth}x{DesignHeight}) e o APK abre deitado — "
+                     + "o jogo vira uma coluna no meio do celular. Gire a tela de referência ou a orientação.";
+
+            return "";
+        }
+    }
+
+    public bool HasAndroidOrientationWarning => AndroidOrientationWarning.Length > 0;
+
+    /// <summary>
+    /// Confere a resolução de referência daqui contra o <c>DesignResolution</c> escrito no código
+    /// do jogo. Vazio = batem, ou não deu pra saber (sem projeto apontado, .exe em vez de fonte,
+    /// resolução calculada em runtime).
+    ///
+    /// <para>É o ÚNICO jeito do preview mentir: a moldura do editor sai de aurora.project.json e a
+    /// tela do jogo sai do código. Enquanto os dois não eram comparados, trocar a resolução aqui
+    /// deixava o menu montado pra uma tela e rodando noutra — e o sintoma (elemento ancorado em
+    /// Center fora do lugar) não aponta pra causa nenhuma.</para>
+    /// </summary>
+    public string DesignResolutionMismatch
+    {
+        get
+        {
+            if (FindDesignResolutionInCode() is not { } found)
+                return "";
+
+            if (found.Width == DesignWidth && found.Height == DesignHeight)
+                return "";
+
+            return $"O código do jogo usa DesignResolution {found.Width}x{found.Height}, "
+                 + $"mas aqui a tela de referência é {DesignWidth}x{DesignHeight}. "
+                 + "Enquanto forem diferentes, o preview do menu não bate com o jogo.";
+        }
+    }
+
+    public bool HasDesignResolutionMismatch => DesignResolutionMismatch.Length > 0;
+
+    private static readonly System.Text.RegularExpressions.Regex DesignResolutionPattern =
+        new(@"DesignResolution\s*=\s*new\s+Vector2D<int>\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)",
+            System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>Procura a atribuição literal de DesignResolution nos .cs do projeto do jogo.
+    /// Só entende a forma que o próprio editor gera (literal com dois números); qualquer coisa
+    /// calculada devolve null, e null aqui significa "não sei", não "está certo".</summary>
+    private (int Width, int Height)? FindDesignResolutionInCode()
+    {
+        string project = _settings?.GameProject ?? "";
+        if (project.Length == 0)
+            return null;
+
+        string? directory = Directory.Exists(project) ? project : Path.GetDirectoryName(project);
+        if (directory is null || !Directory.Exists(directory))
+            return null;
+
+        try
+        {
+            // Teto de arquivos: a varredura roda em property get (o binding do painel de
+            // configurações), e projeto grande com bin/obj dentro viraria centenas de arquivos.
+            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+                         .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                                     && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+                         .Take(200))
+            {
+                var match = DesignResolutionPattern.Match(File.ReadAllText(file));
+                if (match.Success
+                    && int.TryParse(match.Groups[1].Value, out int width)
+                    && int.TryParse(match.Groups[2].Value, out int height))
+                    return (width, height);
+            }
+        }
+        catch
+        {
+            // Sem permissão, arquivo sumindo no meio da varredura: "não sei" é a resposta certa.
+        }
+
+        return null;
+    }
+
     public string[] AndroidOrientations { get; } =
         ["Landscape", "Portrait", "SensorLandscape", "SensorPortrait", "Sensor"];
 
@@ -383,6 +588,7 @@ public sealed class MainViewModel : ViewModelBase
             if (_settings is null)
                 return;
             _settings.AndroidOrientation = value;
+            Raise(nameof(AndroidOrientationWarning));
             try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
             Raise();
         }
