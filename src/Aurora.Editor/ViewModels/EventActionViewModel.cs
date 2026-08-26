@@ -358,6 +358,24 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public bool ShowPortrait => ActionType == "ShowMessage";
 
+    /// <summary>True (padrão) trava o jogador enquanto a caixa está na tela — o normal pra
+    /// diálogo. Desligue pra texto informativo (tutorial, aviso) que não deve impedir o jogador
+    /// de continuar andando. Só existe em ShowMessage: ShowChoice sempre trava, não dá pra
+    /// navegar opções e andar ao mesmo tempo.</summary>
+    public bool BlocksPlayer
+    {
+        get => _node["BlocksPlayer"]?.GetValue<bool>() ?? true;
+        set
+        {
+            if (value) _node.Remove("BlocksPlayer");
+            else _node["BlocksPlayer"] = false;
+            Raise();
+            _onEdited();
+        }
+    }
+
+    public bool ShowBlocksPlayer => ActionType == "ShowMessage";
+
     /// <summary>Texturas do projeto, pro campo Portrait — mesma fonte do asset browser do
     /// editor. Sugestão, não lista fechada: o retrato pode ser desenhado depois de escrever
     /// o caminho.</summary>
@@ -368,7 +386,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Wait"           => "Espera X segundos antes da próxima ação",
         "SetVariable"    => "Define ou soma um valor numa variável do GameState",
         "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
-        "ShowMessage"    => "Mostra uma caixa de diálogo com texto — Nome é o falante, Retrato (opcional) é a imagem ao lado",
+        "ShowMessage"    => "Mostra uma caixa de diálogo com texto — Nome é o falante, Retrato (opcional) é a imagem ao lado. Desmarque \"Trava jogador\" pra texto informativo que não deve parar o movimento",
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
         "Teleport"       => "Move a entidade (ou o grupo #etiqueta) pra posição X,Y",
         "Destroy"        => "Remove da cena a entidade — ou todas do grupo, com #etiqueta",
@@ -455,6 +473,7 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(OnLabel));
         Raise(nameof(TextLabel));
         Raise(nameof(ShowPortrait));
+        Raise(nameof(ShowBlocksPlayer));
         Raise(nameof(ActionDescription));
         Raise(nameof(ShowChance));
         Raise(nameof(ShowConditionKind));

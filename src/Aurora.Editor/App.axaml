@@ -133,6 +133,12 @@
                              HorizontalAlignment="Stretch" Watermark="sprites/retratos/npc.png"/>
           </Grid>
 
+          <!-- Trava jogador (ShowMessage): desliga pra texto informativo que não deve parar
+               o movimento (tutorial, aviso). ShowChoice não tem este campo — sempre trava. -->
+          <CheckBox Content="Trava jogador" IsChecked="{Binding BlocksPlayer}"
+                    FontSize="11" IsVisible="{Binding ShowBlocksPlayer}" Margin="0,1"
+                    ToolTip.Tip="Marcado (padrão): jogador não se move enquanto a mensagem está na tela. Desmarcado: texto informativo, jogador continua andando normalmente."/>
+
           <!-- Opções de ShowChoice -->
           <StackPanel IsVisible="{Binding ShowOptions}" Margin="0,4,0,0">
             <TextBlock Text="Opções:" FontSize="10" Opacity="0.6" Margin="0,0,0,2"/>

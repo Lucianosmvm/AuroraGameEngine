@@ -102,6 +102,9 @@ public sealed class VehicleController : Behavior
 
     private (float Throttle, float Steer) ReadInput()
     {
+        if (World!.Dialogue?.ShouldBlockPlayer == true)
+            return (0f, 0f);
+
         if (JoystickName.Length > 0
             && World!.UI?.Find<UiJoystick>(JoystickScreen, JoystickName)?.Value is { } stick
             && stick.LengthSquared() > 0.0001f)

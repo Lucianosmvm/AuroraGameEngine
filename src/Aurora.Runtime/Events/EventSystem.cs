@@ -514,7 +514,7 @@ public sealed class EventSystem
 
             case "ShowMessage" when action.Text is not null:
                 // Name = nome do falante (opcional), Portrait = retrato ao lado do texto (opcional).
-                Dialogue?.ShowMessage(action.Text, action.Name, action.Portrait);
+                Dialogue?.ShowMessage(action.Text, action.Name, action.Portrait, action.BlocksPlayer);
                 MessageShown?.Invoke(action.Text);
                 break;
 

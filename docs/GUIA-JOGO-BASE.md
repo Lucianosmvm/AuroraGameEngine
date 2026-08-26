@@ -627,9 +627,8 @@ ShopKeeper
   ItemToBuy   Espada
 ```
 
-Seu jogo precisa chamar `Dialogue.Draw(...)` e ler `Input` (Espaço/Enter avança, W/S ou setas
-navegam escolha) em `OnRenderUI`/`OnUpdate` — ver `samples/Aurora.Sandbox.Core/SandboxGame.cs`
-pro padrão pronto.
+Seu jogo só precisa chamar `Dialogue.Draw(...)` em `OnRenderUI` pra caixa aparecer — Espaço/Enter
+avança e W/S/setas navegam escolha já funcionam sozinhos, a engine lê isso a cada frame.
 
 ---
 

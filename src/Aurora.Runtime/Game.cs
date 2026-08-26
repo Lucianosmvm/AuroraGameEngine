@@ -406,6 +406,7 @@ public abstract class Game : IDisposable
             Net.Update(dt);
             SceneManager.Update(dt);
             Dialogue.Update();
+            AdvanceDialogueInput();
             OnUpdate(dt);
             World.Update(dt);
             Events.Update(dt);
@@ -421,6 +422,23 @@ public abstract class Game : IDisposable
         {
             Console.Error.WriteLine($"[Game] Exceção não tratada em HandleUpdate — frame ignorado: {ex}");
         }
+    }
+
+    /// <summary>Lê o input padrão da caixa de diálogo — Espaço/Enter dispensa a mensagem ou
+    /// confirma a opção selecionada, W/S e as setas navegam entre opções. Sem isto o jogo
+    /// precisaria mapear essas teclas na mão em cada projeto pra a caixa fechar sozinha; aqui
+    /// funciona pra qualquer EventTrigger → ShowMessage/ShowChoice sem nenhum código.</summary>
+    private void AdvanceDialogueInput()
+    {
+        if (!Dialogue.IsActive)
+            return;
+
+        if (Input.WasKeyPressed(Key.Space) || Input.WasKeyPressed(Key.Enter) || Input.WasKeyPressed(Key.KeypadEnter))
+            Dialogue.Advance();
+        else if (Input.WasKeyPressed(Key.Up) || Input.WasKeyPressed(Key.W))
+            Dialogue.SelectPrevious();
+        else if (Input.WasKeyPressed(Key.Down) || Input.WasKeyPressed(Key.S))
+            Dialogue.SelectNext();
     }
 
     private int? _pendingLoadSlot;

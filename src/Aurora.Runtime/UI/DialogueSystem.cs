@@ -8,16 +8,18 @@ public abstract record DialogueEntry;
 
 /// <summary>Mensagem simples; avança com <see cref="DialogueSystem.Advance"/>. <paramref name="Portrait"/>
 /// é o caminho de uma textura (relativo a Assets) desenhada ao lado do texto — null/vazio = sem retrato,
-/// a caixa fica do jeito de sempre.</summary>
-public sealed record DialogueMessage(string Text, string? Speaker, string? Portrait = null) : DialogueEntry;
+/// a caixa fica do jeito de sempre. <paramref name="BlocksPlayer"/> true (padrão) trava o movimento do
+/// jogador enquanto a caixa está na tela; false é texto informativo que não impede o jogador de andar.</summary>
+public sealed record DialogueMessage(string Text, string? Speaker, string? Portrait = null, bool BlocksPlayer = true) : DialogueEntry;
 
 /// <summary>Escolha; navegue com SelectNext/Previous e confirme com Advance.</summary>
 public sealed record DialogueChoice(string Prompt, IReadOnlyList<string> Options, Action<int> OnChosen) : DialogueEntry;
 
 /// <summary>
 /// Fila de diálogos com caixa desenhada na base da tela. Enquanto <see cref="IsActive"/>,
-/// o EventSystem segura a sequência de ações e o jogo deve travar o movimento do jogador.
-/// O jogo mapeia o input: Advance() para avançar/confirmar, SelectNext/Previous nas escolhas.
+/// o EventSystem segura a sequência de ações. Espaço/Enter (Advance) e W/S/setas
+/// (SelectNext/Previous) já são lidos sozinhos pelo <see cref="Game"/> a cada frame — ver
+/// Game.AdvanceDialogueInput; nenhum jogo precisa mapear essas teclas na mão.
 /// </summary>
 public sealed class DialogueSystem
 {
@@ -55,6 +57,13 @@ public sealed class DialogueSystem
 
     public bool IsActive => Current is not null || _queue.Count > 0;
 
+    /// <summary>True quando a caixa atual deve travar o movimento do jogador: sempre em
+    /// ShowChoice (não dá pra navegar opções e andar ao mesmo tempo) e em ShowMessage exceto
+    /// quando <see cref="DialogueMessage.BlocksPlayer"/> foi desligado (texto de tutorial).
+    /// Controllers de movimento (TopDownController, PlatformerController, VehicleController)
+    /// leem isto pra zerar o input sozinhos, sem precisar de código no jogo.</summary>
+    public bool ShouldBlockPlayer => Current is DialogueChoice or DialogueMessage { BlocksPlayer: true };
+
     /// <summary>Descarta todos os diálogos pendentes. Chamado ao trocar de cena.</summary>
     public void Clear()
     {
@@ -73,8 +82,8 @@ public sealed class DialogueSystem
         _layoutOptions.Clear();
     }
 
-    public void ShowMessage(string text, string? speaker = null, string? portrait = null)
-        => _queue.Enqueue(new DialogueMessage(text, speaker, portrait));
+    public void ShowMessage(string text, string? speaker = null, string? portrait = null, bool blocksPlayer = true)
+        => _queue.Enqueue(new DialogueMessage(text, speaker, portrait, blocksPlayer));
 
     public void ShowChoice(string prompt, IReadOnlyList<string> options, Action<int> onChosen)
         => _queue.Enqueue(new DialogueChoice(prompt, options, onChosen));

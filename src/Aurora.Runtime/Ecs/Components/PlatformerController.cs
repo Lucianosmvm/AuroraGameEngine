@@ -148,6 +148,11 @@ public sealed class PlatformerController : Behavior
 
     private float ReadHorizontal()
     {
+        // Diálogo bloqueante (padrão) trava o input aqui — a gravidade continua rodando embaixo,
+        // só o controle do jogador some enquanto a caixa está na tela.
+        if (World!.Dialogue?.ShouldBlockPlayer == true)
+            return 0f;
+
         if (JoystickName.Length > 0
             && World!.UI?.Find<UiJoystick>(JoystickScreen, JoystickName)?.Value is { } stick
             && MathF.Abs(stick.X) > 0.001f)
@@ -161,6 +166,9 @@ public sealed class PlatformerController : Behavior
 
     private void ReadJumpInput()
     {
+        if (World!.Dialogue?.ShouldBlockPlayer == true)
+            return;
+
         bool pressed = false;
         bool held = false;
 

@@ -126,6 +126,11 @@ public sealed class TopDownController : Behavior
 
     private Vector2 ReadInput()
     {
+        // Diálogo bloqueante (padrão) trava o input aqui, na fonte — nenhum outro código do
+        // controller precisa saber que existe um diálogo na tela.
+        if (World!.Dialogue?.ShouldBlockPlayer == true)
+            return Vector2.Zero;
+
         if (JoystickName.Length > 0
             && World!.UI?.Find<UiJoystick>(JoystickScreen, JoystickName)?.Value is { } stick
             && stick.LengthSquared() > 0.0001f)

@@ -38,6 +38,12 @@ public sealed class EventAction
     /// texto — o retrato do personagem falando. Vazio/null = sem retrato.</summary>
     public string? Portrait;
 
+    /// <summary>ShowMessage: true (padrão) trava o controle do jogador enquanto a caixa está na
+    /// tela — o normal pra diálogo. Desligue pra texto informativo (tutorial, aviso) que não deve
+    /// impedir o jogador de continuar andando. ShowChoice sempre trava — não dá pra navegar
+    /// opções e andar ao mesmo tempo.</summary>
+    public bool BlocksPlayer = true;
+
     /// <summary>
     /// Probabilidade de a ação acontecer, de 0 a 1. 1 (padrão) sempre roda. É o que expressa
     /// "30% de chance de largar a poção" sem precisar de variável nem script — e vale pra
@@ -76,6 +82,7 @@ public sealed class EventAction
                 Seconds = element.TryGetProperty("Seconds", out var s) ? s.GetSingle() : 0f,
                 Text = element.TryGetProperty("Text", out var txt) ? txt.GetString() : null,
                 Portrait = element.TryGetProperty("Portrait", out var portrait) ? portrait.GetString() : null,
+                BlocksPlayer = element.TryGetProperty("BlocksPlayer", out var bp) ? bp.GetBoolean() : true,
                 Chance = element.TryGetProperty("Chance", out var chance) ? chance.GetSingle() : 1f,
                 SpawnPoint = element.TryGetProperty("SpawnPoint", out var sp) ? sp.GetString() : null,
             };
@@ -115,6 +122,7 @@ public sealed class EventAction
             if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
             if (action.Text is not null) json.WriteString("Text", action.Text);
             if (action.Portrait is not null) json.WriteString("Portrait", action.Portrait);
+            if (!action.BlocksPlayer) json.WriteBoolean("BlocksPlayer", false);
             if (action.Chance != 1f) json.WriteNumber("Chance", action.Chance);
             if (!string.IsNullOrEmpty(action.SpawnPoint)) json.WriteString("SpawnPoint", action.SpawnPoint);
 
