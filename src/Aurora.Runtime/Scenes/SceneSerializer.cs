@@ -934,6 +934,7 @@ public sealed class SceneSerializer
         RegisterReflective(typeof(TopDownController), nameof(TopDownController));
         RegisterReflective(typeof(PlatformerController), nameof(PlatformerController));
         RegisterReflective(typeof(VehicleController), nameof(VehicleController));
+        RegisterReflective(typeof(Draggable), nameof(Draggable));
         RegisterReflective(typeof(Rideable), nameof(Rideable));
         RegisterReflective(typeof(Wander), nameof(Wander));
         RegisterReflective(typeof(AttackSpawner), nameof(AttackSpawner));

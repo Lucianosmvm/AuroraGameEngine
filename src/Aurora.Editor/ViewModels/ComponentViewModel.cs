@@ -269,6 +269,16 @@ public class ComponentViewModel : ViewModelBase
             ("AnimatorSpeedParameter", "Speed"),
             ("Enabled", true),
         ],
+        // Arrasta pelo mouse/toque — carta de jogo de tabuleiro, peça de puzzle. DropTarget vazio
+        // = solta em qualquer canto; "#etiqueta" ou prefixo de nome exige soltar perto de uma
+        // zona que combine (dentro de DropRadius), senão volta pro lugar (ReturnIfInvalid).
+        ["Draggable"] =
+        [
+            ("Width", 64f), ("Height", 96f),
+            ("DropTarget", ""), ("DropRadius", 32f), ("ReturnIfInvalid", true),
+            ("DropSwitch", ""),
+            ("Enabled", true),
+        ],
         // Montaria/veículo em que o jogador entra e sai: transfere o controle entre o passageiro
         // e a montaria. Ponha junto com o controlador de movimento DELA (VehicleController pra
         // carro, TopDownController pra cavalo) — ele fica desligado até alguém montar.
@@ -483,6 +493,8 @@ public class ComponentViewModel : ViewModelBase
         ["Rideable.CallUiButton"] = ("uiElements", "nome do UiButton de assobiar"),
         ["Weather.ThunderSound"] = ("sounds", "som do trovão — vazio = mudo"),
         ["Spawner.RequiredSwitch"] = ("switches", "só nasce com este switch no estado abaixo — vazio = sempre"),
+        ["Draggable.DropTarget"] = ("targets", "#etiqueta, ou prefixo de nome da zona — vazio = solta em qualquer canto"),
+        ["Draggable.DropSwitch"] = ("switches", "ligado quando solta numa zona válida — vazio = não mexe em switch"),
     };
 
     private bool TryGetSuggestions(string name, out Func<IEnumerable<string>> source, out string hint)

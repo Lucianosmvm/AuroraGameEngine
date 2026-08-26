@@ -24,7 +24,7 @@ public sealed class EntityViewModel : ViewModelBase
     private static readonly string[] GameplayComponentTypes =
         ["SpriteRenderer", "Animator", "Collider", "Health", "Projectile", "CameraController",
          "EventTrigger", "ParticleEmitter", "Light2D", "GlobalTint", "NavAgent",
-         "TopDownController", "PlatformerController", "VehicleController",
+         "TopDownController", "PlatformerController", "VehicleController", "Draggable",
          "AttackSpawner", "ContactDamage", "FollowTarget", "Lifetime",
          "AutoMotion", "Spawner", "PatrolPath", "Weather", "Rideable", "Wander",
          "Persistent", "Tags", "Status", "SleepOffscreen"];
