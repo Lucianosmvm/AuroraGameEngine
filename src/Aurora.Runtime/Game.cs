@@ -224,8 +224,123 @@ public abstract class Game : IDisposable
         View.Run();
     }
 
+    /// <summary>
+    /// O que fazer quando o jogo pede pra sair, pra quem hospeda o jogo sem janela própria
+    /// (play-in-editor: sair = parar o modo Play, não fechar o editor). Null = fecha a View,
+    /// que é o comportamento de um jogo publicado.
+    /// </summary>
+    public Action? ExitHandler { get; set; }
+
     /// <summary>Fecha a view e encerra o loop.</summary>
-    public void Exit() => View.Close();
+    public void Exit()
+    {
+        if (ExitHandler is { } handler)
+            handler();
+        else
+            View.Close();
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Ciclo de vida sem janela própria
+    //
+    // Um jogo publicado cria a própria janela e o Silk.NET chama estes quatro passos por evento
+    // (ver Run/HandleLoad). O play-in-editor não pode fazer isso: quem é dono do contexto de GL
+    // e do loop de frame é o editor. Então os passos são públicos e o caminho com janela virou
+    // casca fina sobre eles — os dois modos correm exatamente o mesmo código, e nada aqui muda
+    // pra quem só chama Run().
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Monta o jogo sobre um contexto de GL que outro alguém criou e é dono.
+    /// </summary>
+    /// <param name="gl">Contexto já corrente na thread que vai renderizar.</param>
+    /// <param name="input">Input a usar; hospedado, é um <see cref="InputManager"/> sem
+    /// dispositivo, alimentado pelo host.</param>
+    /// <param name="gles">True se o contexto é OpenGL ES — troca o dialeto do shader. O editor
+    /// no Windows recebe GLES (ANGLE), o mesmo caso do Android.</param>
+    /// <param name="framebufferSize">Tamanho da superfície de destino, em pixels.</param>
+    public void Initialize(GL gl, InputManager input, bool gles, Vector2D<int> framebufferSize)
+    {
+        Gl = gl;
+        Input = input;
+        SpriteBatch = new SpriteBatch(Gl, gles);
+
+        SetUpSystems();
+
+        Gl.Enable(EnableCap.Blend);
+        Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+
+        ApplyViewport(framebufferSize);
+
+        AutoRegisterScripts();
+        LoadDebugFont();
+        OnLoad();
+    }
+
+    /// <summary>Avança um frame de lógica. Exceção de um frame é logada e o frame ignorado —
+    /// o jogo não fecha sozinho.</summary>
+    public void Tick(float deltaTime)
+    {
+        // Antes de tudo: um Load pedido no frame passado (botão "Continuar" do menu, evento)
+        // troca a cena inteira. Aqui é o único ponto do frame em que nada está iterando o World.
+        if (_pendingLoadSlot is { } pendingSlot)
+        {
+            _pendingLoadSlot = null;
+            ApplyPendingLoad(pendingSlot);
+        }
+
+        float dt = MathF.Min(deltaTime, MaxDeltaTime);
+        Input.BeginFrame();
+
+        if (DebugOverlayEnabled)
+            Debug.Tick(dt);
+
+        // World.Update já isola exceções por behavior; esse try/catch é a rede de segurança
+        // pro resto (OnUpdate do seu Game, SceneManager, Events, UI) — pior caso, um frame de
+        // lógica é ignorado e logado, o jogo não fecha sozinho.
+        try
+        {
+            // Antes de tudo: quem entrou/saiu precisa estar refletido já neste frame, senão a
+            // lógica roda um frame inteiro com uma lista de jogadores desatualizada.
+            Net.Update(dt);
+            SceneManager.Update(dt);
+            Dialogue.Update();
+            AdvanceDialogueInput();
+            OnUpdate(dt);
+            World.Update(dt);
+            Events.Update(dt);
+            UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
+            UpdateCamera(dt);
+
+            // Por último de propósito: realimenta a fila de streaming da música. Se a lógica
+            // do jogo estourar acima, o frame de áudio se perde junto — mas a fila tem folga
+            // de quase um segundo, então um frame ruim não corta o som.
+            Audio.Update();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Game] Exceção não tratada em Tick — frame ignorado: {ex}");
+        }
+    }
+
+    /// <summary>Reajusta viewport e câmera a um novo tamanho de superfície.</summary>
+    public void Resize(Vector2D<int> framebufferSize) => ApplyViewport(framebufferSize);
+
+    /// <summary>
+    /// Libera os recursos que dependem do contexto de GL. Tem que rodar com o contexto AINDA
+    /// vivo — por isso é chamado no Closing da view, não no Dispose.
+    /// </summary>
+    public void Shutdown()
+    {
+        OnUnload();
+
+        // Antes do resto: avisa o outro lado que saímos. Fechar o socket calado deixaria os
+        // outros jogadores olhando pro nosso boneco parado até o timeout estourar.
+        Net.Dispose();
+        Audio?.Dispose();
+        Assets?.Dispose();
+        SpriteBatch?.Dispose();
+    }
 
     /// <summary>
     /// Carrega uma cena, limpando o mundo atual. Para transição com fade use
@@ -238,13 +353,16 @@ public abstract class Game : IDisposable
         => SceneManager.LoadWithFade(scenePath, duration);
 
     private void HandleLoad()
+        => Initialize(
+            GL.GetApi(View),
+            new InputManager(View.CreateInput()),
+            View.API.API == ContextAPI.OpenGLES,
+            View.FramebufferSize);
+
+    /// <summary>Liga os subsistemas uns nos outros. Nada aqui toca janela ou input — é a parte
+    /// comum entre o jogo publicado e o hospedado.</summary>
+    private void SetUpSystems()
     {
-        Gl = GL.GetApi(View);
-        Input = new InputManager(View.CreateInput());
-
-        bool isGles = View.API.API == ContextAPI.OpenGLES;
-        SpriteBatch = new SpriteBatch(Gl, isGles);
-
         var source = AssetSource ?? new FileAssetSource();
         Assets = new AssetManager(Gl, source);
         Audio = new AudioManager(source);
@@ -338,15 +456,6 @@ public abstract class Game : IDisposable
         // devem aparecer um na lista do outro.
         Net.GameId = GameName;
         Net.AttachWorld(World);
-
-        Gl.Enable(EnableCap.Blend);
-        Gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-
-        ApplyViewport(View.FramebufferSize);
-
-        AutoRegisterScripts();
-        LoadDebugFont();
-        OnLoad();
     }
 
     /// <summary>
@@ -380,49 +489,7 @@ public abstract class Game : IDisposable
         }
     }
 
-    private void HandleUpdate(double deltaTime)
-    {
-        // Antes de tudo: um Load pedido no frame passado (botão "Continuar" do menu, evento)
-        // troca a cena inteira. Aqui é o único ponto do frame em que nada está iterando o World.
-        if (_pendingLoadSlot is { } pendingSlot)
-        {
-            _pendingLoadSlot = null;
-            ApplyPendingLoad(pendingSlot);
-        }
-
-        float dt = MathF.Min((float)deltaTime, MaxDeltaTime);
-        Input.BeginFrame();
-
-        if (DebugOverlayEnabled)
-            Debug.Tick(dt);
-
-        // World.Update já isola exceções por behavior; esse try/catch é a rede de segurança
-        // pro resto (OnUpdate do seu Game, SceneManager, Events, UI) — pior caso, um frame de
-        // lógica é ignorado e logado, o jogo não fecha sozinho.
-        try
-        {
-            // Antes de tudo: quem entrou/saiu precisa estar refletido já neste frame, senão a
-            // lógica roda um frame inteiro com uma lista de jogadores desatualizada.
-            Net.Update(dt);
-            SceneManager.Update(dt);
-            Dialogue.Update();
-            AdvanceDialogueInput();
-            OnUpdate(dt);
-            World.Update(dt);
-            Events.Update(dt);
-            UI.Update(Input, Events, ScreenSize.X, ScreenSize.Y);
-            UpdateCamera(dt);
-
-            // Por último de propósito: realimenta a fila de streaming da música. Se a lógica
-            // do jogo estourar acima, o frame de áudio se perde junto — mas a fila tem folga
-            // de quase um segundo, então um frame ruim não corta o som.
-            Audio.Update();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleUpdate — frame ignorado: {ex}");
-        }
-    }
+    private void HandleUpdate(double deltaTime) => Tick((float)deltaTime);
 
     /// <summary>Lê o input padrão da caixa de diálogo — Espaço/Enter dispensa a mensagem ou
     /// confirma a opção selecionada, W/S e as setas navegam entre opções. Sem isto o jogo
@@ -519,7 +586,11 @@ public abstract class Game : IDisposable
             minY <= maxY ? Math.Clamp(Camera.Position.Y, minY, maxY) : y + height / 2f);
     }
 
-    private void HandleRender(double deltaTime)
+    private void HandleRender(double deltaTime) => RenderFrame((float)deltaTime);
+
+    /// <summary>Desenha um frame no framebuffer que estiver ligado. Não faz bind de framebuffer
+    /// nem troca buffer: hospedado, o destino é o do editor, e quem apresenta é ele.</summary>
+    public void RenderFrame(float deltaTime)
     {
         Gl.ClearColor(ClearColor.R, ClearColor.G, ClearColor.B, ClearColor.A);
         Gl.Clear(ClearBufferMask.ColorBufferBit);
@@ -531,7 +602,7 @@ public abstract class Game : IDisposable
         try
         {
             World.Render(SpriteBatch, Camera);
-            OnRender((float)deltaTime);
+            OnRender(deltaTime);
 
             // Depois do OnRender: hitbox tem que ficar POR CIMA do que o jogo desenhou, senão
             // o sprite tapa justamente o que se quer conferir.
@@ -540,7 +611,7 @@ public abstract class Game : IDisposable
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleRender (mundo) — frame ignorado: {ex}");
+            Console.Error.WriteLine($"[Game] Exceção não tratada em RenderFrame (mundo) — frame ignorado: {ex}");
         }
         finally
         {
@@ -552,7 +623,7 @@ public abstract class Game : IDisposable
         try
         {
             World.DrawGlobalTint(SpriteBatch, ScreenSize.X, ScreenSize.Y);
-            OnRenderUI((float)deltaTime);
+            OnRenderUI(deltaTime);
             SceneManager.DrawOverlay(SpriteBatch, ScreenSize.X, ScreenSize.Y);
 
             // Por último: os números ficam legíveis mesmo com HUD e fade de troca de cena.
@@ -561,7 +632,7 @@ public abstract class Game : IDisposable
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"[Game] Exceção não tratada em HandleRender (UI) — frame ignorado: {ex}");
+            Console.Error.WriteLine($"[Game] Exceção não tratada em RenderFrame (UI) — frame ignorado: {ex}");
         }
         finally
         {
@@ -574,7 +645,7 @@ public abstract class Game : IDisposable
         => System.Numerics.Matrix4x4.CreateOrthographicOffCenter(
             0f, ScreenSize.X, ScreenSize.Y, 0f, -1f, 1f);
 
-    private void HandleResize(Vector2D<int> size) => ApplyViewport(size);
+    private void HandleResize(Vector2D<int> size) => Resize(size);
 
     /// <summary>Sem DesignResolution: viewport de GL = janela inteira, ScreenSize/Camera usam o
     /// tamanho físico (comportamento de sempre). Com DesignResolution: calcula a maior área
@@ -620,17 +691,7 @@ public abstract class Game : IDisposable
 
     // Recursos GL precisam ser liberados com o contexto ainda vivo, por isso no Closing
     // da view e não em Dispose (que roda depois de View.Run retornar).
-    private void HandleClosing()
-    {
-        OnUnload();
-
-        // Antes do resto: avisa o outro lado que saímos. Fechar o socket calado deixaria os
-        // outros jogadores olhando pro nosso boneco parado até o timeout estourar.
-        Net.Dispose();
-        Audio?.Dispose();
-        Assets?.Dispose();
-        SpriteBatch?.Dispose();
-    }
+    private void HandleClosing() => Shutdown();
 
     /// <summary>Chamado uma vez com o contexto gráfico pronto. Crie entidades e carregue assets aqui.</summary>
     protected abstract void OnLoad();

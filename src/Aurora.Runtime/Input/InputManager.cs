@@ -10,7 +10,9 @@ namespace Aurora.Runtime.Input;
 /// </summary>
 public sealed class InputManager
 {
-    private readonly IInputContext _context;
+    // Null quando o jogo roda hospedado (play-in-editor): não há janela do Silk.NET, e teclado/
+    // mouse chegam por SetKey/SetMouseButton/SetPointer, o mesmo canal que o Android já usa.
+    private readonly IInputContext? _context;
 
     private static readonly Key[] AllKeys = Enum.GetValues<Key>().Where(k => k != Key.Unknown).ToArray();
     private static readonly MouseButton[] AllButtons = Enum.GetValues<MouseButton>().Where(b => b != MouseButton.Unknown).ToArray();
@@ -60,6 +62,16 @@ public sealed class InputManager
     }
 
     /// <summary>
+    /// Input sem dispositivo do Silk.NET, pra quando quem hospeda o jogo já tem os eventos de
+    /// entrada e só precisa repassá-los (play-in-editor). Sem contexto não há gamepad — o resto
+    /// funciona pelos mesmos SetPointer/SetTouch que o Android usa.
+    /// </summary>
+    public InputManager()
+    {
+        _context = null;
+    }
+
+    /// <summary>
     /// O que o jogador digitou neste frame, pronto pra concatenar num campo de texto. Vazio na
     /// maioria dos frames.
     /// <para>Vem do evento de caractere do teclado, não da varredura de teclas: só ele sabe o
@@ -100,9 +112,9 @@ public sealed class InputManager
 
     // Sempre consultados de novo (não guardados em campo): um FirstOrDefault()
     // cacheado no construtor perderia dispositivo que conecta depois.
-    private IKeyboard? Keyboard => _context.Keyboards.FirstOrDefault();
-    private IMouse? Mouse => _context.Mice.FirstOrDefault();
-    private IGamepad? Gamepad => _context.Gamepads.FirstOrDefault();
+    private IKeyboard? Keyboard => _context?.Keyboards.FirstOrDefault();
+    private IMouse? Mouse => _context?.Mice.FirstOrDefault();
+    private IGamepad? Gamepad => _context?.Gamepads.FirstOrDefault();
 
     /// <summary>True se algum controle está plugado e reconhecido nesse frame.</summary>
     public bool IsGamepadConnected => Gamepad is not null;
