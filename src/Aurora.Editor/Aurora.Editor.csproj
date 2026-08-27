@@ -14,17 +14,17 @@
     <InternalsVisibleTo Include="Aurora.Editor.Tests" />
   </ItemGroup>
 
-  <!-- Quebra de linha do runtime reusada por link, não por referência de projeto: o editor é
-       independente do Aurora.Runtime de propósito (mexe só no JSON da cena, sem GL), mas se o
-       preview quebrasse linha diferente do jogo o editor voltaria a mentir. TextWrapper é
-       estático e puro — recebe a largura de cada caractere por delegate — então compila sozinho. -->
+  <!-- O editor referencia o runtime desde o play-in-editor embutido: pra rodar o jogo dentro do
+       viewport ele precisa de Game/GL, e pra o inspector escrever numa entidade VIVA os tipos
+       (Transform, Collider…) têm que ser os MESMOS dos dois lados — o assembly do jogo é
+       carregado num contexto colecionável que delega Aurora.Runtime a este aqui.
+
+       Antes daqui, TextWrapper/UiAnchor/TermDatabase vinham por <Compile Include> pra manter o
+       preview fiel sem criar dependência. Com a referência de projeto isso viraria tipo
+       duplicado no mesmo namespace, então saíram: o editor usa os originais, que é o que aquele
+       arranjo queria garantir. -->
   <ItemGroup>
-    <Compile Include="..\Aurora.Runtime\Graphics\TextWrapper.cs" Link="Models\TextWrapper.cs" />
-    <Compile Include="..\Aurora.Runtime\UI\UiAnchor.cs" Link="Models\UiAnchor.cs" />
-    <!-- Lista das chaves de texto que a engine consulta, com o padrao de cada uma. Por link pelo
-         mesmo motivo dos outros: duplicar a lista no editor faria a aba Termos oferecer chave que
-         o runtime nao le (ou esquecer chave nova) sem nada avisar. So depende de System.Text.Json. -->
-    <Compile Include="..\Aurora.Runtime\Database\TermDatabase.cs" Link="Models\TermDatabase.cs" />
+    <ProjectReference Include="..\Aurora.Runtime\Aurora.Runtime.csproj" />
   </ItemGroup>
 
   <!-- Fonte padrão copiada pra saida do editor: o scaffolder de "Novo Projeto" a copia pro

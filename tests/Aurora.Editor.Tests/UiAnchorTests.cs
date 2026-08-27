@@ -3,10 +3,10 @@ using Aurora.Runtime.UI;
 namespace Aurora.Editor.Tests;
 
 /// <summary>
-/// A regra de Anchor. Vive em Aurora.Runtime e entra no Aurora.Editor por link no .csproj — este
-/// teste roda no projeto do editor de propósito: se alguém quebrar o link e o editor voltar a ter
-/// a própria cópia da regra, é aqui que aparece. Foi exatamente essa duplicação que fez o menu
-/// montado no editor cair em outro lugar no jogo.
+/// A regra de Anchor. Vive em Aurora.Runtime, e o editor a usa de lá por referência de projeto —
+/// este teste roda no projeto do editor de propósito: se alguém voltar a dar ao editor uma cópia
+/// própria da regra, é aqui que aparece. Foi exatamente essa duplicação que fez o menu montado no
+/// editor cair em outro lugar no jogo.
 /// </summary>
 public sealed class UiAnchorTests
 {

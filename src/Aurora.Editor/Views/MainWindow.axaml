@@ -413,10 +413,23 @@
     <Border DockPanel.Dock="Top" Background="{DynamicResource EditorPanel}" Padding="8,5"
             BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,0,0,1">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="▶  Play (F5)" Click="OnPlay"
-                IsEnabled="{Binding CanPlay}"
+        <!-- Play no editor é o primeiro porque é o do ciclo curto: sem processo novo, sem janela
+             nova. O Play em janela continua ao lado — é ele que roda o jogo como o jogador vai
+             receber, e é pra onde se vai quando a suspeita é do empacotamento e não do jogo. -->
+        <Button Content="▶  Play (F5)" Click="OnPlayEmbedded"
+                IsEnabled="{Binding CanPlayEmbedded}"
+                IsVisible="{Binding !IsPlayingEmbedded}"
                 FontSize="13" FontWeight="SemiBold" Padding="14,5"
+                ToolTip.Tip="Roda o jogo dentro do editor, sem abrir janela."
                 Background="{DynamicResource EditorAccent}" Foreground="White"/>
+        <Button Content="■  Parar" Click="OnStopEmbedded"
+                IsVisible="{Binding IsPlayingEmbedded}"
+                FontSize="13" FontWeight="SemiBold" Padding="14,5"
+                Background="#B3452F" Foreground="White"/>
+        <Button Content="▶  Em janela" Click="OnPlay"
+                IsEnabled="{Binding CanPlay}"
+                FontSize="12" Padding="10,5"
+                ToolTip.Tip="Roda o jogo num processo separado, como o jogador vai receber: janela própria, e um crash não derruba o editor."/>
         <CheckBox Content="Colisores" IsChecked="{Binding ShowColliders}"
                   VerticalAlignment="Center" FontSize="12"
                   ToolTip.Tip="Mostra a hitbox de cada Collider no viewport: verde = sólido, laranja = trigger, tracejado = cinemático. Use 'Debug no jogo' pra ver isto rodando."/>
@@ -787,7 +800,13 @@
           </StackPanel>
         </Border>
 
-        <views:SceneCanvas x:Name="Scene" Grid.Row="1" DataContext="{Binding}"/>
+        <!-- Canvas de edição e jogo rodando dividem a mesma célula: o Play troca um pelo outro no
+             lugar onde o olho já está, em vez de abrir painel novo. O canvas sai de cena junto
+             (não só fica atrás) pra não seguir desenhando e tratando clique por baixo do jogo. -->
+        <views:SceneCanvas x:Name="Scene" Grid.Row="1" DataContext="{Binding}"
+                           IsVisible="{Binding !IsPlayingEmbedded}"/>
+        <views:GameViewControl x:Name="GameView" Grid.Row="1"
+                               IsVisible="{Binding IsPlayingEmbedded}"/>
         <Border Grid.Row="2" Background="{DynamicResource EditorPanel}" Padding="8,6"
                 IsVisible="{Binding HasTilePalette}">
           <ListBox ItemsSource="{Binding PaletteTiles}"

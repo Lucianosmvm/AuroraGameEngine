@@ -36,6 +36,8 @@ public partial class MainWindow : Window
 
             _outputSource = vm.GameOutput;
             _outputSource.CollectionChanged += OnGameOutputChanged;
+
+            AttachEmbeddedPlay(vm);
         };
 
         // Arrastar asset para o canvas: só vira drag depois de 8px de movimento,
@@ -382,6 +384,45 @@ public partial class MainWindow : Window
     private DatabaseWindow? _itemDatabase;
 
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
+
+    private async void OnPlayEmbedded(object? sender, RoutedEventArgs e)
+    {
+        await ViewModel.PlayEmbeddedAsync();
+
+        // Só depois do build+load: antes disso não há host pra entregar, e o viewport começaria
+        // a chamar Initialize num jogo que não existe.
+        GameView.Host = ViewModel.ActiveGameHost;
+    }
+
+    private void OnStopEmbedded(object? sender, RoutedEventArgs e) => ViewModel.StopEmbedded();
+
+    private MainViewModel? _embeddedPlayViewModel;
+
+    /// <summary>
+    /// Liga o viewport do modo Play na VM. O que passa por aqui é o que precisa da janela: a VM
+    /// decide QUANDO parar, mas quem chama o Stop é o controle — encerrar o jogo libera textura e
+    /// buffer, e isso exige o contexto de GL corrente, que só o controle garante.
+    /// </summary>
+    private void AttachEmbeddedPlay(MainViewModel vm)
+    {
+        if (ReferenceEquals(_embeddedPlayViewModel, vm))
+            return;
+
+        if (_embeddedPlayViewModel is { } previous)
+            previous.EmbeddedStopRequested -= OnEmbeddedStopRequested;
+
+        _embeddedPlayViewModel = vm;
+        vm.EmbeddedStopRequested += OnEmbeddedStopRequested;
+
+        GameView.GameFaulted += message => Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => ViewModel.OnEmbeddedGameFaulted(message));
+    }
+
+    private void OnEmbeddedStopRequested()
+    {
+        GameView.StopGame();
+        GameView.Host = null;
+    }
 
     private void OnDuplicateEntity(object? sender, RoutedEventArgs e) => ViewModel.DuplicateSelectedEntity();
 

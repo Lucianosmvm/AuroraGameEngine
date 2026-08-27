@@ -80,7 +80,9 @@ public sealed class InputManager
     /// </summary>
     public string TypedText { get; private set; } = "";
 
-    private void OnKeyChar(IKeyboard keyboard, char character)
+    private void OnKeyChar(IKeyboard keyboard, char character) => AppendChar(character);
+
+    private void AppendChar(char character)
     {
         // Backspace, Enter, Escape e companhia chegam aqui como caractere de controle. Quem
         // trata isso é o campo de texto, via WasKeyPressed — no texto eles virariam lixo.
@@ -136,6 +138,75 @@ public sealed class InputManager
             return (_pointerOverride, _pointerOverrideDown);
     }
 
+    // Teclado e botões de mouse injetados de fora, pra quando não há dispositivo do Silk.NET
+    // (play-in-editor: quem recebe os eventos é o controle do editor). Mesmo espírito do
+    // SetPointer do Android — a diferença é que lá o dispositivo existe e só o toque não presta,
+    // aqui não existe dispositivo nenhum.
+    private readonly HashSet<Key> _injectedKeys = [];
+    private readonly HashSet<MouseButton> _injectedButtons = [];
+
+    /// <summary>
+    /// Estado de uma tecla vindo de quem hospeda o jogo (play-in-editor). Sem isto o jogo
+    /// hospedado não recebe teclado nenhum: <see cref="IsKeyDown"/> consulta o dispositivo do
+    /// Silk.NET, que não existe fora de uma janela própria.
+    /// </summary>
+    public void SetKey(Key key, bool down)
+    {
+        lock (_pointerLock)
+        {
+            if (down) _injectedKeys.Add(key);
+            else _injectedKeys.Remove(key);
+        }
+    }
+
+    /// <summary>Botão de mouse vindo do host. O esquerdo também chega por
+    /// <see cref="SetPointer"/> (que carrega a posição junto); este cobre os outros.</summary>
+    public void SetMouseButton(MouseButton button, bool down)
+    {
+        lock (_pointerLock)
+        {
+            if (down) _injectedButtons.Add(button);
+            else _injectedButtons.Remove(button);
+        }
+    }
+
+    /// <summary>
+    /// Texto digitado vindo do host, pra campo de texto do jogo. Separado de
+    /// <see cref="SetKey"/> pelo mesmo motivo que <see cref="TypedText"/> não sai de
+    /// <see cref="WasKeyPressed"/>: só o evento de caractere sabe layout, acento e maiúscula.
+    /// </summary>
+    public void AppendTypedText(string text)
+    {
+        foreach (char character in text)
+            AppendChar(character);
+    }
+
+    /// <summary>Solta tudo que foi injetado. O host chama ao perder o foco: sem isso uma tecla
+    /// apertada na hora de trocar de janela fica "presa" e o personagem anda sozinho.</summary>
+    public void ClearInjectedInput()
+    {
+        lock (_pointerLock)
+        {
+            _injectedKeys.Clear();
+            _injectedButtons.Clear();
+            _pointerOverride = null;
+            _pointerOverrideDown = false;
+            _touches.Clear();
+        }
+    }
+
+    private bool IsInjectedKeyDown(Key key)
+    {
+        lock (_pointerLock)
+            return _injectedKeys.Contains(key);
+    }
+
+    private (HashSet<Key> Keys, HashSet<MouseButton> Buttons) SnapshotInjected()
+    {
+        lock (_pointerLock)
+            return ([.. _injectedKeys], [.. _injectedButtons]);
+    }
+
     /// <summary>Chamado pela plataforma (MainActivity) por dedo — id = MotionEvent.GetPointerId,
     /// down=false remove o toque. Independente de SetPointer (que continua sendo "o" clique
     /// único usado pelo UIManager pra botão de menu/HUD).</summary>
@@ -171,13 +242,21 @@ public sealed class InputManager
         }
     }
 
-    public bool IsKeyDown(Key key) => Keyboard?.IsKeyPressed(key) ?? false;
+    public bool IsKeyDown(Key key) => (Keyboard?.IsKeyPressed(key) ?? false) || IsInjectedKeyDown(key);
     public bool WasKeyPressed(Key key) => _keysPressedThisFrame.Contains(key);
 
     public Vector2 MousePosition => MapToDesignSpace(ReadPointerOverride().Position ?? Mouse?.Position ?? Vector2.Zero);
 
     public bool IsMouseDown(MouseButton button = MouseButton.Left)
-        => (button == MouseButton.Left && ReadPointerOverride().Down) || (Mouse?.IsButtonPressed(button) ?? false);
+        => (button == MouseButton.Left && ReadPointerOverride().Down)
+        || (Mouse?.IsButtonPressed(button) ?? false)
+        || IsInjectedButtonDown(button);
+
+    private bool IsInjectedButtonDown(MouseButton button)
+    {
+        lock (_pointerLock)
+            return _injectedButtons.Contains(button);
+    }
 
     public bool WasMouseClicked(MouseButton button = MouseButton.Left) => _buttonsPressedThisFrame.Contains(button);
 
@@ -289,17 +368,23 @@ public sealed class InputManager
         TypedText = _pendingText.Length == 0 ? "" : _pendingText.ToString();
         _pendingText.Clear();
 
+        // Uma foto do estado injetado por frame, em vez de travar o lock a cada tecla: o laço
+        // percorre a lista inteira de teclas, e são dois cadeados por iteração se consultado
+        // dentro dele.
+        var (injectedKeys, injectedButtons) = SnapshotInjected();
+
         _keysPressedThisFrame.Clear();
-        if (Keyboard is { } keyboard)
+        var keyboard = Keyboard;
+
+        // Sem "if (keyboard is not null)" na volta do laço: hospedado não há dispositivo, e o
+        // estado vem todo do injetado — pular o laço deixaria WasKeyPressed sempre vazio.
+        foreach (var key in AllKeys)
         {
-            foreach (var key in AllKeys)
-            {
-                bool down = keyboard.IsKeyPressed(key);
-                if (down && _keysDown.Add(key))
-                    _keysPressedThisFrame.Add(key);
-                else if (!down)
-                    _keysDown.Remove(key);
-            }
+            bool down = (keyboard?.IsKeyPressed(key) ?? false) || injectedKeys.Contains(key);
+            if (down && _keysDown.Add(key))
+                _keysPressedThisFrame.Add(key);
+            else if (!down)
+                _keysDown.Remove(key);
         }
 
         _buttonsPressedThisFrame.Clear();
@@ -307,7 +392,10 @@ public sealed class InputManager
         var mouse = Mouse;
         foreach (var button in AllButtons)
         {
-            bool down = (mouse?.IsButtonPressed(button) ?? false) || (button == MouseButton.Left && pointerDown);
+            bool down = (mouse?.IsButtonPressed(button) ?? false)
+                || (button == MouseButton.Left && pointerDown)
+                || injectedButtons.Contains(button);
+
             if (down && _buttonsDown.Add(button))
                 _buttonsPressedThisFrame.Add(button);
             else if (!down)

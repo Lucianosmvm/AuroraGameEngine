@@ -1,5 +1,3 @@
-extern alias runtime;
-
 using System.Text.Json;
 using Aurora.Editor.ViewModels;
 
@@ -79,7 +77,7 @@ public sealed class ItemDatabaseViewModelTests : IDisposable
 
         // Lido de volta pelo próprio runtime: é o teste que pega qualquer divergência de nome
         // de campo entre editor e engine.
-        var database = new runtime::Aurora.Runtime.Database.ItemDatabase();
+        var database = new Aurora.Runtime.Database.ItemDatabase();
         database.Load(File.ReadAllText(ItemsPath));
 
         Assert.Equal("Poção Pequena", database.Get("pocao")!.Name);
@@ -126,7 +124,7 @@ public sealed class ItemDatabaseViewModelTests : IDisposable
         vm.Effects[0].ValueFloat = 50f;
         vm.Save();
 
-        var database = new runtime::Aurora.Runtime.Database.ItemDatabase();
+        var database = new Aurora.Runtime.Database.ItemDatabase();
         database.Load(File.ReadAllText(ItemsPath));
 
         var effect = Assert.Single(database.Get("pocao")!.Effect);

@@ -470,6 +470,7 @@ public sealed class MainViewModel : ViewModelBase
             try { _settings.Save(); } catch { /* sem permissão de escrita — ignora */ }
             Raise();
             Raise(nameof(CanPlay));
+            Raise(nameof(CanPlayEmbedded));
             Raise(nameof(CanBuild));
             RefreshScriptCatalog();
         }
@@ -795,6 +796,204 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Play embutido
+    //
+    // Roda o jogo DENTRO do editor, no contexto de GL do próprio viewport, em vez de lançar um
+    // processo. A diferença que importa é o ciclo de iteração: sem processo novo e sem janela
+    // nova, e — porque o assembly do jogo é carregado num contexto que delega Aurora.Runtime ao
+    // do editor — o inspector escreve na entidade VIVA, sem serializar.
+    //
+    // O Play() de processo separado continua existindo e não muda: é ele que roda o jogo como o
+    // jogador vai receber (janela própria, código de saída, crash isolado do editor). Este aqui
+    // troca esse isolamento por velocidade.
+    // ---------------------------------------------------------------------------------------
+
+    private GameHost? _gameHost;
+
+    /// <summary>
+    /// O host do jogo em execução embutida, pro viewport dirigir. Internal porque
+    /// <see cref="GameHost"/> é detalhe do editor — o resto do app fala com o modo Play por
+    /// <see cref="IsPlayingEmbedded"/> e pelos comandos.
+    /// </summary>
+    internal GameHost? ActiveGameHost => _gameHost;
+
+    private bool _isPlayingEmbedded;
+
+    /// <summary>Se há jogo rodando dentro do editor agora.</summary>
+    public bool IsPlayingEmbedded
+    {
+        get => _isPlayingEmbedded;
+        private set
+        {
+            if (Set(ref _isPlayingEmbedded, value))
+            {
+                Raise(nameof(CanPlayEmbedded));
+                Raise(nameof(CanStopEmbedded));
+            }
+        }
+    }
+
+    private bool _isPreparingEmbeddedPlay;
+
+    /// <summary>Compilando/carregando: o botão fica desabilitado, senão dois cliques abrem duas
+    /// sessões e a segunda encontra a primeira ainda carregada.</summary>
+    public bool IsPreparingEmbeddedPlay
+    {
+        get => _isPreparingEmbeddedPlay;
+        private set
+        {
+            if (Set(ref _isPreparingEmbeddedPlay, value))
+                Raise(nameof(CanPlayEmbedded));
+        }
+    }
+
+    public bool CanPlayEmbedded => _document is not null
+        && !string.IsNullOrWhiteSpace(_settings?.GameProject)
+        && !IsPlayingEmbedded
+        && !IsPreparingEmbeddedPlay;
+
+    public bool CanStopEmbedded => IsPlayingEmbedded;
+
+    /// <summary>
+    /// Pedido pro viewport encerrar o jogo. Quem chama <see cref="GameHost.Stop"/> tem que ser
+    /// o controle, não este ViewModel: <see cref="Aurora.Runtime.Game.Shutdown"/> libera textura
+    /// e buffer, e isso exige o contexto de GL corrente — coisa que só o controle sabe garantir.
+    /// </summary>
+    internal event Action? EmbeddedStopRequested;
+
+    /// <summary>
+    /// Compila o projeto, carrega o assembly e deixa o jogo pronto pro viewport inicializar no
+    /// próximo frame. Não inicializa aqui: sem contexto de GL, não há o que inicializar.
+    /// </summary>
+    public async Task PlayEmbeddedAsync()
+    {
+        if (_document is null || string.IsNullOrWhiteSpace(_settings?.GameProject))
+        {
+            Status = "Configure o caminho do projeto (Inspector → PROJETO) antes de usar Play.";
+            return;
+        }
+
+        if (IsPlayingEmbedded)
+            StopEmbedded();
+
+        SaveScene();
+
+        string project = _settings!.GameProject!.Trim();
+        string scenePath = _document.FilePath;
+
+        IsPreparingEmbeddedPlay = true;
+        Status = "Compilando o jogo...";
+
+        try
+        {
+            var (build, assemblyPath) = await GameHost.BuildAsync(project);
+            if (!build.Ok)
+            {
+                Status = build.Message;
+                StatusDetail = build.Detail;
+                Log($"--- Play embutido cancelado: {build.Message} ---");
+                return;
+            }
+
+            var host = new GameHost();
+            var load = host.Load(assemblyPath!);
+            if (!load.Ok)
+            {
+                host.Dispose();
+                Status = load.Message;
+                StatusDetail = load.Detail;
+                Log($"--- Play embutido cancelado: {load.Message} ---");
+                return;
+            }
+
+            ConfigureGame(host, assemblyPath!, scenePath);
+
+            _gameHost = host;
+            StatusDetail = null;
+
+            // Painel zerado a cada Play, igual ao de processo: misturar a saída de duas
+            // execuções é pior que não ter.
+            ClearOutput();
+            Log($"--- Play embutido: {Path.GetFileName(scenePath)} ---");
+
+            // Por último: assim que isto vira true o viewport começa a chamar Initialize/Tick,
+            // e tudo acima já tem que estar no lugar.
+            IsPlayingEmbedded = true;
+            Status = $"Rodando no editor — cena: {Path.GetFileName(scenePath)}";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Erro ao iniciar o Play embutido: {ex.Message}";
+            StatusDetail = ex.ToString();
+        }
+        finally
+        {
+            IsPreparingEmbeddedPlay = false;
+        }
+    }
+
+    /// <summary>
+    /// Ajusta o jogo carregado pra rodar hospedado: cena inicial, overlay e — o detalhe que
+    /// quebra tudo se faltar — de onde vêm os assets.
+    /// </summary>
+    private void ConfigureGame(GameHost host, string assemblyPath, string scenePath)
+    {
+        var game = host.Game!;
+
+        var args = new List<string> { "--scene", scenePath };
+
+        if (DebugOverlayOnPlay)
+        {
+            args.Add("--debug");
+            args.Add("--debug-font");
+            args.Add(_settings?.EffectiveUiFont ?? "fonts/DejaVuSans.ttf");
+        }
+
+        game.ParseArgs([.. args]);
+
+        // Sem isto o jogo procuraria os assets a partir do executável do EDITOR: rodando como
+        // processo próprio o padrão do FileAssetSource (AppContext.BaseDirectory) cai na pasta
+        // de saída do jogo, mas hospedado essa pasta é a do editor, e nada seria encontrado.
+        // A raiz certa é onde o build do jogo colocou o assembly.
+        string outputDir = Path.GetDirectoryName(assemblyPath) ?? "";
+        game.AssetSource = new Aurora.Runtime.Assets.FileAssetSource(Path.Combine(outputDir, "Assets"));
+
+        // Sair, pro jogo hospedado, é encerrar o modo Play — não fechar o editor.
+        game.ExitHandler = () => StopEmbedded("O jogo pediu pra sair.");
+    }
+
+    /// <summary>Encerra o Play embutido. Idempotente.</summary>
+    public void StopEmbedded(string? reason = null)
+    {
+        if (_gameHost is null)
+        {
+            IsPlayingEmbedded = false;
+            return;
+        }
+
+        // O viewport chama GameHost.Stop com o contexto de GL vivo; aqui só se descarta o que
+        // sobrou. Se ninguém estiver ouvindo (viewport ainda não montado), o Stop abaixo cobre.
+        EmbeddedStopRequested?.Invoke();
+
+        _gameHost.Stop(shutdownGame: false);
+        _gameHost.Dispose();
+        _gameHost = null;
+
+        IsPlayingEmbedded = false;
+        Status = reason ?? "Play encerrado.";
+        Log($"--- Play embutido encerrado{(reason is null ? "" : $": {reason}")} ---");
+    }
+
+    /// <summary>O viewport avisa que o jogo estourou. Uma exceção que escapa do código do
+    /// usuário derruba o modo Play, nunca o editor.</summary>
+    internal void OnEmbeddedGameFaulted(string message)
+    {
+        StopEmbedded();
+        Status = $"O jogo parou: {message}";
+        Log($"--- jogo parou: {message} ---");
+    }
+
     private bool _isBuilding;
     public bool IsBuilding
     {
@@ -1030,6 +1229,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
+        Raise(nameof(CanPlayEmbedded));
         Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
         Raise(nameof(CanPaste));
@@ -1066,6 +1266,7 @@ public sealed class MainViewModel : ViewModelBase
         Raise(nameof(IsUiScreenDocument));
         Raise(nameof(AssetsRootDisplay));
         Raise(nameof(CanPlay));
+        Raise(nameof(CanPlayEmbedded));
         Raise(nameof(CanBuild));
         Raise(nameof(GameProjectPath));
         Raise(nameof(CanPaste));

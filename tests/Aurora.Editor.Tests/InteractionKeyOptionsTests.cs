@@ -1,7 +1,5 @@
-extern alias runtime;
-
 using Aurora.Editor.ViewModels;
-using runtime::Aurora.Runtime.Input;
+using Aurora.Runtime.Input;
 
 namespace Aurora.Editor.Tests;
 

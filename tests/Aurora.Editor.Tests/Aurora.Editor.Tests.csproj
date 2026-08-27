@@ -20,13 +20,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aurora.Editor\Aurora.Editor.csproj" />
-    <!-- O Aurora.Editor NÃO referencia o runtime de propósito (fica standalone, sem arrastar
-         Silk.NET/OpenGL) — ele só linka dois arquivos de código. Aqui no teste os dois entram
-         juntos porque é justamente o que precisa ser verificado: que o JSON que o editor grava
-         é o mesmo que o runtime lê. Sem isso, um renomear de campo passaria despercebido. -->
-    <!-- Alias porque o editor COMPILA cópias de UiAnchor/TextWrapper: sem separar os dois
-         assemblies, todo uso desses tipos vira ambíguo nos testes que já existiam. -->
-    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" Aliases="runtime" />
+    <!-- Explícito mesmo vindo de graça pelo editor: estes testes verificam que o JSON que o
+         editor grava é o mesmo que o runtime lê, então a dependência é do teste, não um
+         detalhe de quem ele referencia.
+
+         Sem Aliases desde que o editor passou a referenciar o runtime de verdade: o alias
+         existia só pra desambiguar as cópias de UiAnchor/TextWrapper que o editor compilava,
+         e sem duplicata não há o que desambiguar. -->
+    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
   </ItemGroup>
 
   <!-- Fonte de referência das medições. Copiada pra saída em vez de lida de um caminho
