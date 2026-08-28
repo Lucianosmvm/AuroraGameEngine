@@ -37,6 +37,29 @@ public sealed class UIManager
     /// devolve a própria chave.</summary>
     public Database.TermDatabase? Terms { get; set; }
 
+    /// <summary>
+    /// Estado do jogo, pro espelhamento de <see cref="UiTextInput.Variable"/>. Null = campo com
+    /// Variable não sincroniza (segue funcionando pelo <see cref="UiTextInput.Text"/>).
+    ///
+    /// <para>Propriedade em vez de parâmetro do Update pelo mesmo motivo de <see cref="Items"/>:
+    /// a assinatura do Update está escrita no Game.cs de todo jogo já gerado.</para>
+    /// </summary>
+    public GameState? State { get; set; }
+
+    /// <summary>
+    /// Registra uma tela montada em código, em vez de lida de arquivo. Substitui a de mesmo id,
+    /// igual ao <see cref="Load"/>.
+    ///
+    /// <para>Existe porque <see cref="Load"/> exige um <see cref="AssetManager"/>, e esse exige
+    /// contexto de OpenGL: sem este caminho não há como montar uma tela fora de uma janela — nem
+    /// num teste, nem num HUD gerado em código.</para>
+    /// </summary>
+    public UiScreen Add(UiScreen screen)
+    {
+        _screens[screen.Id] = screen;
+        return screen;
+    }
+
     /// <summary>Carrega (ou recarrega) uma tela a partir do arquivo. Fica visível por padrão.</summary>
     public UiScreen Load(string path, AssetManager assets)
     {
@@ -115,6 +138,7 @@ public sealed class UIManager
                 Width = GetF("Width", 200f),
                 Height = GetF("Height", 32f),
                 Text = GetS("Text"),
+                Variable = GetS("Variable"),
                 Placeholder = GetS("Placeholder"),
                 MaxLength = (int)GetF("MaxLength", 32f),
                 Allowed = GetS("Allowed"),
@@ -371,6 +395,63 @@ public sealed class UIManager
         }
 
         UpdateTyping(input);
+        SyncTextVariables();
+    }
+
+    /// <summary>
+    /// Espelha campo de texto e variável do GameState, nos dois sentidos.
+    ///
+    /// <para>Quem mudou desde o último frame ganha. O campo tem prioridade porque a comparação
+    /// dele vem primeiro: se o jogador digitou E um evento escreveu na variável no mesmo frame,
+    /// prevalece o que a pessoa está digitando — sumir letra debaixo do cursor é pior que perder
+    /// uma escrita de evento.</para>
+    ///
+    /// <para>O sentido variável→campo é o que faz um save carregado reaparecer no campo, e o que
+    /// preenche o valor inicial quando a tela abre.</para>
+    /// </summary>
+    private void SyncTextVariables()
+    {
+        if (State is not { } state)
+            return;
+
+        foreach (var screen in _screens.Values)
+        {
+            foreach (var field in screen.Elements.OfType<UiTextInput>())
+            {
+                if (field.Variable.Length == 0)
+                    continue;
+
+                // Primeiro encontro entre os dois: a variável ganha se já existir (save
+                // carregado, valor posto por evento), senão o Text da cena vira o valor inicial.
+                // Sem esta regra, um campo com texto padrão apagaria o nome do save toda vez que
+                // a tela abrisse.
+                if (!field.SyncStarted)
+                {
+                    field.SyncStarted = true;
+                    if (state.HasText(field.Variable))
+                        field.Text = state.GetText(field.Variable);
+                    else
+                        state.SetText(field.Variable, field.Text);
+
+                    field.LastSynced = field.Text;
+                    continue;
+                }
+
+                if (!string.Equals(field.Text, field.LastSynced, StringComparison.Ordinal))
+                {
+                    state.SetText(field.Variable, field.Text);
+                    field.LastSynced = field.Text;
+                    continue;
+                }
+
+                string stored = state.GetText(field.Variable);
+                if (!string.Equals(stored, field.Text, StringComparison.Ordinal))
+                {
+                    field.Text = stored;
+                    field.LastSynced = stored;
+                }
+            }
+        }
     }
 
     /// <summary>Foca o campo sob o toque e desfoca o resto.</summary>
@@ -599,7 +680,7 @@ public sealed class UIManager
     ///   <item>qualquer outra coisa — variável do GameState.</item>
     /// </list>
     /// </summary>
-    private string Interpolate(string template, GameState state, InventoryManager? inventory, QuestManager? quests)
+    internal string Interpolate(string template, GameState state, InventoryManager? inventory, QuestManager? quests)
         => TokenPattern.Replace(template, match =>
         {
             string token = match.Groups[1].Value;
@@ -615,6 +696,13 @@ public sealed class UIManager
                 return (inventory?.GetCount(token[5..]) ?? 0).ToString();
             if (token.StartsWith("Quest:", StringComparison.OrdinalIgnoreCase))
                 return (quests?.GetStage(token[6..]) ?? 0).ToString();
+
+            // Texto antes de número: um nome de jogador tem que sair como nome. Sem isto o
+            // token cairia no GetVariable e desenharia "0" — o mesmo símbolo de "variável que
+            // não existe", então nem dava pra perceber que o nome tinha se perdido.
+            if (state.HasText(token))
+                return state.GetText(token);
+
             return state.GetVariable(token).ToString(System.Globalization.CultureInfo.InvariantCulture);
         });
 }

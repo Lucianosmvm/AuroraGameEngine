@@ -20,7 +20,7 @@ public sealed class EventActionViewModel : ViewModelBase
     // Static lists exposed as instance properties so XAML binding works
     public string[] ActionTypes { get; } =
     [
-        "Wait", "SetVariable", "SetSwitch",
+        "Wait", "SetVariable", "SetSwitch", "SetText",
         "ShowMessage", "ShowChoice",
         "Teleport", "Destroy", "Spawn", "SetWeather",
         "Damage", "Heal",
@@ -42,6 +42,9 @@ public sealed class EventActionViewModel : ViewModelBase
     /// dois porque a ação já mandava no significado do campo.</summary>
     public string[] OpTypes => ActionType switch
     {
+        // Texto só compara igual/diferente: "maior que" num nome não quer dizer nada, e deixar
+        // a opção na lista convida a escrever uma condição que nunca é o que a pessoa quis.
+        "If" when ConditionKind == "Text" => ["==", "!="],
         "If" => [">=", "<=", ">", "<", "==", "!="],
         "OpenShop" => ["Buy", "Sell", "Both"],
         _ => ["Set", "Add"],
@@ -49,7 +52,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     /// <summary>O que o If compara. Guardado em "Text" — o campo já existia e estava livre pras
     /// ações de fluxo, então não custou nenhuma chave nova no JSON de cena.</summary>
-    public string[] ConditionKinds { get; } = ["Variable", "Switch", "Item", "Quest"];
+    public string[] ConditionKinds { get; } = ["Variable", "Switch", "Item", "Quest", "Text"];
 
     public EventActionViewModel(JsonObject node, Action onEdited, Action<EventActionViewModel> onRemove, MainViewModel? owner = null)
     {
@@ -129,7 +132,7 @@ public sealed class EventActionViewModel : ViewModelBase
 
     public string NameLabel => ActionType switch
     {
-        "SetVariable" or "SetSwitch" => "Variável",
+        "SetVariable" or "SetSwitch" or "SetText" => "Variável",
         "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" or "SetActive" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         "Spawn" => "Prefab / tabela",
@@ -264,7 +267,31 @@ public sealed class EventActionViewModel : ViewModelBase
     public string ConditionKind
     {
         get => _node["Text"]?.GetValue<string>() ?? "Variable";
-        set { _node["Text"] = value; Raise(); _onEdited(); }
+        set
+        {
+            _node["Text"] = value;
+            Raise();
+
+            // Trocar o tipo troca quais campos fazem sentido: Text compara string e esconde o
+            // Valor numérico, e a lista de operadores encolhe pra ==/!=.
+            RaiseVisibility();
+            Raise(nameof(OpTypes));
+            _onEdited();
+        }
+    }
+
+    /// <summary>Valor de texto do SetText e do If sobre texto. Chave própria no JSON porque nas
+    /// condições o "Text" já guarda o tipo comparado.</summary>
+    public string TextValue
+    {
+        get => _node["TextValue"]?.GetValue<string>() ?? "";
+        set
+        {
+            if (string.IsNullOrEmpty(value)) _node.Remove("TextValue");
+            else _node["TextValue"] = value;
+            Raise();
+            _onEdited();
+        }
     }
 
     public string OnLabel => ActionType switch
@@ -384,7 +411,8 @@ public sealed class EventActionViewModel : ViewModelBase
     public string ActionDescription => ActionType switch
     {
         "Wait"           => "Espera X segundos antes da próxima ação",
-        "SetVariable"    => "Define ou soma um valor numa variável do GameState",
+        "SetVariable"    => "Define ou soma um valor numa variável numérica do GameState",
+        "SetText"        => "Grava um texto numa variável do GameState — o mesmo lugar onde um UiTextInput com Variable guarda o que o jogador digita",
         "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
         "ShowMessage"    => "Mostra uma caixa de diálogo com texto — Nome é o falante, Retrato (opcional) é a imagem ao lado. Desmarque \"Trava jogador\" pra texto informativo que não deve parar o movimento",
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
@@ -426,7 +454,7 @@ public sealed class EventActionViewModel : ViewModelBase
     };
 
     // Visibility — recalculated when ActionType changes
-    public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "Teleport" or "Destroy"
+    public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "SetText" or "Teleport" or "Destroy"
         or "Spawn" or "SetWeather" or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "UseItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
@@ -439,9 +467,18 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowChance => ActionType.Length > 0 && ActionType is not ("If" or "Else" or "EndIf");
     public bool ShowConditionKind => ActionType == "If";
     public bool ShowSpawnPoint => ActionType == "ChangeScene";
-    public bool ShowValue => ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
+    public bool ShowValue => (ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
         or "Load" or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage"
-        or "Heal" or "If" or "SetWeather" or "OpenShop" or "MoveTo";
+        or "Heal" or "If" or "SetWeather" or "OpenShop" or "MoveTo")
+        // If sobre texto compara string: o campo numérico ao lado não teria uso e só confundiria
+        // sobre qual dos dois vale.
+        && !(ActionType == "If" && ConditionKind == "Text");
+
+    /// <summary>Campo do valor de texto: o que o SetText grava, e contra o que o If compara.</summary>
+    public bool ShowTextValue => ActionType == "SetText"
+        || (ActionType == "If" && ConditionKind == "Text");
+
+    public string TextValueLabel => ActionType == "SetText" ? "Texto" : "Igual a";
     public bool ShowOn => ActionType is "SetSwitch" or "PlayMusic" or "SetActive" or "SetPause" or "If";
     public bool ShowXY => ActionType is "Teleport" or "Spawn" or "MoveTo";
 
@@ -464,6 +501,8 @@ public sealed class EventActionViewModel : ViewModelBase
         Raise(nameof(ShowRadius));
         Raise(nameof(ShowSeconds));
         Raise(nameof(ShowText));
+        Raise(nameof(ShowTextValue));
+        Raise(nameof(TextValueLabel));
         Raise(nameof(ShowOptions));
         Raise(nameof(ShowNamePicker));
         Raise(nameof(ShowNameText));

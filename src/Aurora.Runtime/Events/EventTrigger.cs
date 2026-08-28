@@ -34,6 +34,14 @@ public sealed class EventAction
     public float Seconds;
     public string? Text;
 
+    /// <summary>
+    /// Valor de texto de <c>SetText</c> e da condição <c>If</c> do tipo Text. Campo separado do
+    /// <see cref="Text"/> porque nas condições ele já carrega OUTRA coisa — o tipo da condição
+    /// ("Switch", "Item", "Variable") — e reaproveitá-lo faria uma comparação de nome de jogador
+    /// colidir com a escolha do tipo.
+    /// </summary>
+    public string? TextValue;
+
     /// <summary>ShowMessage: caminho de uma textura (relativa a Assets) desenhada ao lado do
     /// texto — o retrato do personagem falando. Vazio/null = sem retrato.</summary>
     public string? Portrait;
@@ -81,6 +89,7 @@ public sealed class EventAction
                 Y = element.TryGetProperty("Y", out var y) ? y.GetSingle() : 0f,
                 Seconds = element.TryGetProperty("Seconds", out var s) ? s.GetSingle() : 0f,
                 Text = element.TryGetProperty("Text", out var txt) ? txt.GetString() : null,
+                TextValue = element.TryGetProperty("TextValue", out var tv) ? tv.GetString() : null,
                 Portrait = element.TryGetProperty("Portrait", out var portrait) ? portrait.GetString() : null,
                 BlocksPlayer = element.TryGetProperty("BlocksPlayer", out var bp) ? bp.GetBoolean() : true,
                 Chance = element.TryGetProperty("Chance", out var chance) ? chance.GetSingle() : 1f,
@@ -121,6 +130,7 @@ public sealed class EventAction
             if (action.Y != 0f) json.WriteNumber("Y", action.Y);
             if (action.Seconds != 0f) json.WriteNumber("Seconds", action.Seconds);
             if (action.Text is not null) json.WriteString("Text", action.Text);
+            if (action.TextValue is not null) json.WriteString("TextValue", action.TextValue);
             if (action.Portrait is not null) json.WriteString("Portrait", action.Portrait);
             if (!action.BlocksPlayer) json.WriteBoolean("BlocksPlayer", false);
             if (action.Chance != 1f) json.WriteNumber("Chance", action.Chance);

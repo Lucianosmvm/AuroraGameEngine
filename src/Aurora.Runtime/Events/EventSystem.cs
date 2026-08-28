@@ -426,9 +426,24 @@ public sealed class EventSystem
             "Switch" => _state.GetSwitch(action.Name) == action.On,
             "Item"   => Compare(Inventory?.GetCount(action.Name) ?? 0, action.Op ?? ">=", action.Value),
             "Quest"  => Compare(Quests?.GetStage(action.Name) ?? 0, action.Op ?? ">=", action.Value),
+            "Text"   => CompareText(_state.GetText(action.Name), action.Op ?? "==", action.TextValue ?? ""),
             _        => Compare(_state.GetVariable(action.Name), action.Op ?? ">=", action.Value),
         };
     }
+
+    /// <summary>
+    /// Compara variável de texto. Só igualdade e diferença: "maior que" num nome não significa
+    /// nada útil, e oferecer a opção convidaria a bug silencioso.
+    ///
+    /// <para>Sem diferenciar maiúscula: quem digitou "ana" no campo espera passar num teste
+    /// escrito "Ana". É a mesma regra que os nomes de variável já seguem.</para>
+    /// </summary>
+    private static bool CompareText(string left, string op, string right)
+        => op switch
+        {
+            "!=" or "<>" => !string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+            _            => string.Equals(left, right, StringComparison.OrdinalIgnoreCase),
+        };
 
     /// <summary>Sorteia o <see cref="EventAction.Chance"/> e executa se passar.</summary>
     private bool ExecuteWithChance(Entity? self, EventAction action)
@@ -451,6 +466,10 @@ public sealed class EventSystem
                     _state.AddVariable(action.Name, action.Value);
                 else
                     _state.SetVariable(action.Name, action.Value);
+                break;
+
+            case "SetText" when action.Name is not null:
+                _state.SetText(action.Name, action.TextValue ?? "");
                 break;
 
             case "SetSwitch" when action.Name is not null:

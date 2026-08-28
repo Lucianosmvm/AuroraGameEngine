@@ -111,6 +111,7 @@ public sealed class SaveManager
             SavedAt: DateTime.UtcNow,
             Variables: new Dictionary<string, float>(_state.Variables),
             Switches: new Dictionary<string, bool>(_state.Switches),
+            Texts: new Dictionary<string, string>(_state.Texts),
             Items: _inventory is null ? [] : new Dictionary<string, int>(_inventory.Items),
             QuestStages: _quests is null ? [] : new Dictionary<string, int>(_quests.Stages),
             PlayerX: playerX,
@@ -160,7 +161,7 @@ public sealed class SaveManager
         if (dto is null)
             return false;
 
-        _state.LoadFromDictionaries(dto.Variables, dto.Switches);
+        _state.LoadFromDictionaries(dto.Variables, dto.Switches, dto.Texts);
         // Items/QuestStages podem faltar num save de antes desta feature - trata como vazio.
         if (dto.Items is not null) _inventory?.LoadFromDictionary(dto.Items);
         if (dto.QuestStages is not null) _quests?.LoadFromDictionary(dto.QuestStages);
@@ -240,6 +241,7 @@ public sealed class SaveManager
         Dictionary<string, bool> Switches,
         Dictionary<string, int>? Items = null,
         Dictionary<string, int>? QuestStages = null,
+        Dictionary<string, string>? Texts = null,
         float? PlayerX = null,
         float? PlayerY = null,
         // Opcionais: save gravado antes destes campos existirem continua carregando (o jogador

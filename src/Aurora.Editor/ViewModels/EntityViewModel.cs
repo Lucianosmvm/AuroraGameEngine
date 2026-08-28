@@ -34,7 +34,7 @@ public sealed class EntityViewModel : ViewModelBase
     // Numa entidade de cena comum o SceneSerializer ignora o componente com aviso no console e
     // o elemento nunca aparece; por isso a lista só é oferecida em documento de tela de UI.
     private static readonly string[] UiComponentTypes =
-        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiJoystick"];
+        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiTextInput", "UiJoystick"];
 
     private readonly MainViewModel? _owner;
 
@@ -331,6 +331,18 @@ public sealed class EntityViewModel : ViewModelBase
                 ["Height"] = 32f,
                 ["Text"] = "Botão",
                 ["OnClick"] = new JsonArray(),
+            },
+            "UiTextInput" => new JsonObject
+            {
+                ["Type"] = "UiTextInput",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Width"] = 200f,
+                ["Height"] = 32f,
+                // Já nasce com Variable preenchida: um campo sem ela não guarda nada, e o caso
+                // que leva alguém a arrastar um campo de texto é justamente querer guardar.
+                ["Variable"] = "NomeJogador",
+                ["Placeholder"] = "Digite aqui…",
             },
             "UiJoystick" => new JsonObject
             {

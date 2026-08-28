@@ -139,6 +139,21 @@ public class ComponentViewModel : ViewModelBase
             ("Color", "#3A3860FF"), ("HoverColor", "#4A4880FF"), ("PressedColor", "#2A2850FF"),
             ("TextColor", "#FFFFFFFF"),
         ],
+        // Campo de texto digitável. Variable é o que torna ele útil sem escrever código: o nome
+        // de uma variável de texto do jogo, espelhada nos dois sentidos enquanto a tela está no
+        // ar. Com "NomeJogador" ali, {NomeJogador} em qualquer UiText já mostra o que foi
+        // digitado, a condição If do tipo Text compara, e o valor entra no save.
+        // Allowed vazio aceita tudo; "0123456789." é o filtro pra digitar um IP.
+        ["UiTextInput"] =
+        [
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Width", 200f), ("Height", 32f),
+            ("Variable", ""), ("Text", ""), ("Placeholder", ""),
+            ("MaxLength", 32f), ("Allowed", ""),
+            ("Color", "#20203CFF"), ("FocusColor", "#2A2A55FF"),
+            ("TextColor", "#FFFFFFFF"), ("PlaceholderColor", "#8888A8FF"),
+            ("CaretColor", "#FFFFFFFF"),
+        ],
         // Joystick virtual (toque multi-dedo) — X/Y+Anchor definem o canto de um quadrado de
         // lado 2*Radius (mesma convenção de posição dos outros Ui*); centro fica no meio dele.
         // Leia UIManager.Find<UiJoystick>(tela, nome).Value em código pra mover o player.

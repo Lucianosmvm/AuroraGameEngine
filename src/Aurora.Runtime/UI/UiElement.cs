@@ -88,6 +88,27 @@ public sealed class UiTextInput : UiElement
     /// <summary>Conteúdo atual. Escreva aqui pra preencher o campo por código.</summary>
     public string Text = "";
 
+    /// <summary>
+    /// Nome da variável de texto do <see cref="GameState"/> espelhada por este campo. Vazio
+    /// (padrão) = campo solto, lido só por código via <see cref="Text"/> — o comportamento de
+    /// sempre.
+    ///
+    /// <para>Preenchido, o que o jogador digita vira variável a cada frame, e a variável de volta
+    /// pro campo quando muda de fora (carregar um save). Escrever só no Enter seria a armadilha
+    /// óbvia: quase toda tela confirma por botão, e o valor se perderia sem erro nenhum.</para>
+    ///
+    /// <para>A partir daí o valor está em toda parte: <c>{NomeVariavel}</c> num UiText, condição
+    /// If do tipo Text, e dentro do save.</para>
+    /// </summary>
+    public string Variable = "";
+
+    // Último valor que passou pela sincronização, pra saber de que lado veio a mudança.
+    internal string LastSynced = "";
+
+    // Se a primeira sincronização já aconteceu. O primeiro frame tem regra própria: decide quem
+    // manda entre o Text escrito na cena e o valor que já esteja na variável.
+    internal bool SyncStarted;
+
     /// <summary>Mostrado em cinza quando o campo está vazio (ex.: "192.168.0.10").</summary>
     public string Placeholder = "";
 

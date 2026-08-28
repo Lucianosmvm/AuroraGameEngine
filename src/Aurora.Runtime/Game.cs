@@ -397,6 +397,9 @@ public abstract class Game : IDisposable
         Inventory.Database = Items;
         UI.Items = Items;
         UI.Terms = Terms;
+        // Espelhamento de UiTextInput.Variable: sem isto um campo com Variable preenchido não
+        // guardaria nada, e a falha seria muda — o campo digita normalmente, o valor só não chega.
+        UI.State = State;
         World.StatusDatabase = StatusDatabase;
 
         // Retrato de ShowMessage/cutscene: sem isto DialogueSystem.Assets fica null e o campo
