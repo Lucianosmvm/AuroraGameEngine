@@ -37,6 +37,10 @@ public sealed class EventSystem
     /// <summary>Quando presente, a ação Save grava o estado em disco.</summary>
     public SaveManager? Save { get; set; }
 
+    /// <summary>Quando presente, a ação SetVolume escreve aqui — e daí o Game leva pro áudio.
+    /// Escrever direto no AudioManager mudaria o som e esqueceria na próxima abertura.</summary>
+    public Saves.GameSettings? Settings { get; set; }
+
     /// <summary>Quando presente, ações AddItem/RemoveItem e gatilho HasItem operam aqui.</summary>
     public InventoryManager? Inventory { get; set; }
 
@@ -467,6 +471,21 @@ public sealed class EventSystem
                 else
                     _state.SetVariable(action.Name, action.Value);
                 break;
+
+            // Name = Master | Music | Sfx (padrão Master), Value = 0..1. Vai pras preferências,
+            // não direto no AudioManager: é lá que o valor sobrevive ao fechar o jogo.
+            case "SetVolume" when Settings is not null:
+            {
+                string key = (action.Name ?? "Master").ToLowerInvariant() switch
+                {
+                    "music" or "musica" or "música" => Saves.GameSettings.MusicVolume,
+                    "sfx" or "som" => Saves.GameSettings.SfxVolume,
+                    _ => Saves.GameSettings.MasterVolume,
+                };
+
+                Settings.Set(key, Math.Clamp(action.Value, 0f, 1f));
+                break;
+            }
 
             case "SetText" when action.Name is not null:
                 _state.SetText(action.Name, action.TextValue ?? "");

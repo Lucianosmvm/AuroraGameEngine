@@ -34,7 +34,7 @@ public sealed class EntityViewModel : ViewModelBase
     // Numa entidade de cena comum o SceneSerializer ignora o componente com aviso no console e
     // o elemento nunca aparece; por isso a lista só é oferecida em documento de tela de UI.
     private static readonly string[] UiComponentTypes =
-        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiTextInput", "UiJoystick"];
+        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiTextInput", "UiSlider", "UiJoystick"];
 
     private readonly MainViewModel? _owner;
 
@@ -343,6 +343,20 @@ public sealed class EntityViewModel : ViewModelBase
                 // que leva alguém a arrastar um campo de texto é justamente querer guardar.
                 ["Variable"] = "NomeJogador",
                 ["Placeholder"] = "Digite aqui…",
+            },
+            "UiSlider" => new JsonObject
+            {
+                ["Type"] = "UiSlider",
+                ["X"] = 20f,
+                ["Y"] = 20f,
+                ["Width"] = 200f,
+                ["Height"] = 20f,
+                // Já nasce como controle de volume: é o motivo de quase todo slider existir, e
+                // "MasterVolume" é uma das três chaves que a engine consome sozinha.
+                ["Setting"] = "MasterVolume",
+                ["Min"] = 0f,
+                ["Max"] = 1f,
+                ["Default"] = 1f,
             },
             "UiJoystick" => new JsonObject
             {

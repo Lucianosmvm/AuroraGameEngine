@@ -71,6 +71,13 @@ public abstract class Game : IDisposable
     /// morto, baú aberto). Vale na mesma partida e atravessa o save.</summary>
     public Saves.SceneStateStore SceneState { get; } = new();
 
+    /// <summary>
+    /// Preferências do jogador (volume e o que o jogo quiser guardar). Carregadas no boot e
+    /// gravadas a cada mudança — valem pra máquina, não pra partida, então NÃO entram no slot de
+    /// save. Ver <see cref="Saves.GameSettings"/>.
+    /// </summary>
+    public Saves.GameSettings Settings { get; private set; } = null!;
+
     /// <summary>Catálogo de itens (nome, ícone, preço, efeito ao usar). Carregado sozinho de
     /// <c>Assets/database/items.json</c> no boot, se o arquivo existir — jogo sem itens não
     /// precisa criar nada.</summary>
@@ -321,6 +328,15 @@ public abstract class Game : IDisposable
         {
             Console.Error.WriteLine($"[Game] Exceção não tratada em Tick — frame ignorado: {ex}");
         }
+
+        // Fora do try: gravar preferência não depende da lógica do frame ter dado certo, e é
+        // justamente num frame que estourou que não se quer perder o ajuste do jogador.
+        if (_settingsDirty)
+        {
+            _settingsSaveCountdown -= dt;
+            if (_settingsSaveCountdown <= 0f)
+                FlushSettings();
+        }
     }
 
     /// <summary>Reajusta viewport e câmera a um novo tamanho de superfície.</summary>
@@ -332,6 +348,10 @@ public abstract class Game : IDisposable
     /// </summary>
     public void Shutdown()
     {
+        // Antes de tudo: quem baixou o volume e fechou o jogo em seguida não pode perder o ajuste
+        // só porque a contagem de gravação ainda não tinha terminado.
+        FlushSettings();
+
         OnUnload();
 
         // Antes do resto: avisa o outro lado que saímos. Fechar o socket calado deixaria os
@@ -359,6 +379,54 @@ public abstract class Game : IDisposable
             View.API.API == ContextAPI.OpenGLES,
             View.FramebufferSize);
 
+    /// <summary>
+    /// Leva o volume das preferências pro AudioManager. Assinado no Changed: é o que faz o
+    /// slider de volume de um menu ter efeito no som sem o jogo escrever uma linha.
+    ///
+    /// <para>Padrão 1f (não 0) porque a ausência de valor é "nunca mexeram nisso" — um jogo
+    /// recém-instalado que abre mudo parece quebrado.</para>
+    /// </summary>
+    private bool _settingsDirty;
+    private float _settingsSaveCountdown;
+
+    /// <summary>Espera depois da última mudança antes de gravar as preferências.</summary>
+    private const float SettingsSaveDelay = 1f;
+
+    /// <summary>
+    /// Aplica a mudança na hora e agenda a gravação pra daqui a pouco.
+    ///
+    /// <para>O adiamento é o que torna um slider viável: arrastar dispara Changed a cada frame, e
+    /// gravar em disco a cada frame travaria o jogo enquanto o dedo se move. Cada mudança nova
+    /// reinicia a contagem, então grava uma vez só quando o jogador para.</para>
+    /// </summary>
+    private void OnSettingsChanged()
+    {
+        ApplyAudioSettings();
+        _settingsDirty = true;
+        _settingsSaveCountdown = SettingsSaveDelay;
+    }
+
+    /// <summary>Grava agora se houver mudança pendente — no fim do frame certo, e no fechamento
+    /// do jogo, pra quem mexeu no volume e saiu antes de a contagem terminar.</summary>
+    private void FlushSettings()
+    {
+        if (!_settingsDirty)
+            return;
+
+        _settingsDirty = false;
+        Settings.Save();
+    }
+
+    private void ApplyAudioSettings()
+    {
+        if (Audio is null)
+            return;
+
+        Audio.MasterVolume = Settings.Get(Saves.GameSettings.MasterVolume, 1f);
+        Audio.MusicVolume = Settings.Get(Saves.GameSettings.MusicVolume, 1f);
+        Audio.SfxVolume = Settings.Get(Saves.GameSettings.SfxVolume, 1f);
+    }
+
     /// <summary>Liga os subsistemas uns nos outros. Nada aqui toca janela ou input — é a parte
     /// comum entre o jogo publicado e o hospedado.</summary>
     private void SetUpSystems()
@@ -368,6 +436,19 @@ public abstract class Game : IDisposable
         Audio = new AudioManager(source);
         Events.Audio = Audio;
         Events.Input = Input;
+
+        // Preferências antes de qualquer som tocar: carregar depois faria o jogo abrir no volume
+        // padrão e só corrigir no primeiro frame — audível, e justamente pra quem baixou o volume.
+        Settings = Saves.GameSettings.ForGame(GameName);
+        Settings.Changed += OnSettingsChanged;
+        Settings.Load();
+        ApplyAudioSettings();
+
+        // O Load acima disparou Changed e marcou sujo — mas gravar de volta o que acabou de ser
+        // lido é escrita à toa em todo boot.
+        _settingsDirty = false;
+
+        Events.Settings = Settings;
 
         SceneManager = new SceneManager(World, Scenes, Events, Dialogue, Assets);
         Events.SceneChangeRequested += (path, spawnPoint) =>
@@ -400,6 +481,7 @@ public abstract class Game : IDisposable
         // Espelhamento de UiTextInput.Variable: sem isto um campo com Variable preenchido não
         // guardaria nada, e a falha seria muda — o campo digita normalmente, o valor só não chega.
         UI.State = State;
+        UI.Settings = Settings;
         World.StatusDatabase = StatusDatabase;
 
         // Retrato de ShowMessage/cutscene: sem isto DialogueSystem.Assets fica null e o campo

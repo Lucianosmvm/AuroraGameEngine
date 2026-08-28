@@ -70,6 +70,41 @@ public sealed class UiTextInputSceneTests : IDisposable
         Assert.Equal("Seu nome", field.Placeholder);
     }
 
+    /// <summary>Mesma costura pro slider: o que o editor grava é o que o runtime lê.</summary>
+    [Fact]
+    public void LeSliderDoJson()
+    {
+        string path = WriteScreen("""
+            {
+              "Objects": [
+                {
+                  "Name": "Volume",
+                  "Components": [
+                    {
+                      "Type": "UiSlider",
+                      "X": 40, "Y": 60, "Width": 240, "Height": 18,
+                      "Setting": "MasterVolume",
+                      "Min": 0, "Max": 1, "Step": 0.1, "Default": 1,
+                      "KnobWidth": 12
+                    }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var ui = new UIManager();
+        ui.Load(path, _assets);
+
+        var slider = ui.Find<UiSlider>("menu", "Volume");
+
+        Assert.NotNull(slider);
+        Assert.Equal("MasterVolume", slider.Setting);
+        Assert.Equal(240f, slider.Width);
+        Assert.Equal(0.1f, slider.Step, 3);
+        Assert.Equal(12f, slider.KnobWidth);
+    }
+
     /// <summary>Tela sem a chave Variable continua válida — é o campo solto de antes.</summary>
     [Fact]
     public void SemVariable_CampoContinuaValido()

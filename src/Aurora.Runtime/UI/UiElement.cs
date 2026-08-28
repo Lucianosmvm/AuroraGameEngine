@@ -66,6 +66,56 @@ public sealed class UiBar : UiElement
     public string BackColor = "#303030FF";
 }
 
+/// <summary>
+/// Barra arrastável — volume, brilho, dificuldade. O irmão interativo do <see cref="UiBar"/>,
+/// que só desenha.
+///
+/// <para>Liga em UM dos dois: <see cref="Setting"/> (preferência, sobrevive ao fechar o jogo e
+/// não entra no save) ou <see cref="Variable"/> (variável do jogo, entra no save). Volume é
+/// sempre Setting — guardado no save, cada slot teria o seu e jogo novo voltaria ao padrão.</para>
+/// </summary>
+public sealed class UiSlider : UiElement
+{
+    public float Width = 200f;
+    public float Height = 20f;
+
+    /// <summary>Chave de preferência (<see cref="Aurora.Runtime.Saves.GameSettings"/>). Para
+    /// volume use "MasterVolume", "MusicVolume" ou "SfxVolume" — a engine lê essas três sozinha.
+    /// Preenchida, tem precedência sobre <see cref="Variable"/>.</summary>
+    public string Setting = "";
+
+    /// <summary>Variável numérica do GameState, quando o valor é do jogo e não preferência.</summary>
+    public string Variable = "";
+
+    public float Min;
+    public float Max = 1f;
+
+    /// <summary>Degrau do arrasto. 0 (padrão) = contínuo. 0.1 num volume dá dez paradas, que é
+    /// mais fácil de repetir do que um valor qualquer no meio.</summary>
+    public float Step;
+
+    /// <summary>Valor usado quando a chave ainda não existe — o estado de "nunca mexeram nisso".
+    /// Volume quer 1 aqui; deixar 0 faria o jogo abrir mudo antes do primeiro ajuste.</summary>
+    public float Default = 1f;
+
+    public string BackColor = "#303030FF";
+    public string FillColor = "#4A88C8FF";
+    public string KnobColor = "#FFFFFFFF";
+
+    /// <summary>Largura da alça. 0 esconde a alça e deixa só a barra preenchendo.</summary>
+    public float KnobWidth = 10f;
+
+    /// <summary>Valor atual, já dentro de Min..Max. Leitura pra código.</summary>
+    public float Value { get; internal set; }
+
+    /// <summary>Dedo/mouse que está arrastando agora — mesmo mecanismo do UiJoystick, que é o que
+    /// mantém o arrasto vivo enquanto o ponteiro sai de cima do elemento.</summary>
+    internal int? OwnerTouchId;
+
+    // Último valor sincronizado, pra saber se a mudança veio do arrasto ou de fora.
+    internal float LastSynced = float.NaN;
+}
+
 /// <summary>Retângulo sólido — fundo de janela/painel.</summary>
 public sealed class UiPanel : UiElement
 {

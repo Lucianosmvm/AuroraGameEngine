@@ -25,7 +25,7 @@ public static class ProjectValidator
     /// <summary>Componentes que o editor conhece mas que NÃO são IComponent de cena: existem só
     /// em tela de UI (UIManager). Numa cena comum são ignorados com aviso — vale sinalizar.</summary>
     private static readonly HashSet<string> UiOnlyComponents =
-        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiTextInput", "UiJoystick"];
+        ["UiText", "UiImage", "UiBar", "UiPanel", "UiButton", "UiTextInput", "UiSlider", "UiJoystick"];
 
     /// <summary>
     /// Roda todas as regras. <paramref name="knownComponents"/> deve trazer os componentes

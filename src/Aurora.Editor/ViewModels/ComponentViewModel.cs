@@ -154,6 +154,20 @@ public class ComponentViewModel : ViewModelBase
             ("TextColor", "#FFFFFFFF"), ("PlaceholderColor", "#8888A8FF"),
             ("CaretColor", "#FFFFFFFF"),
         ],
+        // Barra arrastável. Liga em UM dos dois: Setting (preferência — sobrevive ao fechar o
+        // jogo, NÃO entra no save) ou Variable (variável do jogo, entra no save). Volume é sempre
+        // Setting: guardado no save, cada slot teria o seu e jogo novo voltaria ao padrão.
+        // As três chaves que a engine lê sozinha: MasterVolume, MusicVolume, SfxVolume.
+        // Step 0 = contínuo; 0.1 dá dez paradas, mais fácil de repetir que um ponto qualquer.
+        ["UiSlider"] =
+        [
+            ("X", 0f), ("Y", 0f), ("AnchorX", "Left"), ("AnchorY", "Top"),
+            ("Width", 200f), ("Height", 20f),
+            ("Setting", ""), ("Variable", ""),
+            ("Min", 0f), ("Max", 1f), ("Step", 0f), ("Default", 1f),
+            ("BackColor", "#303030FF"), ("FillColor", "#4A88C8FF"),
+            ("KnobColor", "#FFFFFFFF"), ("KnobWidth", 10f),
+        ],
         // Joystick virtual (toque multi-dedo) — X/Y+Anchor definem o canto de um quadrado de
         // lado 2*Radius (mesma convenção de posição dos outros Ui*); centro fica no meio dele.
         // Leia UIManager.Find<UiJoystick>(tela, nome).Value em código pra mover o player.

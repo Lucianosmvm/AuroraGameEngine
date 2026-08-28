@@ -46,6 +46,10 @@ public sealed class UIManager
     /// </summary>
     public GameState? State { get; set; }
 
+    /// <summary>Preferências, pro <see cref="UiSlider.Setting"/>. Null = slider ligado em Setting
+    /// não guarda nada (o de Variable segue funcionando).</summary>
+    public Saves.GameSettings? Settings { get; set; }
+
     /// <summary>
     /// Registra uma tela montada em código, em vez de lida de arquivo. Substitui a de mesmo id,
     /// igual ao <see cref="Load"/>.
@@ -133,6 +137,21 @@ public sealed class UIManager
                 PressedTexturePath = GetS("PressedTexture"),
                 OnClick = json.TryGetProperty("OnClick", out var onClick) ? EventAction.ParseList(onClick) : [],
             }, GetF("Width"), GetF("Height"), assets),
+            "UiSlider" => new UiSlider
+            {
+                Width = GetF("Width", 200f),
+                Height = GetF("Height", 20f),
+                Setting = GetS("Setting"),
+                Variable = GetS("Variable"),
+                Min = GetF("Min", 0f),
+                Max = GetF("Max", 1f),
+                Step = GetF("Step", 0f),
+                Default = GetF("Default", 1f),
+                BackColor = GetS("BackColor", "#303030FF"),
+                FillColor = GetS("FillColor", "#4A88C8FF"),
+                KnobColor = GetS("KnobColor", "#FFFFFFFF"),
+                KnobWidth = GetF("KnobWidth", 10f),
+            },
             "UiTextInput" => new UiTextInput
             {
                 Width = GetF("Width", 200f),
@@ -299,6 +318,12 @@ public sealed class UIManager
                     stick.Value = Vector2.Zero;
                     stick.KnobOffset = Vector2.Zero;
                 }
+                // Slider só larga o dono; o valor FICA onde o jogador deixou — é o oposto do
+                // joystick, que volta ao centro ao soltar.
+                else if (element is UiSlider { OwnerTouchId: { } slid } slider && !activeIds.Contains(slid))
+                {
+                    slider.OwnerTouchId = null;
+                }
             }
         }
 
@@ -320,6 +345,20 @@ public sealed class UIManager
                 float clamped = MathF.Min(dist, stick.Radius);
                 stick.KnobOffset = dist > 0.001f ? delta / dist * clamped : Vector2.Zero;
                 stick.Value = dist > 0.001f ? delta / dist * (clamped / stick.Radius) : Vector2.Zero;
+            }
+
+            // Slider em arrasto segue o ponteiro mesmo com ele fora do elemento: quem arrasta um
+            // volume raramente mantém o dedo dentro da barra, e soltar o valor no meio do gesto
+            // seria a diferença entre um controle utilizável e um que "escapa".
+            foreach (var slider in screen.Elements.OfType<UiSlider>())
+            {
+                if (slider.OwnerTouchId is not { } id)
+                    continue;
+                claimedIds.Add(id);
+                if (FindTouch(touches, id) is not { } pos)
+                    continue;
+
+                DragSlider(slider, pos, screenWidth, screenHeight);
             }
 
             foreach (var button in screen.Elements.OfType<UiButton>())
@@ -359,6 +398,23 @@ public sealed class UIManager
 
                 foreach (var element in screen.Elements)
                 {
+                    // Clicar em qualquer ponto da barra já leva o valor pra lá e começa o
+                    // arrasto — sem isso só a alça responderia, e acertar 10px é ruim no mouse
+                    // e pior no dedo.
+                    if (element is UiSlider { OwnerTouchId: null } slider)
+                    {
+                        var position = ResolvePosition(slider, new Vector2(slider.Width, slider.Height), screenWidth, screenHeight);
+                        bool inside = pos.X >= position.X && pos.X <= position.X + slider.Width
+                                   && pos.Y >= position.Y && pos.Y <= position.Y + slider.Height;
+                        if (!inside)
+                            continue;
+
+                        slider.OwnerTouchId = id;
+                        DragSlider(slider, pos, screenWidth, screenHeight);
+                        claimed = true;
+                        break;
+                    }
+
                     if (element is UiButton { OwnerTouchId: null } button)
                     {
                         var position = ResolvePosition(button, new Vector2(button.Width, button.Height), screenWidth, screenHeight);
@@ -396,6 +452,72 @@ public sealed class UIManager
 
         UpdateTyping(input);
         SyncTextVariables();
+        SyncSliders();
+    }
+
+    /// <summary>Converte a posição do ponteiro em valor, respeitando Min/Max e o degrau.</summary>
+    private void DragSlider(UiSlider slider, Vector2 pointer, float screenWidth, float screenHeight)
+    {
+        var position = ResolvePosition(slider, new Vector2(slider.Width, slider.Height), screenWidth, screenHeight);
+
+        // A alça tem largura: se a fração fosse medida na barra inteira, os extremos ficariam
+        // inalcançáveis — o centro da alça nunca chega à borda. A faixa útil desconta ela.
+        float knob = Math.Clamp(slider.KnobWidth, 0f, slider.Width);
+        float track = MathF.Max(1f, slider.Width - knob);
+        float ratio = Math.Clamp((pointer.X - position.X - knob / 2f) / track, 0f, 1f);
+
+        float value = slider.Min + ratio * (slider.Max - slider.Min);
+
+        if (slider.Step > 0f)
+            value = slider.Min + MathF.Round((value - slider.Min) / slider.Step) * slider.Step;
+
+        SetSliderValue(slider, Math.Clamp(value, MathF.Min(slider.Min, slider.Max), MathF.Max(slider.Min, slider.Max)));
+    }
+
+    private void SetSliderValue(UiSlider slider, float value)
+    {
+        slider.Value = value;
+        slider.LastSynced = value;
+
+        if (slider.Setting.Length > 0)
+            Settings?.Set(slider.Setting, value);
+        else if (slider.Variable.Length > 0)
+            State?.SetVariable(slider.Variable, value);
+    }
+
+    /// <summary>
+    /// Espelha slider e valor guardado, nos dois sentidos — mesma ideia do campo de texto.
+    ///
+    /// <para>O sentido de volta é o que faz a barra abrir já na posição certa: sem ele o menu de
+    /// opções mostraria sempre o padrão, ignorando o volume que o jogador escolheu ontem.</para>
+    /// </summary>
+    private void SyncSliders()
+    {
+        foreach (var screen in _screens.Values)
+        {
+            foreach (var slider in screen.Elements.OfType<UiSlider>())
+            {
+                // Quem está com o dedo em cima já escreveu o valor no DragSlider.
+                if (slider.OwnerTouchId is not null)
+                    continue;
+
+                float? stored = slider.Setting.Length > 0
+                    ? Settings?.Get(slider.Setting, slider.Default)
+                    : slider.Variable.Length > 0
+                        ? State?.GetVariable(slider.Variable, slider.Default)
+                        : null;
+
+                if (stored is not { } value)
+                    continue;
+
+                if (!value.Equals(slider.LastSynced))
+                {
+                    slider.Value = Math.Clamp(value,
+                        MathF.Min(slider.Min, slider.Max), MathF.Max(slider.Min, slider.Max));
+                    slider.LastSynced = value;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -532,6 +654,36 @@ public sealed class UIManager
                         var position = ResolvePosition(image, new Vector2(image.Width, image.Height), screenWidth, screenHeight);
                         batch.Draw(texture, position, new Vector2(image.Width, image.Height),
                             Vector2.Zero, 0f, Color.FromHex(image.Color));
+                        break;
+                    }
+
+                    case UiSlider slider:
+                    {
+                        var position = ResolvePosition(slider, new Vector2(slider.Width, slider.Height), screenWidth, screenHeight);
+
+                        float span = slider.Max - slider.Min;
+                        float ratio = MathF.Abs(span) < 0.0001f
+                            ? 0f
+                            : Math.Clamp((slider.Value - slider.Min) / span, 0f, 1f);
+
+                        batch.DrawRect(position, new Vector2(slider.Width, slider.Height),
+                            Color.FromHex(slider.BackColor));
+
+                        float knob = Math.Clamp(slider.KnobWidth, 0f, slider.Width);
+                        float track = MathF.Max(0f, slider.Width - knob);
+
+                        // O preenchimento vai até o CENTRO da alça, não até a borda dela: senão a
+                        // barra colorida e a alça descolam uma da outra conforme o valor anda.
+                        float fill = knob / 2f + ratio * track;
+                        if (fill > 0f)
+                            batch.DrawRect(position, new Vector2(fill, slider.Height),
+                                Color.FromHex(slider.FillColor));
+
+                        if (knob > 0f)
+                            batch.DrawRect(
+                                position with { X = position.X + ratio * track },
+                                new Vector2(knob, slider.Height),
+                                Color.FromHex(slider.KnobColor));
                         break;
                     }
 

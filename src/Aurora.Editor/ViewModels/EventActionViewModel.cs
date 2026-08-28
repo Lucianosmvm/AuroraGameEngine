@@ -25,7 +25,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Teleport", "Destroy", "Spawn", "SetWeather",
         "Damage", "Heal",
         "PlayAnimation", "StopAnimation",
-        "PlaySound", "PlayMusic", "StopMusic",
+        "PlaySound", "PlayMusic", "StopMusic", "SetVolume",
         "ChangeScene", "Save", "Load", "NewGame", "Quit",
         "AddItem", "RemoveItem", "UseItem", "OpenShop",
         "CallEvent",
@@ -78,11 +78,14 @@ public sealed class EventActionViewModel : ViewModelBase
         // UseItem e If sobre item listam os ids do banco de dados — digitar id na mão é o jeito
         // mais fácil de criar um item que não faz nada e não avisa.
         "UseItem" => _owner?.ItemIds ?? [],
+        // Só existem três barramentos — lista fechada evita "Musica" escrito à mão virar um
+        // volume que não mexe em nada.
+        "SetVolume" => ["Master", "Music", "Sfx"],
         _ => [],
     };
 
     public bool ShowNamePicker => ActionType is "ChangeScene" or "ShowUI" or "HideUI" or "ToggleUI"
-        or "Spawn" or "UseItem" or "CallEvent" or "AddStatus" or "RemoveStatus";
+        or "Spawn" or "UseItem" or "CallEvent" or "AddStatus" or "RemoveStatus" or "SetVolume";
 
     /// <summary>
     /// Sugestões do campo Nome quando ele é texto livre. Diferente do seletor acima: aqui o valor
@@ -133,6 +136,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public string NameLabel => ActionType switch
     {
         "SetVariable" or "SetSwitch" or "SetText" => "Variável",
+        "SetVolume" => "Canal",
         "Teleport" or "Destroy" or "Damage" or "Heal" or "PlayAnimation" or "StopAnimation" or "SetActive" => "Entidade",
         "ChangeScene" or "PlaySound" or "PlayMusic" => "Arquivo",
         "Spawn" => "Prefab / tabela",
@@ -413,6 +417,7 @@ public sealed class EventActionViewModel : ViewModelBase
         "Wait"           => "Espera X segundos antes da próxima ação",
         "SetVariable"    => "Define ou soma um valor numa variável numérica do GameState",
         "SetText"        => "Grava um texto numa variável do GameState — o mesmo lugar onde um UiTextInput com Variable guarda o que o jogador digita",
+        "SetVolume"      => "Ajusta o volume de um canal (Master, Music ou Sfx) de 0 a 1. Fica gravado nas preferências do jogador: vale pra máquina toda e não some ao começar jogo novo",
         "SetSwitch"      => "Liga/desliga um switch (booleano) do GameState",
         "ShowMessage"    => "Mostra uma caixa de diálogo com texto — Nome é o falante, Retrato (opcional) é a imagem ao lado. Desmarque \"Trava jogador\" pra texto informativo que não deve parar o movimento",
         "ShowChoice"     => "Mostra diálogo com opções de escolha (cada uma liga um switch)",
@@ -454,7 +459,7 @@ public sealed class EventActionViewModel : ViewModelBase
     };
 
     // Visibility — recalculated when ActionType changes
-    public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "SetText" or "Teleport" or "Destroy"
+    public bool ShowName => ActionType is "SetVariable" or "SetSwitch" or "SetText" or "SetVolume" or "Teleport" or "Destroy"
         or "Spawn" or "SetWeather" or "Damage" or "Heal"
         or "PlayAnimation" or "StopAnimation" or "ChangeScene" or "PlaySound" or "PlayMusic" or "ShowMessage" or "ShowChoice"
         or "AddItem" or "RemoveItem" or "UseItem" or "SetQuestStage" or "AdvanceQuest" or "SetActive"
@@ -467,7 +472,7 @@ public sealed class EventActionViewModel : ViewModelBase
     public bool ShowChance => ActionType.Length > 0 && ActionType is not ("If" or "Else" or "EndIf");
     public bool ShowConditionKind => ActionType == "If";
     public bool ShowSpawnPoint => ActionType == "ChangeScene";
-    public bool ShowValue => (ActionType is "SetVariable" or "PlaySound" or "PlayMusic" or "Save"
+    public bool ShowValue => (ActionType is "SetVariable" or "SetVolume" or "PlaySound" or "PlayMusic" or "Save"
         or "Load" or "AddItem" or "RemoveItem" or "SetQuestStage" or "AdvanceQuest" or "Damage"
         or "Heal" or "If" or "SetWeather" or "OpenShop" or "MoveTo")
         // If sobre texto compara string: o campo numérico ao lado não teria uso e só confundiria
