@@ -1,0 +1,91 @@
+{
+  "Scene": "GameOver",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0,
+          "Y": 0,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 720,
+          "Height": 380,
+          "Color": "#12060AF2"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -120,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "VOCÊ CAIU",
+          "Color": "#E86060FF",
+          "Scale": 2.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Resumo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -50,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "",
+          "Color": "#DCD8F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnDeNovo",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 40,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 280,
+          "Height": 52,
+          "Text": "Jogar de novo",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnMenu",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 105,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 280,
+          "Height": 52,
+          "Text": "Voltar ao menu",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    }
+  ]
+}

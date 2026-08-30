@@ -1,0 +1,24 @@
+{
+  "Name": "Gema",
+  "Components": [
+    {
+      "Type": "Transform",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Texture": "sprites/gema.png",
+      "Layer": 5
+    },
+    {
+      "Type": "Pickup",
+      "Kind": "Xp",
+      "Value": 1
+    },
+    {
+      "Type": "Lifetime",
+      "Seconds": 60
+    }
+  ]
+}

@@ -359,6 +359,17 @@ scripts prontos e o contrato de nomes (variáveis do `GameState` e itens do `Inv
 que faz HUD, craft, drop e save conversarem:
 [docs/GUIA-RPG-SURVIVOR.md](docs/GUIA-RPG-SURVIVOR.md).
 
+## Jogo estilo Vampire Survivors (do zero, em 14 passos)
+
+Menu, arena com ondas de inimigos, arma que atira sozinha, gema de XP, subida de nível com
+escolha de melhoria, pausa, derrota e loja permanente entre partidas — cada passo rodando na
+tela, com o porquê de cada decisão (por que o fluxo de telas mora no `Game` e não num script,
+por que a ficha de atributos manda e o componente obedece):
+[docs/GUIA-VAMPIRE-SURVIVOR.md](docs/GUIA-VAMPIRE-SURVIVOR.md).
+
+O jogo pronto do guia está em `samples/Aurora.Survivors/` — rode com
+`dotnet run --project samples/Aurora.Survivors`.
+
 ## Água, lava e sangue (tiles de líquido animados)
 
 `LiquidTileset` pinta em código o tileset de um líquido — 16 colunas de máscara de borda ×

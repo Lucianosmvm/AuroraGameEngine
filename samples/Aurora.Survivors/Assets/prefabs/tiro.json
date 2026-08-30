@@ -1,0 +1,29 @@
+{
+  "Name": "Tiro",
+  "Components": [
+    {
+      "Type": "Transform",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Texture": "sprites/tiro.png",
+      "Layer": 11
+    },
+    {
+      "Type": "Collider",
+      "Shape": "Circle",
+      "Radius": 5,
+      "Width": 10,
+      "Height": 10,
+      "IsSolid": false
+    },
+    {
+      "Type": "Projectile",
+      "Life": 1.6,
+      "Damage": 12,
+      "TargetPrefix": "#inimigo"
+    }
+  ]
+}

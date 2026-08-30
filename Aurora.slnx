@@ -3,6 +3,9 @@
     <Project Path="src/Aurora.Editor/Aurora.Editor.csproj" />
     <Project Path="src/Aurora.Runtime/Aurora.Runtime.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Aurora.Survivors/Aurora.Survivors.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aurora.Editor.Tests/Aurora.Editor.Tests.csproj" />
     <Project Path="tests/Aurora.Runtime.Tests/Aurora.Runtime.Tests.csproj" />

@@ -1,0 +1,30 @@
+{
+  "Name": "Lamina",
+  "Components": [
+    {
+      "Type": "Transform",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Texture": "sprites/lamina.png",
+      "Layer": 11
+    },
+    {
+      "Type": "Collider",
+      "Shape": "Circle",
+      "Radius": 10,
+      "Width": 18,
+      "Height": 18,
+      "IsSolid": false
+    },
+    {
+      "Type": "ContactDamage",
+      "Damage": 9,
+      "Interval": 0.45,
+      "TargetPrefix": "#inimigo",
+      "Knockback": 10
+    }
+  ]
+}

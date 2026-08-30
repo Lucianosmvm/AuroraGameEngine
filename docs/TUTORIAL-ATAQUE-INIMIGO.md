@@ -27,6 +27,8 @@ uma câmera seguindo ele, e o `slash.png` em `Assets/sprites/` (pode copiar de
 Referência de qualquer componente citado aqui: [REFERENCIA-SCRIPTS-RPG.md](REFERENCIA-SCRIPTS-RPG.md).
 Todos esses sistemas montados juntos num jogo de sobrevivência completo:
 [GUIA-RPG-SURVIVOR.md](GUIA-RPG-SURVIVOR.md).
+Um survivor de ondas inteiro (arma automática, XP, level up, loja) em 14 passos:
+[GUIA-VAMPIRE-SURVIVOR.md](GUIA-VAMPIRE-SURVIVOR.md).
 
 ---
 

@@ -1,0 +1,9 @@
+{
+  "gameProject": "D:/GITHUB/AuroraGameEngine/samples/Aurora.Survivors/Aurora.Survivors.csproj",
+  "lastScene": "Assets/scenes/menu.json",
+  "androidOrientation": null,
+  "designWidth": 1280,
+  "designHeight": 720,
+  "uiFont": "fonts/DejaVuSans.ttf",
+  "uiFontSize": 22
+}

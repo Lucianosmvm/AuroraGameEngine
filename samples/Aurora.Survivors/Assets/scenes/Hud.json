@@ -1,0 +1,153 @@
+{
+  "Scene": "Hud",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "BarraVida",
+      "Components": [
+        {
+          "Type": "UiBar",
+          "X": 20,
+          "Y": 20,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 320,
+          "Height": 20,
+          "Variable": "VidaPct",
+          "Max": 100,
+          "FillColor": "#C83C3CFF",
+          "BackColor": "#0A0A12CC"
+        }
+      ]
+    },
+    {
+      "Name": "TextoVida",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 30,
+          "Y": 20,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#FFE8E8FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BarraXp",
+      "Components": [
+        {
+          "Type": "UiBar",
+          "X": 20,
+          "Y": 46,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 320,
+          "Height": 10,
+          "Variable": "XpPct",
+          "Max": 100,
+          "FillColor": "#4CC8F0FF",
+          "BackColor": "#0A0A12CC"
+        }
+      ]
+    },
+    {
+      "Name": "TextoNivel",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 62,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "Nível 1",
+          "Color": "#BFD8FFFF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "TextoTempo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": 18,
+          "AnchorX": "Center",
+          "AnchorY": "Top",
+          "Text": "00:00",
+          "Color": "#FFFFFFFF",
+          "Scale": 1.4,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "TextoKills",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 18,
+          "AnchorX": "Right",
+          "AnchorY": "Top",
+          "Text": "Mortes: {Kills}",
+          "Color": "#D8D0F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "TextoMoedas",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 46,
+          "AnchorX": "Right",
+          "AnchorY": "Top",
+          "Text": "Moedas: {Item:Moeda}",
+          "Color": "#F2D06AFF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Dica",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 24,
+          "AnchorX": "Right",
+          "AnchorY": "Bottom",
+          "Text": "ESC = pausa",
+          "Color": "#7C7898FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Joystick",
+      "Components": [
+        {
+          "Type": "UiJoystick",
+          "X": 40,
+          "Y": 40,
+          "AnchorX": "Left",
+          "AnchorY": "Bottom",
+          "Radius": 86,
+          "BaseColor": "#FFFFFF22",
+          "KnobColor": "#FFFFFF55"
+        }
+      ]
+    }
+  ]
+}

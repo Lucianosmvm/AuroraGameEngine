@@ -1,0 +1,47 @@
+{
+  "Name": "Morcego",
+  "Components": [
+    {
+      "Type": "Transform",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Texture": "sprites/morcego.png",
+      "Layer": 10
+    },
+    {
+      "Type": "Collider",
+      "Shape": "Circle",
+      "Radius": 9,
+      "Width": 18,
+      "Height": 14,
+      "IsSolid": true
+    },
+    {
+      "Type": "Health",
+      "Max": 16,
+      "DestroyOnDeath": true
+    },
+    {
+      "Type": "Tags",
+      "Value": "inimigo"
+    },
+    {
+      "Type": "ContactDamage",
+      "Damage": 8,
+      "Interval": 0.8,
+      "TargetPrefix": "Player",
+      "Knockback": 8
+    },
+    {
+      "Type": "EnemyChaser",
+      "Speed": 58,
+      "Xp": 1,
+      "CoinChance": 0.07,
+      "XpPrefab": "prefabs/gema.json",
+      "CoinPrefab": "prefabs/moeda.json"
+    }
+  ]
+}

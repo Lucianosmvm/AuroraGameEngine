@@ -1,0 +1,111 @@
+{
+  "Scene": "MainMenu",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -200,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "AURORA SURVIVORS",
+          "Color": "#D8CCFFFF",
+          "Scale": 2.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Sub",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -150,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "Ande com WASD ou setas. A arma atira sozinha.",
+          "Color": "#9A96C0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnJogar",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": -30,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 260,
+          "Height": 54,
+          "Text": "Jogar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnLoja",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 40,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 260,
+          "Height": 54,
+          "Text": "Loja",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnSair",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 110,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 260,
+          "Height": 54,
+          "Text": "Sair",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Moedas",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": 200,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "Moedas: {Item:Moeda}",
+          "Color": "#F2D06AFF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    }
+  ]
+}

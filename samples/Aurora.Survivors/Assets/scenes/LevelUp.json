@@ -1,0 +1,158 @@
+{
+  "Scene": "LevelUp",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0,
+          "Y": 0,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 900,
+          "Height": 460,
+          "Color": "#0C0C18F2"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -190,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "SUBIU DE NÍVEL!",
+          "Color": "#F0E060FF",
+          "Scale": 1.6,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Sub",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -150,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "Escolha uma melhoria",
+          "Color": "#9A96C0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Opcao0",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": -80,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 620,
+          "Height": 52,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Descricao0",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -40,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "",
+          "Color": "#A8A4C8FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Opcao1",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 20,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 620,
+          "Height": 52,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Descricao1",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": 60,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "",
+          "Color": "#A8A4C8FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Opcao2",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 120,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 620,
+          "Height": 52,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Descricao2",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": 160,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "",
+          "Color": "#A8A4C8FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    }
+  ]
+}

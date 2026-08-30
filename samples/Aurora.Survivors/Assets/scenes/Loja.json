@@ -1,0 +1,228 @@
+{
+  "Scene": "Loja",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0,
+          "Y": 0,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 860,
+          "Height": 480,
+          "Color": "#0E0E1AEE"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -200,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "LOJA",
+          "Color": "#D8CCFFFF",
+          "Scale": 1.6,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Moedas",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -160,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "Moedas: {Item:Moeda}",
+          "Color": "#F2D06AFF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Item0",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 250,
+          "Y": 270,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#DCD8F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnComprar0",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 830,
+          "Y": 258,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 190,
+          "Height": 40,
+          "Text": "Comprar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Item1",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 250,
+          "Y": 332,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#DCD8F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnComprar1",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 830,
+          "Y": 320,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 190,
+          "Height": 40,
+          "Text": "Comprar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Item2",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 250,
+          "Y": 394,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#DCD8F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnComprar2",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 830,
+          "Y": 382,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 190,
+          "Height": 40,
+          "Text": "Comprar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Item3",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 250,
+          "Y": 456,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#DCD8F0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnComprar3",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 830,
+          "Y": 444,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 190,
+          "Height": 40,
+          "Text": "Comprar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "Mensagem",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": 150,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "",
+          "Color": "#F0A0A0FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnVoltar",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 200,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 200,
+          "Height": 46,
+          "Text": "Voltar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    }
+  ]
+}

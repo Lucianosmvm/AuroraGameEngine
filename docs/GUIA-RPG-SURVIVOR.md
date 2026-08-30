@@ -14,6 +14,7 @@ Os outros documentos continuam valendo como consulta pontual; este aqui é o que
 | Construir golpe e inimigo do zero, em 14 passos | [TUTORIAL-ATAQUE-INIMIGO.md](TUTORIAL-ATAQUE-INIMIGO.md) |
 | Tileset de líquido, presets, geração de PNG | [GUIA-AGUA-LAVA-SANGUE.md](GUIA-AGUA-LAVA-SANGUE.md) |
 | Mundo procedural gigante (estilo Terraria) | [GUIA-JOGO-SANDBOX.md](GUIA-JOGO-SANDBOX.md) |
+| Survivor de ondas (Vampire Survivors) do zero | [GUIA-VAMPIRE-SURVIVOR.md](GUIA-VAMPIRE-SURVIVOR.md) |
 
 ### Índice
 
