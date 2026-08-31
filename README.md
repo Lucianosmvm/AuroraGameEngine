@@ -42,6 +42,10 @@ Game engine 2D em C# focada em jogos mobile, com editor visual (futuro), ECS pr�
 - ✅ **Áudio** (OpenAL via Silk.NET): WAV/OGG, pool de SFX, canal de música, ações
   PlaySound/PlayMusic/StopMusic nos eventos visuais
 - ✅ **Animação de sprites**: componente `Animator` com clipes de sprite sheet, troca de clipe em runtime
+- ✅ **Editor de sprite sheet**: recorta a imagem em frames (grade regular, com margem e vão, ou
+  retângulos desenhados à mão), monta os clipes clicando na grade numerada e toca o preview antes
+  de gravar. Sai um `.sheet.json` que o `Animator` lê pelo campo `Sheet` — o recorte fica na folha,
+  então dez entidades que usam a mesma arte compartilham ele
 - ✅ **Quebra de linha automática**: caixa de diálogo quebra sozinha na largura da caixa;
   `UiText` ganha `MaxWidth` (0 = desligado). Palavra que não cabe sozinha é cortada em vez de vazar
 
@@ -57,6 +61,9 @@ dotnet run --project src/Aurora.Editor -- samples/Aurora.Sandbox.Core/Assets/sce
 - **Campos de cor**: o quadradinho ao lado do hex abre uma paleta de 40 cores com nome
   ("Vermelho", "Céu", "Terra"…) e um controle de opacidade — não precisa saber hexadecimal.
   O campo de texto continua aceitando `#RRGGBBAA` para quem prefere digitar
+- **Editor de Sprite Sheet** (menu Editar): recorta a imagem em frames com a grade desenhada por
+  cima da arte, monta os clipes clicando nos frames e mostra o preview tocando antes de gravar —
+  ver [Editor de Sprite Sheet](#editor-de-sprite-sheet-recortar-sem-contar-pixel)
 - **Ctrl+S** salva de volta no JSON — componentes que o editor não conhece são preservados intactos
 
 ### Tela de referência: o preview de menu é fiel
@@ -298,6 +305,8 @@ if (attacking && anim.IsFinished) anim.Play("idle");
 
 O frame ativo é calculado do índice na grade: `col = frame % SheetColumns`, `row = frame / SheetColumns`.
 O `Animator` atualiza o `SourceRect` do `SpriteRenderer` automaticamente a cada frame.
+`MarginX`/`MarginY` (borda antes do primeiro frame) e `SpacingX`/`SpacingY` (vão entre frames)
+entram na conta quando a folha veio de um atlas com respiro entre os recortes.
 
 ### Cena JSON
 
@@ -311,6 +320,40 @@ O `Animator` atualiza o `SourceRect` do `SpriteRenderer` automaticamente a cada 
   ]
 }
 ```
+
+### Editor de Sprite Sheet (recortar sem contar pixel)
+
+Digitar `Frames: [4, 5, 6, 7]` sem ver a folha é adivinhação, e o erro só aparece no Play —
+o personagem anda com meio frame do vizinho no canto. O editor tem uma janela pra isso:
+**Editar → Editor de Sprite Sheet…**
+
+1. Escolha a imagem (lista dos assets do projeto, ou **Procurar…** pra trazer uma de fora — ela é
+   copiada pro projeto sozinha).
+2. Diga o recorte: **Por tamanho** (você digita 32×32 e ele conta quantos cabem) ou
+   **Por contagem** (você diz 8 colunas × 4 linhas e ele divide a imagem). Margem e vão têm campo.
+   Pra folha que não é grade regular, ligue **Recorte livre** e desenhe cada frame arrastando.
+3. A grade aparece desenhada em cima da arte, com o índice de cada célula. **Clique** marca um
+   frame, **arraste** marca vários, **Ctrl+clique** soma à seleção — e a ordem dos cliques é a
+   ordem da animação. **Marcar linha** pega a linha inteira (folha de personagem quase sempre
+   põe uma animação por linha). **Ctrl+scroll** amplia.
+4. **+ Clipe** cria a animação com os frames marcados; dá pra ajustar duração ou FPS (os dois
+   editam o mesmo número) e ligar/desligar o loop. O preview ao lado toca na velocidade real, e
+   a célula que está tocando fica destacada na grade.
+5. **Salvar folha** grava `Assets/spritesheets/<nome>.sheet.json`.
+
+Na cena, o `Animator` aponta pro arquivo em vez de repetir os números:
+
+```json
+{ "Type": "Animator", "Sheet": "spritesheets/player.sheet.json" }
+```
+
+O botão **Aplicar em '<entidade>'** faz isso pela entidade selecionada na cena, junto com a
+textura do `SpriteRenderer` se ela ainda estiver vazia.
+
+Por que o arquivo e não os números na cena: o recorte é propriedade da **imagem**, não da
+entidade. Dez inimigos que usam a mesma folha compartilham o mesmo recorte, e ajustar a altura
+do frame conserta os dez de uma vez. Qualquer campo escrito na cena (`FrameWidth`, um `Clips`
+próprio) continua vencendo a folha naquela entidade — a folha é o padrão, não uma imposição.
 
 ## Scripts: mover, atacar no mouse e instanciar efeito
 

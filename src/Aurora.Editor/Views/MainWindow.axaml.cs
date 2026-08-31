@@ -381,6 +381,31 @@ public partial class MainWindow : Window
 
     private DatabaseWindow? _itemDatabase;
 
+    /// <summary>
+    /// Abre o editor de sprite sheet. Não-modal pelo mesmo motivo do banco: o botão "Aplicar"
+    /// dele grava no Animator da entidade selecionada NA CENA, então as duas janelas precisam
+    /// estar vivas ao mesmo tempo.
+    /// </summary>
+    private void OnOpenSpriteSheetEditor(object? sender, RoutedEventArgs e)
+    {
+        if (_spriteSheetEditor is not null)
+        {
+            _spriteSheetEditor.Activate();
+            return;
+        }
+
+        var window = new SpriteSheetWindow(ViewModel);
+        window.Closed += (_, _) =>
+        {
+            _spriteSheetEditor = null;
+            Scene.ClearTextureCache();   // a folha pode ter mudado o recorte que o viewport desenha
+        };
+        _spriteSheetEditor = window;
+        window.Show(this);
+    }
+
+    private SpriteSheetWindow? _spriteSheetEditor;
+
     private void OnPlay(object? sender, RoutedEventArgs e) => ViewModel.Play();
 
     private void OnDuplicateEntity(object? sender, RoutedEventArgs e) => ViewModel.DuplicateSelectedEntity();

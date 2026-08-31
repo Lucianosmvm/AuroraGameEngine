@@ -500,6 +500,15 @@ public sealed class EntityViewModel : ViewModelBase
 
     // ---- Helpers ----
 
+    /// <summary>Recria os view models de componente a partir do JSON. Pra quem edita o Node por
+    /// fora do inspector — o editor de sprite sheet, ao ligar a folha no Animator: sem isto o
+    /// painel continuaria mostrando os valores de antes até a cena ser reaberta.</summary>
+    public void RefreshComponents()
+    {
+        RebuildComponents();
+        Edited?.Invoke($"refresh:{Node.GetHashCode()}");
+    }
+
     private void RebuildComponents()
     {
         Components.Clear();

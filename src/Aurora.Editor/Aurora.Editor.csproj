@@ -25,6 +25,12 @@
          mesmo motivo dos outros: duplicar a lista no editor faria a aba Termos oferecer chave que
          o runtime nao le (ou esquecer chave nova) sem nada avisar. So depende de System.Text.Json. -->
     <Compile Include="..\Aurora.Runtime\Database\TermDatabase.cs" Link="Models\TermDatabase.cs" />
+    <!-- Formato do .sheet.json, pelo mesmo motivo: o editor de sprite sheet GRAVA o arquivo que
+         o Animator LÊ. Duplicar a leitura aqui faria o editor salvar um campo que o jogo ignora
+         (ou o contrário) sem nada acusar. Só depende de System.Text.Json; RectF vem junto porque
+         é o tipo que SpriteSheetAsset devolve. -->
+    <Compile Include="..\Aurora.Runtime\Graphics\RectF.cs" Link="Models\RectF.cs" />
+    <Compile Include="..\Aurora.Runtime\Graphics\SpriteSheetAsset.cs" Link="Models\SpriteSheetAsset.cs" />
   </ItemGroup>
 
   <!-- Fonte padrão copiada pra saida do editor: o scaffolder de "Novo Projeto" a copia pro

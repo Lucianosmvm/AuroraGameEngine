@@ -19,8 +19,10 @@ public static class ProjectValidator
     public sealed record Problem(string Where, string Message);
 
     /// <summary>Campos de componente que guardam caminho de asset. "Texture" é o nome usado pelo
-    /// SceneSerializer tanto no SpriteRenderer quanto no tileset do Tilemap e no UiImage.</summary>
-    private static readonly string[] AssetFields = ["Texture"];
+    /// SceneSerializer tanto no SpriteRenderer quanto no tileset do Tilemap e no UiImage; "Sheet"
+    /// é a folha de recorte do Animator — apagada, a entidade só deixa de animar, sem erro
+    /// nenhum no console, que é justamente o tipo de quebra silenciosa que esta validação pega.</summary>
+    private static readonly string[] AssetFields = ["Texture", "Sheet"];
 
     /// <summary>Componentes que o editor conhece mas que NÃO são IComponent de cena: existem só
     /// em tela de UI (UIManager). Numa cena comum são ignorados com aviso — vale sinalizar.</summary>

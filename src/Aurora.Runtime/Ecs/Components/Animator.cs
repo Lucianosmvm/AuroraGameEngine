@@ -43,9 +43,18 @@ public sealed class AnimatorTransition
 /// pra trocar sozinho quando um parâmetro (SetFloat/SetBool) atinge a condição — um "state
 /// machine" simples, no estilo Animator Controller da Unity, mas com parâmetros locais.
 /// O primeiro clipe da lista é tocado no Start.
+///
+/// <para>O recorte da folha vem de uma de duas fontes: preenchido campo a campo aqui (FrameWidth,
+/// FrameHeight, SheetColumns) ou carregado de um <c>.sheet.json</c> pelo campo <see cref="Sheet"/>
+/// — o arquivo que o editor de sprite sheet grava. Ver <see cref="ApplySheet"/>.</para>
 /// </summary>
 public sealed class Animator : Behavior
 {
+    /// <summary>Caminho do <c>.sheet.json</c> com o recorte e os clipes desta folha, relativo à
+    /// raiz de assets. Vazio = o recorte está nos campos abaixo. Quem carrega o arquivo é o
+    /// serializador de cena, que já tem o AssetManager — o componente só guarda o caminho.</summary>
+    public string Sheet = "";
+
     /// <summary>Largura de cada frame em pixels no sprite sheet.</summary>
     public int FrameWidth;
 
@@ -54,6 +63,18 @@ public sealed class Animator : Behavior
 
     /// <summary>Quantas colunas de frames tem o sprite sheet.</summary>
     public int SheetColumns = 1;
+
+    /// <summary>Borda vazia antes do primeiro frame, em pixels.</summary>
+    public int MarginX;
+    public int MarginY;
+
+    /// <summary>Vão entre frames vizinhos, em pixels — comum em folha exportada por atlas.</summary>
+    public int SpacingX;
+    public int SpacingY;
+
+    /// <summary>Recortes livres em pixels da imagem, pra folha que não é grade regular.
+    /// Não-vazio: o índice do frame indexa ESTA lista e a grade é ignorada.</summary>
+    public List<RectF> FrameRects = [];
 
     public List<AnimationClip> Clips = [];
 
@@ -72,6 +93,40 @@ public sealed class Animator : Behavior
 
     /// <summary>True quando um clipe não-loop chegou ao último frame.</summary>
     public bool IsFinished => _finished;
+
+    /// <summary>
+    /// Copia o recorte de uma folha <c>.sheet.json</c> pra este Animator. Os clipes da folha só
+    /// entram nos nomes que a cena ainda NÃO definiu: quem autorou um clipe na entidade quis
+    /// aquele, e a folha não pode desfazer isso pelas costas.
+    /// </summary>
+    public void ApplySheet(SpriteSheetAsset sheet)
+    {
+        FrameWidth = sheet.FrameWidth;
+        FrameHeight = sheet.FrameHeight;
+        SheetColumns = Math.Max(1, sheet.Columns);
+        MarginX = sheet.MarginX;
+        MarginY = sheet.MarginY;
+        SpacingX = sheet.SpacingX;
+        SpacingY = sheet.SpacingY;
+
+        FrameRects.Clear();
+        foreach (var f in sheet.Frames)
+            FrameRects.Add(new RectF(f.X, f.Y, f.Width, f.Height));
+
+        foreach (var clip in sheet.Clips)
+        {
+            if (Clips.Exists(c => c.Name == clip.Name))
+                continue;
+
+            Clips.Add(new AnimationClip
+            {
+                Name = clip.Name,
+                Frames = (int[])clip.Frames.Clone(),
+                FrameDuration = clip.Duration,
+                Loop = clip.Loop,
+            });
+        }
+    }
 
     // ---- Parâmetros locais (state machine) ----
 
@@ -172,18 +227,26 @@ public sealed class Animator : Behavior
         _    => MathF.Abs(actual - value) < 1e-6f,   // "==" default
     };
 
+    /// <summary>Retângulo do índice na folha: um recorte livre quando a lista existe, senão a
+    /// posição na grade (já contando margem e vão). Null = índice fora do recorte.</summary>
+    public RectF? RectOf(int index)
+    {
+        if (FrameRects.Count > 0)
+            return index >= 0 && index < FrameRects.Count ? FrameRects[index] : null;
+
+        return SpriteSheetAsset.GridRect(index, SheetColumns, FrameWidth, FrameHeight,
+            MarginX, MarginY, SpacingX, SpacingY);
+    }
+
     private void ApplyFrame()
     {
-        if (_current is null || SheetColumns <= 0 || FrameWidth <= 0 || FrameHeight <= 0)
+        if (_current is null || RectOf(_current.Frames[_framePos]) is not { } rect)
             return;
 
         var sprite = Get<SpriteRenderer>();
         if (sprite is null)
             return;
 
-        int index = _current.Frames[_framePos];
-        int col = index % SheetColumns;
-        int row = index / SheetColumns;
-        sprite.SourceRect = new RectF(col * FrameWidth, row * FrameHeight, FrameWidth, FrameHeight);
+        sprite.SourceRect = rect;
     }
 }

@@ -43,9 +43,14 @@ public class ComponentViewModel : ViewModelBase
             // de linhas, AnimationColumns = largura de uma linha (0 = linha cheia do tileset).
             ("AnimationFrames", 1f), ("AnimationFrameDuration", 0.15f), ("AnimationColumns", 0f),
         ],
+        // Sheet: caminho de um .sheet.json gravado pelo editor de sprite sheet. Preenchido, ele
+        // dá o recorte e os clipes, e os campos abaixo só precisam ser mexidos pra sobrescrever
+        // a folha nesta entidade específica.
         ["Animator"] =
         [
+            ("Sheet", ""),
             ("FrameWidth", 0f), ("FrameHeight", 0f), ("SheetColumns", 1f),
+            ("MarginX", 0f), ("MarginY", 0f), ("SpacingX", 0f), ("SpacingY", 0f),
         ],
         ["Collider"] =
         [

@@ -636,13 +636,11 @@ public sealed class SceneSerializer
     private void RegisterAnimator()
     {
         Register<Animator>("Animator",
-            static (json, _) =>
+            static (json, context) =>
             {
                 var animator = new Animator
                 {
-                    FrameWidth = GetInt(json, "FrameWidth", 0),
-                    FrameHeight = GetInt(json, "FrameHeight", 0),
-                    SheetColumns = GetInt(json, "SheetColumns", 1),
+                    Sheet = GetString(json, "Sheet", ""),
                 };
 
                 if (json.TryGetProperty("Clips", out var clipsEl))
@@ -680,14 +678,35 @@ public sealed class SceneSerializer
                     }
                 }
 
+                // A folha entra ANTES dos campos avulsos: ela dá o recorte e os clipes que a
+                // cena não definiu, e qualquer campo escrito na cena continua vencendo depois.
+                if (animator.Sheet.Length > 0 && context.Assets is { } assets && assets.Exists(animator.Sheet))
+                {
+                    try { animator.ApplySheet(SpriteSheetAsset.FromJson(assets.LoadText(animator.Sheet))); }
+                    catch (Exception) { /* folha corrompida: segue com os campos da cena */ }
+                }
+
+                if (json.TryGetProperty("FrameWidth", out _)) animator.FrameWidth = GetInt(json, "FrameWidth", 0);
+                if (json.TryGetProperty("FrameHeight", out _)) animator.FrameHeight = GetInt(json, "FrameHeight", 0);
+                if (json.TryGetProperty("SheetColumns", out _)) animator.SheetColumns = GetInt(json, "SheetColumns", 1);
+                if (json.TryGetProperty("MarginX", out _)) animator.MarginX = GetInt(json, "MarginX", 0);
+                if (json.TryGetProperty("MarginY", out _)) animator.MarginY = GetInt(json, "MarginY", 0);
+                if (json.TryGetProperty("SpacingX", out _)) animator.SpacingX = GetInt(json, "SpacingX", 0);
+                if (json.TryGetProperty("SpacingY", out _)) animator.SpacingY = GetInt(json, "SpacingY", 0);
+
                 return animator;
             },
             static (json, component, _) =>
             {
                 var a = (Animator)component;
+                if (a.Sheet.Length > 0) json.WriteString("Sheet", a.Sheet);
                 json.WriteNumber("FrameWidth", a.FrameWidth);
                 json.WriteNumber("FrameHeight", a.FrameHeight);
                 if (a.SheetColumns != 1) json.WriteNumber("SheetColumns", a.SheetColumns);
+                if (a.MarginX != 0) json.WriteNumber("MarginX", a.MarginX);
+                if (a.MarginY != 0) json.WriteNumber("MarginY", a.MarginY);
+                if (a.SpacingX != 0) json.WriteNumber("SpacingX", a.SpacingX);
+                if (a.SpacingY != 0) json.WriteNumber("SpacingY", a.SpacingY);
 
                 json.WriteStartArray("Clips");
                 foreach (var clip in a.Clips)

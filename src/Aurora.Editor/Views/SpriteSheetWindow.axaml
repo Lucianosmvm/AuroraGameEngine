@@ -1,0 +1,275 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:Aurora.Editor.Views"
+        x:Class="Aurora.Editor.Views.SpriteSheetWindow"
+        Width="1220" Height="800" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource EditorBg}"
+        Title="Editor de Sprite Sheet">
+
+  <DockPanel>
+
+    <!-- ============================ RODAPÉ ============================ -->
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource EditorBorder}" Padding="10,8">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Text="{Binding Status}" FontSize="11" Opacity="0.65"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <Button Grid.Column="1" Content="Salvar folha" FontSize="12" Padding="14,4" Margin="0,0,6,0"
+                Background="{DynamicResource EditorAccent}" Foreground="White"
+                Command="{Binding SaveCommand}"/>
+        <Button Grid.Column="2" Content="Fechar" FontSize="12" Padding="14,4" Click="OnClose"/>
+      </Grid>
+    </Border>
+
+    <!-- ====================== COLUNA ESQUERDA ======================== -->
+    <Border DockPanel.Dock="Left" Width="250" Background="{DynamicResource EditorPanel}"
+            BorderThickness="0,0,1,0" BorderBrush="{DynamicResource EditorBorder}">
+      <Grid RowDefinitions="Auto,*,Auto,2*">
+
+        <Border Background="{DynamicResource EditorPanelAlt}" Padding="8,5">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Text="FOLHAS" FontSize="10" FontWeight="Bold" Opacity="0.6"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="+ Nova" FontSize="11" Padding="8,2" Margin="0,0,4,0"
+                    Command="{Binding NewSheetCommand}"/>
+            <Button Grid.Column="2" Content="Excluir" FontSize="11" Padding="8,2"
+                    Foreground="{DynamicResource EditorDanger}"
+                    Command="{Binding DeleteSheetCommand}"/>
+          </Grid>
+        </Border>
+
+        <ListBox Grid.Row="1" ItemsSource="{Binding SheetFiles}" SelectedItem="{Binding SelectedSheetFile}"
+                 Background="Transparent" FontSize="12"/>
+
+        <Border Grid.Row="2" Background="{DynamicResource EditorPanelAlt}" Padding="8,5">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="IMAGEM DA FOLHA" FontSize="10" FontWeight="Bold" Opacity="0.6"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Procurar…" FontSize="11" Padding="8,2"
+                    Command="{Binding BrowseImageCommand}"/>
+          </Grid>
+        </Border>
+
+        <ListBox Grid.Row="3" ItemsSource="{Binding ImageAssets}" Background="Transparent" FontSize="12">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                      Background="Transparent" BorderThickness="0" Padding="2"
+                      AutomationProperties.Name="{Binding RelativePath}"
+                      Command="{Binding $parent[ListBox].DataContext.PickImageCommand}"
+                      CommandParameter="{Binding}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Image Source="{Binding Thumbnail}" Width="30" Height="30" Stretch="Uniform"/>
+                  <TextBlock Text="{Binding RelativePath}" VerticalAlignment="Center" FontSize="11"
+                             TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+      </Grid>
+    </Border>
+
+    <!-- ======================= COLUNA DIREITA ======================== -->
+    <Border DockPanel.Dock="Right" Width="310" Background="{DynamicResource EditorPanel}"
+            BorderThickness="1,0,0,0" BorderBrush="{DynamicResource EditorBorder}">
+      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+        <!-- Preview tocando de verdade: é o que diz se a animação ficou boa ANTES do Play -->
+        <Border Background="{DynamicResource EditorPanelAlt}" Padding="8,5">
+          <TextBlock Text="PREVIEW" FontSize="10" FontWeight="Bold" Opacity="0.6"/>
+        </Border>
+
+        <StackPanel Grid.Row="1" Margin="10,8" Spacing="6">
+          <Border Height="150" Background="{DynamicResource EditorConsoleBg}" CornerRadius="4"
+                  BorderBrush="{DynamicResource EditorBorder}" BorderThickness="1">
+            <Image Source="{Binding PreviewImage}" Stretch="Uniform" Margin="8"
+                   RenderOptions.BitmapInterpolationMode="None"/>
+          </Border>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="{Binding PreviewLabel}" FontSize="11" Opacity="0.6"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            <CheckBox Grid.Column="1" Content="Tocando" IsChecked="{Binding IsPlaying}" FontSize="11"/>
+          </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="{DynamicResource EditorPanelAlt}" Padding="8,5">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="CLIPES" FontSize="10" FontWeight="Bold" Opacity="0.6"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="+ Clipe (da seleção)" FontSize="11" Padding="8,2"
+                    Command="{Binding AddClipCommand}"/>
+          </Grid>
+        </Border>
+
+        <ListBox Grid.Row="3" ItemsSource="{Binding Clips}" SelectedItem="{Binding SelectedClip}"
+                 Background="Transparent" FontSize="12"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Spacing="3" Margin="0,3">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBox Text="{Binding ClipName}" FontSize="12" Padding="4,3" Watermark="Nome do clipe…"/>
+                  <Button Grid.Column="1" Content="✕" FontSize="11" Padding="6,2" Margin="4,0,0,0"
+                          Command="{Binding RemoveCommand}" Background="Transparent"
+                          BorderThickness="0" Foreground="{DynamicResource EditorDanger}"/>
+                </Grid>
+                <Grid ColumnDefinitions="46,*">
+                  <TextBlock Text="Frames" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+                  <TextBox Grid.Column="1" Text="{Binding FramesText}" FontSize="11" Padding="4,3"
+                           Watermark="0, 1, 2…"/>
+                </Grid>
+                <Grid ColumnDefinitions="46,*,8,30,*,Auto">
+                  <TextBlock Text="Dur (s)" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+                  <TextBox Grid.Column="1" Text="{Binding DurationText}" FontSize="11" Padding="4,3"/>
+                  <TextBlock Grid.Column="3" Text="FPS" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+                  <TextBox Grid.Column="4" Text="{Binding FpsText}" FontSize="11" Padding="4,3"/>
+                  <CheckBox Grid.Column="5" Content="Loop" IsChecked="{Binding Loop}" FontSize="11"
+                            Margin="6,0,0,0"/>
+                </Grid>
+                <TextBlock Text="{Binding Summary}" FontSize="10" Opacity="0.45"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="4" Margin="10,8" Spacing="4">
+          <Button Content="Usar frames marcados no clipe" FontSize="11" HorizontalAlignment="Stretch"
+                  Command="{Binding FramesFromSelectionCommand}"
+                  ToolTip.Tip="Troca a sequência do clipe selecionado pelos frames marcados na grade, na ordem em que foram clicados."/>
+          <Button Content="Acrescentar marcados ao fim" FontSize="11" HorizontalAlignment="Stretch"
+                  Command="{Binding AppendSelectionCommand}"
+                  ToolTip.Tip="Soma os marcados ao fim da sequência — pra montar ida e volta (0,1,2,1) sem digitar."/>
+          <Button Content="{Binding ApplyLabel}" FontSize="12" HorizontalAlignment="Stretch"
+                  Margin="0,6,0,0" Padding="0,5"
+                  Background="{DynamicResource EditorAccentSoft}"
+                  Command="{Binding ApplyToEntityCommand}"
+                  ToolTip.Tip="Grava a folha e aponta o Animator da entidade selecionada da cena pra ela."/>
+        </StackPanel>
+
+      </Grid>
+    </Border>
+
+    <!-- ============================ CENTRO ============================ -->
+    <DockPanel>
+
+      <!-- Barra de recorte -->
+      <Border DockPanel.Dock="Top" Background="{DynamicResource EditorPanel}" Padding="10,7"
+              BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,0,0,1">
+        <StackPanel Spacing="6">
+
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <TextBlock Text="Nome" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+              <TextBox Text="{Binding SheetName}" Width="150" FontSize="12" Padding="6,3"
+                       Watermark="player"/>
+              <TextBlock Text="{Binding TargetPath}" VerticalAlignment="Center" FontSize="10"
+                         Opacity="0.45"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="Zoom" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+              <Button Content="−" FontSize="12" Padding="8,1" Command="{Binding ZoomOutCommand}"/>
+              <TextBlock Text="{Binding ZoomLabel}" VerticalAlignment="Center" FontSize="11" Width="26"
+                         TextAlignment="Center"/>
+              <Button Content="+" FontSize="12" Padding="8,1" Command="{Binding ZoomInCommand}"/>
+            </StackPanel>
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" Spacing="14">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <RadioButton GroupName="Cut" Content="Grade" IsChecked="{Binding GridCut}" FontSize="11"/>
+              <RadioButton GroupName="Cut" Content="Recorte livre" IsChecked="{Binding FreeCut}" FontSize="11"
+                           ToolTip.Tip="Arraste na imagem pra desenhar cada frame à mão — pra folha que não é grade regular."/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                        IsVisible="{Binding GridCut}">
+              <RadioButton GroupName="Slice" Content="Por tamanho" IsChecked="{Binding SliceBySize}" FontSize="11"/>
+              <RadioButton GroupName="Slice" Content="Por contagem" IsChecked="{Binding SliceByCount}" FontSize="11"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
+                        IsVisible="{Binding FreeCut}">
+              <Button Content="Desfazer recorte" FontSize="11" Padding="8,2"
+                      Command="{Binding UndoFreeCutCommand}"/>
+              <Button Content="Limpar recortes" FontSize="11" Padding="8,2"
+                      Command="{Binding ClearFreeCutCommand}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding GridCut}">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="Frame" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+              <NumericUpDown Value="{Binding FrameWidth}" Minimum="1" Maximum="4096" Increment="1"
+                             Width="92" FontSize="11" FormatString="0"
+                             IsEnabled="{Binding SliceBySize}"/>
+              <TextBlock Text="×" VerticalAlignment="Center" Opacity="0.5"/>
+              <NumericUpDown Value="{Binding FrameHeight}" Minimum="1" Maximum="4096" Increment="1"
+                             Width="92" FontSize="11" FormatString="0"
+                             IsEnabled="{Binding SliceBySize}"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="Colunas×Linhas" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+              <NumericUpDown Value="{Binding Columns}" Minimum="1" Maximum="1024" Increment="1"
+                             Width="88" FontSize="11" FormatString="0"
+                             IsEnabled="{Binding SliceByCount}"/>
+              <NumericUpDown Value="{Binding Rows}" Minimum="1" Maximum="1024" Increment="1"
+                             Width="88" FontSize="11" FormatString="0"
+                             IsEnabled="{Binding SliceByCount}"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="Margem" VerticalAlignment="Center" Opacity="0.6" FontSize="11"/>
+              <NumericUpDown Value="{Binding MarginX}" Minimum="0" Maximum="4096" Increment="1"
+                             Width="80" FontSize="11" FormatString="0"/>
+              <NumericUpDown Value="{Binding MarginY}" Minimum="0" Maximum="4096" Increment="1"
+                             Width="80" FontSize="11" FormatString="0"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+              <TextBlock Text="Vão" VerticalAlignment="Center" Opacity="0.6" FontSize="11"
+                         ToolTip.Tip="Espaço vazio entre frames vizinhos — comum em folha exportada por atlas."/>
+              <NumericUpDown Value="{Binding SpacingX}" Minimum="0" Maximum="512" Increment="1"
+                             Width="80" FontSize="11" FormatString="0"/>
+              <NumericUpDown Value="{Binding SpacingY}" Minimum="0" Maximum="512" Increment="1"
+                             Width="80" FontSize="11" FormatString="0"/>
+            </StackPanel>
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="{Binding ImageLabel}" FontSize="10" Opacity="0.5" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding GridLabel}" FontSize="10" Opacity="0.5" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding SelectionLabel}" FontSize="10" Opacity="0.75"
+                         Foreground="{DynamicResource EditorAccentHover}" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Button Content="Marcar linha" FontSize="11" Padding="8,2"
+                      Command="{Binding SelectRowCommand}"
+                      ToolTip.Tip="Marca a linha inteira do primeiro frame marcado — folha de personagem quase sempre põe uma animação por linha."/>
+              <Button Content="Marcar tudo" FontSize="11" Padding="8,2" Command="{Binding SelectAllCommand}"/>
+              <Button Content="Limpar" FontSize="11" Padding="8,2" Command="{Binding ClearSelectionCommand}"/>
+            </StackPanel>
+          </Grid>
+
+        </StackPanel>
+      </Border>
+
+      <!-- Dica de uso: o atalho que ninguém descobre sozinho -->
+      <Border DockPanel.Dock="Bottom" Padding="10,4" Background="{DynamicResource EditorPanel}"
+              BorderBrush="{DynamicResource EditorBorder}" BorderThickness="0,1,0,0">
+        <TextBlock FontSize="10" Opacity="0.5" TextWrapping="Wrap"
+                   Text="Clique marca um frame · arraste marca vários · Ctrl+clique soma à seleção (a ordem dos cliques é a ordem da animação) · Ctrl+scroll amplia."/>
+      </Border>
+
+      <ScrollViewer Background="{DynamicResource EditorBg}" Padding="12"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <views:SpriteSheetCanvas HorizontalAlignment="Left" VerticalAlignment="Top"/>
+      </ScrollViewer>
+
+    </DockPanel>
+
+  </DockPanel>
+</Window>

@@ -406,6 +406,8 @@
         <MenuItem Header="_Configurações do Projeto…" Click="OnOpenProjectSettings"/>
         <Separator/>
         <MenuItem Header="Banco de _Dados (Itens)…" Click="OnOpenItemDatabase"/>
+        <MenuItem Header="Editor de _Sprite Sheet…" Click="OnOpenSpriteSheetEditor"
+                  ToolTip.Tip="Recorta uma imagem em frames e monta as animações do personagem ou do tileset, vendo a grade em cima da arte."/>
       </MenuItem>
     </Menu>
 
