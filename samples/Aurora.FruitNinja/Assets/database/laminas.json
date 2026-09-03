@@ -1,0 +1,67 @@
+{
+  "_comentario": [
+    "As armas do jogo. Uma entrada = uma lamina; a primeira da lista e a que o jogador ja",
+    "tem (deixe Preco 0 nela). Nenhum script cita lamina pelo nome -- acrescentar arma nova e",
+    "so somar uma entrada aqui. A loja mostra ate 4 (as quatro linhas de scenes/Laminas.json).",
+    "",
+    "Alcance:  multiplica o raio de acerto. E a alavanca de 'corta de raspao'.",
+    "VelocidadeMinima:  px/s que o dedo precisa fazer pra o traco cortar. Mais alto = arma",
+    "                   pesada, que exige gesto decidido.",
+    "MultiplicadorPontos:  multiplica os pontos de cada fruta cortada com ela."
+  ],
+
+  "Laminas": [
+    {
+      "Id": "treino",
+      "Nome": "Lâmina de treino",
+      "Descricao": "Equilibrada. A que todo ninja começa.",
+      "Cor": "#8AD8FFAA",
+      "CorMiolo": "#FFFFFFFF",
+      "Espessura": 26,
+      "Duracao": 0.26,
+      "Alcance": 1.0,
+      "MultiplicadorPontos": 1.0,
+      "VelocidadeMinima": 260,
+      "Preco": 0
+    },
+    {
+      "Id": "katana",
+      "Nome": "Katana",
+      "Descricao": "Rastro longo e corte um pouco mais generoso.",
+      "Cor": "#FFE9A8CC",
+      "CorMiolo": "#FFFFFFFF",
+      "Espessura": 22,
+      "Duracao": 0.28,
+      "Alcance": 1.15,
+      "MultiplicadorPontos": 1.0,
+      "VelocidadeMinima": 240,
+      "Preco": 80
+    },
+    {
+      "Id": "foice",
+      "Nome": "Foice sombria",
+      "Descricao": "Alcance largo: perdoa passar de longe.",
+      "Cor": "#B388FFCC",
+      "CorMiolo": "#EDE2FFFF",
+      "Espessura": 26,
+      "Duracao": 0.32,
+      "Alcance": 1.35,
+      "MultiplicadorPontos": 1.0,
+      "VelocidadeMinima": 220,
+      "Preco": 220
+    },
+    {
+      "Id": "dourada",
+      "Nome": "Lâmina dourada",
+      "Descricao": "Vale 50% mais pontos, mas só corta em gesto rápido.",
+      "Cor": "#FFC83DCC",
+      "CorMiolo": "#FFF6D0FF",
+      "Espessura": 20,
+      "Duracao": 0.24,
+      "Alcance": 1.05,
+      "MultiplicadorPontos": 1.5,
+      "VelocidadeMinima": 380,
+      "Preco": 450
+    }
+  ]
+}

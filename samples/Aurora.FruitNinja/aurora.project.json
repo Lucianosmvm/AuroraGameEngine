@@ -1,0 +1,9 @@
+{
+  "gameProject": "samples/Aurora.FruitNinja/Aurora.FruitNinja.csproj",
+  "lastScene": "Assets/scenes/arena.json",
+  "androidOrientation": "Portrait",
+  "designWidth": 720,
+  "designHeight": 1280,
+  "uiFont": "fonts/DejaVuSans.ttf",
+  "uiFontSize": 28
+}

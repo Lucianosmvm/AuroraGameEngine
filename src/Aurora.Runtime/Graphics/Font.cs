@@ -10,7 +10,13 @@ namespace Aurora.Runtime.Graphics;
 /// </summary>
 public sealed unsafe class Font : IDisposable
 {
-    private const int AtlasSize = 512;
+    /// <summary>Lado do atlas em pixels (1 byte por pixel — 1 MB de textura).
+    ///
+    /// <para>Era 512, e 512 não cabe os 191 glifos acima de ~24 px: com oversampling 2x2 o
+    /// packer rasteriza cada glifo no dobro do tamanho pedido, e a partir daí
+    /// <c>stbtt_PackFontRange</c> devolve 0 — vira exceção no <c>LoadFont</c>, não texto feio.
+    /// Um jogo em retrato (720x1280) precisa de fonte maior que isso só pra HUD legível.</para></summary>
+    private const int AtlasSize = 1024;
     private const int AsciiFirst = 32;
     private const int AsciiCount = 95;   // 32..126
     private const int Latin1First = 160;

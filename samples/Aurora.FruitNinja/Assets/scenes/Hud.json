@@ -1,0 +1,74 @@
+{
+  "Scene": "Hud",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "TextoPontos",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 26, "Y": 18,
+          "AnchorX": "Left", "AnchorY": "Top",
+          "Text": "{Pontos}",
+          "Color": "#FFFFFFFF",
+          "Scale": 2.0
+        }
+      ]
+    },
+    {
+      "Name": "TextoNivel",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 28, "Y": 86,
+          "AnchorX": "Left", "AnchorY": "Top",
+          "Text": "Nível {Nivel}",
+          "Color": "#8AD8FFFF",
+          "Scale": 0.95
+        }
+      ]
+    },
+    {
+      "Name": "TextoRecorde",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 28, "Y": 118,
+          "AnchorX": "Left", "AnchorY": "Top",
+          "Text": "Recorde {Recorde}",
+          "Color": "#7C7898FF",
+          "Scale": 0.8
+        }
+      ]
+    },
+    {
+      "Name": "TextoMoedas",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 28, "Y": 34,
+          "AnchorX": "Left", "AnchorY": "Bottom",
+          "Text": "{Moedas} moedas",
+          "Color": "#F2D06AFF",
+          "Scale": 0.85
+        }
+      ]
+    },
+    {
+      "Name": "BtnPausa",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 26, "Y": 26,
+          "AnchorX": "Right", "AnchorY": "Bottom",
+          "Width": 108, "Height": 60,
+          "Text": "Pausa",
+          "Color": "#20203AAA",
+          "HoverColor": "#32325AAA",
+          "PressedColor": "#16162AAA",
+          "TextColor": "#D8D0F0FF"
+        }
+      ]
+    }
+  ]
+}

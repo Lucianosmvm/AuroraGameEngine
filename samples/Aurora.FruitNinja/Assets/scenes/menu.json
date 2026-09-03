@@ -1,0 +1,12 @@
+{
+  "Scene": "menu",
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        { "Type": "Transform", "X": 0.0, "Y": 0.0 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/fundo.png", "Layer": -100 }
+      ]
+    }
+  ]
+}

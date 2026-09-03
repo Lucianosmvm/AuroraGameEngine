@@ -413,6 +413,19 @@ por que a ficha de atributos manda e o componente obedece):
 O jogo pronto do guia está em `samples/Aurora.Survivors/` — rode com
 `dotnet run --project samples/Aurora.Survivors`.
 
+## Jogo mobile estilo Fruit Ninja
+
+Retrato 720x1280, corte por gesto (multi-toque de verdade; no PC o mouse entra como toque),
+fruta que parte em duas metades alinhadas ao golpe, esguicho de suco, combo, bomba, bananas de
+poder (câmera lenta, frenesi, pontos em dobro), vidas, níveis e loja de lâminas entre partidas.
+
+Frutas e armas são **dado, não código**: uma fruta nova é uma entrada em
+`Assets/database/frutas.json` mais dois PNGs (que `tools/gerar_sprites.py` desenha), e uma arma
+nova é uma entrada em `Assets/database/laminas.json` — nenhum script cita fruta ou lâmina pelo
+nome. Detalhes em [samples/Aurora.FruitNinja/README.md](samples/Aurora.FruitNinja/README.md).
+
+Rode com `dotnet run --project samples/Aurora.FruitNinja`.
+
 ## Água, lava e sangue (tiles de líquido animados)
 
 `LiquidTileset` pinta em código o tileset de um líquido — 16 colunas de máscara de borda ×

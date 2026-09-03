@@ -1,0 +1,102 @@
+{
+  "Scene": "GameOver",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0, "Y": 0,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 720, "Height": 1280,
+          "Color": "#05040AD8"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -280,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "FIM DE PARTIDA",
+          "Color": "#E23B3BFF",
+          "Scale": 1.9
+        }
+      ]
+    },
+    {
+      "Name": "Motivo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -216,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#D8D0F0FF",
+          "Scale": 0.95
+        }
+      ]
+    },
+    {
+      "Name": "Resumo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -110,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#F2F0FFFF",
+          "Scale": 1.1
+        }
+      ]
+    },
+    {
+      "Name": "Recorde",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -10,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#FFD54FFF",
+          "Scale": 1.2
+        }
+      ]
+    },
+    {
+      "Name": "BtnDeNovo",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 110,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 380, "Height": 84,
+          "Text": "Jogar de novo",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnMenu",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 220,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 380, "Height": 84,
+          "Text": "Menu",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    }
+  ]
+}

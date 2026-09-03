@@ -1,0 +1,32 @@
+{
+  "Scene": "arena",
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        { "Type": "Transform", "X": 0.0, "Y": 0.0 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/fundo.png", "Layer": -100 }
+      ]
+    },
+    {
+      "Name": "Lancador",
+      "Components": [
+        { "Type": "Transform", "X": 0.0, "Y": 0.0 },
+        {
+          "Type": "Lancador",
+          "AtrasoInicial": 0.9,
+          "Espalhamento": 0.32,
+          "ApiceMinimo": -80.0,
+          "ApiceMaximo": -520.0
+        }
+      ]
+    },
+    {
+      "Name": "Lamina",
+      "Components": [
+        { "Type": "Transform", "X": 0.0, "Y": 0.0 },
+        { "Type": "Lamina" }
+      ]
+    }
+  ]
+}

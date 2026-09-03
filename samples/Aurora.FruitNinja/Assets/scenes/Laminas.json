@@ -1,0 +1,198 @@
+{
+  "Scene": "Laminas",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0, "Y": 0,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 720, "Height": 1280,
+          "Color": "#05040AC0"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -480,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "LÂMINAS",
+          "Color": "#FFE9A8FF",
+          "Scale": 1.9
+        }
+      ]
+    },
+    {
+      "Name": "Moedas",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -424,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "{Moedas} moedas",
+          "Color": "#F2D06AFF",
+          "Scale": 1.0
+        }
+      ]
+    },
+
+    {
+      "Name": "Lamina0",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -330,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#D8D0F0FF",
+          "Scale": 0.82,
+          "MaxWidth": 620
+        }
+      ]
+    },
+    {
+      "Name": "BtnLamina0",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": -266,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 340, "Height": 66,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+
+    {
+      "Name": "Lamina1",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -170,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#D8D0F0FF",
+          "Scale": 0.82,
+          "MaxWidth": 620
+        }
+      ]
+    },
+    {
+      "Name": "BtnLamina1",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": -106,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 340, "Height": 66,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+
+    {
+      "Name": "Lamina2",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -10,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#D8D0F0FF",
+          "Scale": 0.82,
+          "MaxWidth": 620
+        }
+      ]
+    },
+    {
+      "Name": "BtnLamina2",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 54,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 340, "Height": 66,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+
+    {
+      "Name": "Lamina3",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": 150,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#D8D0F0FF",
+          "Scale": 0.82,
+          "MaxWidth": 620
+        }
+      ]
+    },
+    {
+      "Name": "BtnLamina3",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 214,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 340, "Height": 66,
+          "Text": "",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+
+    {
+      "Name": "Mensagem",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": 320,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#FFD54FFF",
+          "Scale": 0.95
+        }
+      ]
+    },
+    {
+      "Name": "BtnVoltar",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 420,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 340, "Height": 78,
+          "Text": "Voltar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    }
+  ]
+}

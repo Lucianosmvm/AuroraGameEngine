@@ -1,0 +1,63 @@
+{
+  "Scene": "Pausa",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0, "Y": 0,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 720, "Height": 1280,
+          "Color": "#05040ACC"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -160,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "PAUSA",
+          "Color": "#FFE9A8FF",
+          "Scale": 2.0
+        }
+      ]
+    },
+    {
+      "Name": "BtnContinuar",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": -20,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 380, "Height": 84,
+          "Text": "Continuar",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnMenu",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 90,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 380, "Height": 84,
+          "Text": "Menu",
+          "Color": "#2A2A48FF",
+          "HoverColor": "#3C3C6AFF",
+          "PressedColor": "#1E1E36FF",
+          "TextColor": "#F2F0FFFF"
+        }
+      ]
+    }
+  ]
+}
