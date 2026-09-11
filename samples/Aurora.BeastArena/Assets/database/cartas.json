@@ -1,0 +1,171 @@
+{
+  "_comentario": [
+    "Catalogo de cartas. Unidades em TILES (a arena tem 18 x 24) e SEGUNDOS.",
+    "Uma carta nova = uma entrada aqui. Pra entrar no jogo, o id tambem precisa estar em Baralho (8 cartas).",
+    "",
+    "Tipo: Criatura | Feitico.",
+    "Alcance: distancia de ataque de borda a borda. ~0.6 = corpo a corpo.",
+    "VelocidadeProjetil: 0 = corpo a corpo (dano na hora).",
+    "Raio: corpo da criatura; no feitico, raio da area.",
+    "Voa: nao conta pra captura de santuario e passa por cima de pedra.",
+    "IgnoraUnidades: vai direto pro santuario; so bate em quem disputa o santuario onde esta.",
+    "Lentidao: multiplicador de velocidade no alvo (0.5 = metade); 1 = nenhuma.",
+    "XpAoMorrer: 0 = custo / quantidade. Evoluida da (1 + estagio) vezes isso.",
+    "XpAoCapturar: XP ganho quando um santuario vira da equipe com a unidade dentro.",
+    "Evolucoes: Xp e o TOTAL acumulado; Vida/Dano/Velocidade/Escala multiplicam a ficha BASE.",
+    "Recompensa: mana que o OPONENTE ganha ao matar a unidade naquele estagio."
+  ],
+
+  "Baralho": ["lobo", "rinoceronte", "vespas", "serpente", "ourico", "coruja", "lamacal", "queimada"],
+
+  "Cartas": [
+    {
+      "Id": "lobo",
+      "Nome": "Lobo",
+      "Letra": "L",
+      "Cor": "#B8C4CCFF",
+      "Tipo": "Criatura",
+      "Custo": 3,
+      "Vida": 560,
+      "Dano": 95,
+      "Cadencia": 1.1,
+      "Alcance": 0.5,
+      "Velocidade": 1.5,
+      "Raio": 0.45,
+      "Massa": 2,
+      "Evolucoes": [
+        { "Nome": "Lobo Alfa", "Xp": 3, "Vida": 1.5, "Dano": 1.4, "Velocidade": 1.1, "Escala": 1.25, "Recompensa": 1 },
+        { "Nome": "Senhor dos Lobos", "Xp": 8, "Vida": 2.3, "Dano": 2.0, "Velocidade": 1.2, "Escala": 1.55, "Recompensa": 2 }
+      ]
+    },
+    {
+      "Id": "rinoceronte",
+      "Nome": "Rinoceronte",
+      "Letra": "R",
+      "Cor": "#9C9486FF",
+      "Tipo": "Criatura",
+      "Custo": 6,
+      "Vida": 2600,
+      "Dano": 150,
+      "Cadencia": 1.6,
+      "Alcance": 0.5,
+      "Velocidade": 0.8,
+      "Raio": 0.8,
+      "Massa": 10,
+      "IgnoraUnidades": true,
+      "XpAoCapturar": 3,
+      "_nota": "Nao caca ninguem: senta no santuario e aguenta. Dominar um com ele dentro vira Rinoceronte Blindado.",
+      "Evolucoes": [
+        { "Nome": "Rinoceronte Blindado", "Xp": 3, "Vida": 1.35, "Dano": 1.6, "Escala": 1.15, "Recompensa": 2 }
+      ]
+    },
+    {
+      "Id": "vespas",
+      "Nome": "Vespas",
+      "Letra": "V",
+      "Cor": "#E2B93BFF",
+      "Tipo": "Criatura",
+      "Custo": 2,
+      "Quantidade": 3,
+      "Vida": 95,
+      "Dano": 48,
+      "Cadencia": 1.0,
+      "Alcance": 0.4,
+      "Velocidade": 2.0,
+      "Raio": 0.3,
+      "Massa": 0.5,
+      "Voa": true,
+      "AtacaAr": true,
+      "Evolucoes": [
+        { "Nome": "Vespa Rainha", "Xp": 2, "Vida": 2.0, "Dano": 1.6, "Escala": 1.3, "Recompensa": 1 }
+      ]
+    },
+    {
+      "Id": "serpente",
+      "Nome": "Serpente",
+      "Letra": "S",
+      "Cor": "#66BB6AFF",
+      "Tipo": "Criatura",
+      "Custo": 4,
+      "Vida": 900,
+      "Dano": 55,
+      "Cadencia": 1.0,
+      "Alcance": 0.7,
+      "Velocidade": 1.0,
+      "Raio": 0.5,
+      "Massa": 3,
+      "VenenoDps": 35,
+      "VenenoDuracao": 4,
+      "Evolucoes": [
+        { "Nome": "Naja", "Xp": 3, "Vida": 1.4, "Dano": 1.5, "Escala": 1.2, "Recompensa": 1 },
+        { "Nome": "Hidra", "Xp": 8, "Vida": 2.1, "Dano": 2.0, "Escala": 1.5, "Area": 1.0, "Recompensa": 2 }
+      ]
+    },
+    {
+      "Id": "ourico",
+      "Nome": "Ouriço",
+      "Letra": "O",
+      "Cor": "#D4A15AFF",
+      "Tipo": "Criatura",
+      "Custo": 3,
+      "Vida": 380,
+      "Dano": 72,
+      "Cadencia": 1.1,
+      "Alcance": 5.0,
+      "Velocidade": 1.0,
+      "Raio": 0.45,
+      "Massa": 1.5,
+      "AtacaAr": true,
+      "VelocidadeProjetil": 10,
+      "Evolucoes": [
+        { "Nome": "Ouriço de Ferro", "Xp": 3, "Vida": 1.6, "Dano": 1.4, "Escala": 1.2, "Recompensa": 1 },
+        { "Nome": "Rei dos Espinhos", "Xp": 8, "Vida": 2.2, "Dano": 1.8, "Escala": 1.4, "Area": 0.9, "Recompensa": 2 }
+      ]
+    },
+    {
+      "Id": "coruja",
+      "Nome": "Xamã-Coruja",
+      "Letra": "C",
+      "Cor": "#9A86C9FF",
+      "Tipo": "Criatura",
+      "Custo": 5,
+      "Vida": 640,
+      "Dano": 125,
+      "Cadencia": 1.6,
+      "Alcance": 5.0,
+      "Velocidade": 1.0,
+      "Raio": 0.5,
+      "Massa": 2,
+      "AtacaAr": true,
+      "VelocidadeProjetil": 7,
+      "Area": 1.3,
+      "Evolucoes": [
+        { "Nome": "Coruja Anciã", "Xp": 5, "Vida": 1.6, "Dano": 1.5, "Escala": 1.25, "Area": 1.8, "Recompensa": 2 }
+      ]
+    },
+    {
+      "Id": "lamacal",
+      "Nome": "Lamaçal",
+      "Letra": "~",
+      "Cor": "#A07850FF",
+      "Tipo": "Feitico",
+      "Custo": 3,
+      "Raio": 2.6,
+      "Dano": 70,
+      "Lentidao": 0.45,
+      "LentidaoDuracao": 4.5,
+      "Atraso": 0.35
+    },
+    {
+      "Id": "queimada",
+      "Nome": "Queimada",
+      "Letra": "!",
+      "Cor": "#FF7043FF",
+      "Tipo": "Feitico",
+      "Custo": 4,
+      "Raio": 2.2,
+      "Dano": 340,
+      "Atraso": 0.8
+    }
+  ]
+}

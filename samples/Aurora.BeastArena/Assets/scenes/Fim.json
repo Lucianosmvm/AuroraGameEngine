@@ -1,0 +1,76 @@
+{
+  "Scene": "Fim",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Painel",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0, "Y": -40,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 560, "Height": 640,
+          "Color": "#161A13F0"
+        }
+      ]
+    },
+    {
+      "Name": "Resultado",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -280,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#FFD54FFF",
+          "Scale": 2.2
+        }
+      ]
+    },
+    {
+      "Name": "Resumo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -110,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "",
+          "Color": "#DDE3D0FF",
+          "Scale": 0.95
+        }
+      ]
+    },
+    {
+      "Name": "BtnDeNovo",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 80,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 400, "Height": 88,
+          "Text": "Jogar de novo",
+          "Color": "#239C84FF",
+          "HoverColor": "#2DB599FF",
+          "PressedColor": "#1B7B68FF",
+          "TextColor": "#FFFFFFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnMenu",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 190,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 400, "Height": 76,
+          "Text": "Menu",
+          "Color": "#2A3124FF",
+          "HoverColor": "#374030FF",
+          "PressedColor": "#20261BFF",
+          "TextColor": "#DDE3D0FF"
+        }
+      ]
+    }
+  ]
+}

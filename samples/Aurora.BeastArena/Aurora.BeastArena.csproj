@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BeastArena</RootNamespace>
+    <AssemblyName>BeastArena</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Os testes montam cenários na mão (unidade já evoluída, torre com 1 de vida) pelos
+         membros internal da simulação, sem abrir esses setters pro jogo inteiro. -->
+    <InternalsVisibleTo Include="Aurora.BeastArena.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,81 @@
+{
+  "Scene": "MainMenu",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Sub",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -290,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "Protótipo · Aurora Engine",
+          "Color": "#8E9780FF",
+          "Scale": 0.85
+        }
+      ]
+    },
+    {
+      "Name": "Regras",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0, "Y": -150,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Text": "Arraste uma carta até a arena (ou toque na carta e depois na arena).\nDomine os SANTUÁRIOS: cada um dá pontos e mana. 200 pontos vence na hora; senão, mais pontos em 3 minutos.\nSantuário seu libera implantar em volta dele.\n\nCriaturas que matam EVOLUEM (barra dourada).\nMatar uma criatura evoluída dá mana pra você.",
+          "Color": "#DDE3D0FF",
+          "Scale": 0.72,
+          "MaxWidth": 620
+        }
+      ]
+    },
+    {
+      "Name": "BtnNormal",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 40,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 400, "Height": 88,
+          "Text": "Batalhar",
+          "Color": "#239C84FF",
+          "HoverColor": "#2DB599FF",
+          "PressedColor": "#1B7B68FF",
+          "TextColor": "#FFFFFFFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnFacil",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 150,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 400, "Height": 76,
+          "Text": "Batalhar (IA fácil)",
+          "Color": "#2A3124FF",
+          "HoverColor": "#374030FF",
+          "PressedColor": "#20261BFF",
+          "TextColor": "#DDE3D0FF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnSair",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0, "Y": 250,
+          "AnchorX": "Center", "AnchorY": "Center",
+          "Width": 400, "Height": 76,
+          "Text": "Sair",
+          "Color": "#2A3124FF",
+          "HoverColor": "#374030FF",
+          "PressedColor": "#20261BFF",
+          "TextColor": "#DDE3D0FF"
+        }
+      ]
+    }
+  ]
+}
