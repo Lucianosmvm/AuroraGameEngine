@@ -45,6 +45,10 @@ public sealed class VisaoArena
         public Color Cor;
         public float Idade;
         public float Duracao;
+
+        /// <summary>Com textura, a onda é a arte do feitiço (poça, labareda) sumindo no chão
+        /// em vez de um anel que cresce.</summary>
+        public Texture2D? Textura;
     }
 
     private static readonly Color Ouro = Color.FromHex("#FFD54FFF");
@@ -60,10 +64,19 @@ public sealed class VisaoArena
     ];
 
     private readonly CatalogoCartas _catalogo;
+    private readonly Sprites _sprites;
     private readonly List<Texto> _textos = [];
     private readonly List<Onda> _ondas = [];
 
-    public VisaoArena(CatalogoCartas catalogo) => _catalogo = catalogo;
+    /// <summary>Pra que lado cada unidade olha (por Id). Guardado porque parada, ou andando reto
+    /// pra cima, não dá direção nenhuma — sem memória o bicho viraria a cada passo.</summary>
+    private readonly Dictionary<int, bool> _olhaPraEsquerda = [];
+
+    public VisaoArena(CatalogoCartas catalogo, Sprites sprites)
+    {
+        _catalogo = catalogo;
+        _sprites = sprites;
+    }
 
     public static Vector2 ParaMundo(Vector2 tile)
         => new((tile.X - Campo.Largura / 2f) * Tile, (tile.Y - Campo.CentroY) * Tile + DeslocamentoY);
@@ -78,6 +91,7 @@ public sealed class VisaoArena
     {
         _textos.Clear();
         _ondas.Clear();
+        _olhaPraEsquerda.Clear();
     }
 
     // ------------------------------------------------------------------ eventos → efeitos
@@ -108,8 +122,10 @@ public sealed class VisaoArena
                     break;
 
                 case TipoDeEvento.FeiticoCaiu:
-                    var cor = _catalogo.Todas.FirstOrDefault(c => c.Id == evento.Texto)?.Cor ?? "#FFFFFFFF";
-                    Ondular(evento.Posicao, evento.Raio, Color.FromHex(cor), 0.45f);
+                    var carta = _catalogo.Todas.FirstOrDefault(c => c.Id == evento.Texto);
+                    Ondular(evento.Posicao, evento.Raio, Color.FromHex(carta?.Cor ?? "#FFFFFFFF"), 0.45f);
+                    if (carta is not null && _sprites.AreaDoFeitico(carta) is { } arte)
+                        _ondas.Add(new Onda { Centro = evento.Posicao, Raio = evento.Raio, Cor = Color.White, Duracao = 1.1f, Textura = arte });
                     break;
 
                 case TipoDeEvento.Morreu:
@@ -143,30 +159,50 @@ public sealed class VisaoArena
     public void Desenhar(SpriteBatch batch, Font fonte, Formas formas, Batalha batalha, float alfa, PreviaDeJogada? previa)
     {
         DesenharChao(batch, formas, batalha, previa);
+        DesenharOndas(batch, formas, arte: true);
         DesenharNinhos(batch, formas, batalha);
         DesenharSantuarios(batch, formas, batalha);
-        DesenharPedras(batch, formas);
 
-        foreach (var unidade in batalha.Unidades.Where(u => !u.Voa).OrderBy(u => u.Posicao.Y))
-            DesenharUnidade(batch, fonte, formas, batalha, unidade, alfa);
+        // Pedra entra na mesma ordem por Y das criaturas de chão: bicho atrás da pedra fica atrás dela.
+        var deChao = batalha.Unidades.Where(u => !u.Voa).Select(u => (Y: u.Posicao.Y, Unidade: (Unidade?)u, Pedra: default(Circulo)))
+            .Concat(Campo.Pedras.Select(p => (Y: p.Centro.Y, Unidade: (Unidade?)null, Pedra: p)))
+            .OrderBy(item => item.Y);
+
+        foreach (var item in deChao)
+        {
+            if (item.Unidade is { } unidade)
+                DesenharUnidade(batch, fonte, formas, batalha, unidade, alfa);
+            else
+                DesenharPedra(batch, formas, item.Pedra);
+        }
 
         foreach (var unidade in batalha.Unidades.Where(u => u.Voa).OrderBy(u => u.Posicao.Y))
             DesenharUnidade(batch, fonte, formas, batalha, unidade, alfa);
 
         DesenharProjeteis(batch, formas, batalha, alfa);
         DesenharFeiticos(batch, formas, batalha);
-        DesenharOndas(batch, formas);
+        DesenharOndas(batch, formas, arte: false);
 
         if (previa is { } p)
             DesenharPrevia(batch, formas, p);
 
         DesenharTextos(batch, fonte);
+        EsquecerMortas(batalha);
     }
 
-    private static void DesenharChao(SpriteBatch batch, Formas formas, Batalha batalha, PreviaDeJogada? previa)
+    private void EsquecerMortas(Batalha batalha)
+    {
+        if (_olhaPraEsquerda.Count <= batalha.Unidades.Count + 64)
+            return;
+
+        var vivas = batalha.Unidades.Select(u => u.Id).ToHashSet();
+        foreach (int id in _olhaPraEsquerda.Keys.Where(id => !vivas.Contains(id)).ToList())
+            _olhaPraEsquerda.Remove(id);
+    }
+
+    private void DesenharChao(SpriteBatch batch, Formas formas, Batalha batalha, PreviaDeJogada? previa)
     {
         bool mostrarArea = previa is { Carta.Tipo: TipoDeCarta.Criatura };
-        var tufo = Color.FromHex("#28321FFF");
         var foraDaArea = Color.FromHex("#0A0D0999");
 
         for (int y = 0; y < (int)Campo.Altura; y++)
@@ -177,12 +213,15 @@ public sealed class VisaoArena
                 int ruido = Ruido(x, y);
                 batch.DrawRect(canto, new Vector2(Tile), Musgo[ruido % Musgo.Length]);
 
-                // Tufos espalhados por hash, não por sorteio: o chão fica igual a cada frame.
-                if (ruido % 5 == 0)
+                // Tufos e flores espalhados por hash, não por sorteio: o chão fica igual a cada frame.
+                if (ruido % 7 == 0 || ruido % 17 == 1)
                 {
-                    var base_ = canto + new Vector2(8f + ruido % 20, 12f + ruido / 7 % 16);
-                    batch.DrawRect(base_, new Vector2(3f, 9f), tufo);
-                    batch.DrawRect(base_ + new Vector2(5f, -3f), new Vector2(3f, 12f), tufo);
+                    bool flor = ruido % 7 != 0;
+                    var enfeite = flor ? _sprites.Flores[ruido / 3 % 2] : _sprites.Tufos[ruido / 3 % 2];
+                    var pe = canto + new Vector2(8f + ruido % 24, 18f + ruido / 7 % 18);
+                    float lado = flor ? 16f : 22f + ruido / 11 % 8;
+                    batch.Draw(enfeite, pe, new Vector2(lado), new Vector2(0.5f, 0.88f), 0f, Color.White.WithAlpha(0.7f),
+                        flipX: ruido % 2 == 0);
                 }
 
                 // Enquanto arrasta criatura, apaga onde NÃO pode: o jogador vê a área crescer
@@ -209,7 +248,7 @@ public sealed class VisaoArena
         }
     }
 
-    private static void DesenharNinhos(SpriteBatch batch, Formas formas, Batalha batalha)
+    private void DesenharNinhos(SpriteBatch batch, Formas formas, Batalha batalha)
     {
         float pulso = 0.5f + 0.5f * MathF.Sin(batalha.Tempo * 2.2f);
 
@@ -223,23 +262,28 @@ public sealed class VisaoArena
             formas.DesenharDisco(batch, centro, aura, cor.WithAlpha(0.05f + 0.03f * pulso));
             formas.DesenharAnel(batch, centro, aura, cor.WithAlpha(0.22f));
 
-            batch.Draw(formas.Disco, centro + new Vector2(0f, raio * 0.35f), new Vector2(raio * 2.2f, raio * 1.2f),
+            batch.Draw(formas.Disco, centro + new Vector2(0f, raio * 0.35f), new Vector2(raio * 2.4f, raio * 1.4f),
                 new Vector2(0.5f), 0f, Sombra);
 
-            // Galhos trançados: dois anéis de madeira em volta do ovo que brilha na cor do time.
-            formas.DesenharDisco(batch, centro, raio, Color.FromHex("#3A3226FF"));
-            formas.DesenharAnel(batch, centro, raio, Color.FromHex("#6B5639FF"));
-            formas.DesenharAnel(batch, centro, raio * 0.78f, Color.FromHex("#57462FFF"));
-            formas.DesenharDisco(batch, centro, raio * 0.5f, Escurecer(cor, 0.45f));
+            // Ninho de gravetos com o ovo do time: o ovo é quase branco no PNG e ganha a cor aqui.
+            batch.Draw(_sprites.Ninho, centro, new Vector2(raio * 2.3f), new Vector2(0.5f), 0f, Color.White);
             batch.DrawGlow(centro, raio * (0.9f + 0.25f * pulso), cor.WithAlpha(0.45f));
-            formas.DesenharDisco(batch, centro, raio * 0.3f, cor);
+            float ovo = raio * 1.05f;
+            batch.Draw(_sprites.Ovo, centro + new Vector2(0f, ovo * 0.1f), new Vector2(ovo), new Vector2(0.5f), 0f, Clarear(cor, 0.25f));
         }
     }
 
-    private static void DesenharSantuarios(SpriteBatch batch, Formas formas, Batalha batalha)
+    private void DesenharSantuarios(SpriteBatch batch, Formas formas, Batalha batalha)
     {
         const int Contas = 28;
-        var pedra = Color.FromHex("#77705FFF");
+
+        // A plataforma do PNG tem raio 47 numa tela de 100, e o sulco das contas fica em 32.
+        const float LadoDoSprite = 100f / 47f;
+        const float RaioDasContas = 32f / 47f;
+
+        // Pilar: lado na tela e altura do soquete da gema acima do pé (y 26 da tela, pé em 88).
+        const float LadoDoPilar = 36f;
+        const float AlturaDaGema = (88f - 26f) / 100f * LadoDoPilar;
 
         foreach (var santuario in batalha.Santuarios)
         {
@@ -247,12 +291,10 @@ public sealed class VisaoArena
             float raio = santuario.Raio * Tile;
             var corDono = santuario.Dono is { } dono ? CorDaEquipe(dono) : Neutro;
 
-            formas.DesenharDisco(batch, centro, raio, Color.FromHex("#262C22FF"));
-            formas.DesenharDisco(batch, centro, raio * 0.92f, Color.FromHex("#3B4335FF"));
-            formas.DesenharAnel(batch, centro, raio, Color.FromHex("#5E6556FF"));
+            batch.Draw(_sprites.Santuario, centro, new Vector2(raio * LadoDoSprite), new Vector2(0.5f), 0f, Color.White);
 
             if (santuario.Dono is not null)
-                formas.DesenharDisco(batch, centro, raio * 0.92f, corDono.WithAlpha(0.14f));
+                formas.DesenharDisco(batch, centro, raio * 0.76f, corDono.WithAlpha(0.18f));
 
             // Anel de contas: quantas acendem = quanto da influência já foi puxada, na cor de
             // quem puxou. Dá pra ler "falta pouco pra virar" sem número.
@@ -262,7 +304,7 @@ public sealed class VisaoArena
             for (int i = 0; i < Contas; i++)
             {
                 float angulo = -MathF.PI / 2f + MathF.Tau * i / Contas;
-                var ponto = centro + new Vector2(MathF.Cos(angulo), MathF.Sin(angulo)) * raio * 0.72f;
+                var ponto = centro + new Vector2(MathF.Cos(angulo), MathF.Sin(angulo)) * raio * RaioDasContas;
                 bool acesa = i < acesas;
                 formas.DesenharDisco(batch, ponto, acesa ? 4.5f : 3f, acesa ? corInfluencia : Color.FromHex("#00000066"));
             }
@@ -271,16 +313,15 @@ public sealed class VisaoArena
             {
                 float angulo = MathF.PI / 4f + k * MathF.PI / 2f;
                 var pilar = centro + new Vector2(MathF.Cos(angulo), MathF.Sin(angulo)) * raio * 1.02f;
-                formas.DesenharDisco(batch, pilar + new Vector2(2f, 4f), 9f, Sombra);
-                formas.DesenharDisco(batch, pilar, 9f, pedra);
-                formas.DesenharDisco(batch, pilar, 5f, corDono);
+                batch.Draw(formas.Disco, pilar + new Vector2(3f, 0f), new Vector2(26f, 12f), new Vector2(0.5f), 0f, Sombra);
+                batch.Draw(_sprites.Pilar, pilar, new Vector2(LadoDoPilar), new Vector2(0.5f, 0.88f), 0f, Color.White);
+                formas.DesenharDisco(batch, pilar - new Vector2(0f, AlturaDaGema), 4.5f, corDono);
             }
 
             if (santuario.Dono is not null)
                 batch.DrawGlow(centro, raio * 0.6f, corDono.WithAlpha(0.45f));
 
-            formas.DesenharDisco(batch, centro, 15f, Color.FromHex("#2A2E26FF"));
-            formas.DesenharDisco(batch, centro, 11f, corDono);
+            formas.DesenharDisco(batch, centro, 10f, corDono);
 
             if (santuario.Disputado)
             {
@@ -290,88 +331,172 @@ public sealed class VisaoArena
         }
     }
 
-    private static void DesenharPedras(SpriteBatch batch, Formas formas)
+    private void DesenharPedra(SpriteBatch batch, Formas formas, Circulo pedra)
     {
-        foreach (var pedra in Campo.Pedras)
-        {
-            var centro = ParaMundo(pedra.Centro);
-            float raio = pedra.Raio * Tile;
+        var centro = ParaMundo(pedra.Centro);
+        float raio = pedra.Raio * Tile;
+        int variante = Ruido((int)(pedra.Centro.X * 10f), (int)(pedra.Centro.Y * 10f)) % _sprites.Pedras.Count;
 
-            batch.Draw(formas.Disco, centro + new Vector2(4f, raio * 0.4f), new Vector2(raio * 2.1f, raio * 1.3f),
-                new Vector2(0.5f), 0f, Sombra);
-            formas.DesenharDisco(batch, centro, raio, Color.FromHex("#4F4B44FF"));
-            formas.DesenharDisco(batch, centro - new Vector2(raio * 0.08f, raio * 0.1f), raio * 0.88f, Color.FromHex("#6E6A61FF"));
-            formas.DesenharDisco(batch, centro - new Vector2(raio * 0.3f, raio * 0.32f), raio * 0.38f, Color.FromHex("#8C877CFF"));
-        }
+        batch.Draw(formas.Disco, centro + new Vector2(6f, raio * 0.45f), new Vector2(raio * 2.3f, raio * 1.3f),
+            new Vector2(0.5f), 0f, Sombra);
+        batch.Draw(_sprites.Pedras[variante], centro, new Vector2(raio * 2.5f), new Vector2(0.5f, 0.56f), 0f, Color.White,
+            flipX: variante == 1);
     }
 
-    private static void DesenharUnidade(SpriteBatch batch, Font fonte, Formas formas, Batalha batalha, Unidade unidade, float alfa)
+    private void DesenharUnidade(SpriteBatch batch, Font fonte, Formas formas, Batalha batalha, Unidade unidade, float alfa)
     {
         var chao = ParaMundo(Vector2.Lerp(unidade.PosicaoAnterior, unidade.Posicao, alfa));
         float raio = unidade.Raio * Tile * EscalaVisual;
-        var corpo = chao - new Vector2(0f, unidade.Voa ? 22f : 0f);
         float opacidade = unidade.Implantando > 0f ? 0.5f : 1f;
+        var corDaEquipe = CorDaEquipe(unidade.Equipe);
+        var arte = _sprites.Criatura(unidade.Carta, unidade.Estagio);
 
-        batch.Draw(formas.Disco, chao + new Vector2(0f, raio * 0.45f), new Vector2(raio * 1.9f, raio * 0.9f),
-            new Vector2(0.5f), 0f, Sombra);
+        // Sombra e aro do time no chão (voador também: é o que diz onde ele está de verdade).
+        var pe = chao + new Vector2(0f, raio * 0.3f);
+        var aro = new Vector2(raio * 1.9f, raio * 0.95f);
+        batch.Draw(formas.Disco, pe + new Vector2(0f, 2f), aro * (unidade.Voa ? 0.7f : 1f), new Vector2(0.5f), 0f, Sombra);
+        batch.Draw(formas.Disco, pe, aro, new Vector2(0.5f), 0f, corDaEquipe.WithAlpha(0.22f * opacidade));
+        batch.Draw(formas.Anel, pe, aro, new Vector2(0.5f), 0f, corDaEquipe.WithAlpha(0.9f * opacidade));
 
-        // Brilho dourado = "esta aqui evoluiu". É a informação que decide a jogada do oponente
-        // (matar agora e levar a recompensa), então precisa saltar aos olhos.
+        // Anel de ouro no pé = "esta aqui evoluiu". É a informação que decide a jogada do
+        // oponente (matar agora e levar a recompensa), então precisa saltar aos olhos.
         if (unidade.Estagio > 0)
-            batch.DrawGlow(corpo, raio * (1.8f + unidade.Estagio * 0.5f), Ouro.WithAlpha(0.55f));
+            batch.Draw(formas.Anel, pe, aro * 1.22f, new Vector2(0.5f), 0f, Ouro);
 
-        formas.DesenharDisco(batch, corpo, raio + 3f, CorDaEquipe(unidade.Equipe).WithAlpha(opacidade));
-        formas.DesenharDisco(batch, corpo, raio, Color.FromHex(unidade.Carta.Cor).WithAlpha(opacidade));
+        float lado = raio * 2f * Sprites.FatorDaCriatura(unidade.Carta);
+        var (ancora, inclinacao, esquerda) = Pose(batalha, unidade, chao, lado, alfa);
+        var centroDoCorpo = arte is null ? ancora : ancora - new Vector2(0f, lado * 0.36f);
 
-        if (unidade.Lenta > 0f)
-            formas.DesenharDisco(batch, corpo, raio, Color.FromHex("#8D6E4A88"));
-        if (unidade.Envenenada > 0f)
-            formas.DesenharDisco(batch, corpo, raio, Color.FromHex("#76FF0355"));
-        if (batalha.Tempo - unidade.UltimoDano < 0.08f)
-            formas.DesenharDisco(batch, corpo, raio, Color.FromHex("#FFFFFF88"));
         if (unidade.Estagio > 0)
-            formas.DesenharAnel(batch, corpo, raio + 7f, Ouro);
+            batch.DrawGlow(centroDoCorpo, raio * (1.8f + unidade.Estagio * 0.5f), Ouro.WithAlpha(0.5f));
 
-        float escalaLetra = MathF.Max(0.55f, raio / 22f);
-        var medida = fonte.MeasureText(unidade.Carta.Letra, escalaLetra);
-        fonte.Draw(batch, unidade.Carta.Letra, corpo - medida / 2f, Color.FromHex("#1B1B22FF").WithAlpha(opacidade), escalaLetra);
+        if (arte is not null)
+        {
+            batch.Draw(arte, ancora, new Vector2(lado), new Vector2(0.5f, 0.88f), inclinacao,
+                TintaDeEstado(batalha, unidade).WithAlpha(opacidade), flipX: esquerda);
+        }
+        else
+        {
+            // Carta sem arte ainda: o disco com letra do protótipo.
+            formas.DesenharDisco(batch, ancora, raio + 3f, corDaEquipe.WithAlpha(opacidade));
+            formas.DesenharDisco(batch, ancora, raio, Tingir(Color.FromHex(unidade.Carta.Cor), TintaDeEstado(batalha, unidade)).WithAlpha(opacidade));
+
+            float escalaLetra = MathF.Max(0.55f, raio / 22f);
+            var medida = fonte.MeasureText(unidade.Carta.Letra, escalaLetra);
+            fonte.Draw(batch, unidade.Carta.Letra, ancora - medida / 2f, Color.FromHex("#1B1B22FF").WithAlpha(opacidade), escalaLetra);
+        }
 
         if (unidade.Implantando > 0f)
         {
             float fracao = unidade.Implantando / Batalha.TempoDeImplantacao;
-            formas.DesenharAnel(batch, corpo, raio + 4f + 16f * fracao, Color.White.WithAlpha(0.7f));
+            batch.Draw(formas.Anel, pe, aro * (1.1f + 0.8f * fracao), new Vector2(0.5f), 0f, Color.White.WithAlpha(0.7f));
             return;
         }
 
         float largura = MathF.Max(30f, raio * 2f);
-        float topo = corpo.Y - raio - 14f;
-        DesenharBarra(batch, new Vector2(corpo.X, topo), largura, 5f, unidade.Vida / unidade.VidaMaxima, CorDaEquipe(unidade.Equipe));
+        float topo = arte is null ? ancora.Y - raio - 14f : ancora.Y - lado * 0.74f - 4f;
+        DesenharBarra(batch, new Vector2(chao.X, topo), largura, 5f, unidade.Vida / unidade.VidaMaxima, corDaEquipe);
 
         if (unidade.ProximaEvolucao is not null)
         {
-            batch.DrawRect(new Vector2(corpo.X - largura / 2f, topo + 6f), new Vector2(largura, 3f), Color.FromHex("#00000088"));
-            batch.DrawRect(new Vector2(corpo.X - largura / 2f, topo + 6f), new Vector2(largura * unidade.ProgressoDaEvolucao, 3f), Ouro);
+            batch.DrawRect(new Vector2(chao.X - largura / 2f, topo + 6f), new Vector2(largura, 3f), Color.FromHex("#00000088"));
+            batch.DrawRect(new Vector2(chao.X - largura / 2f, topo + 6f), new Vector2(largura * unidade.ProgressoDaEvolucao, 3f), Ouro);
         }
 
         for (int i = 0; i < unidade.Estagio; i++)
         {
-            float x = corpo.X - (unidade.Estagio - 1) * 6f + i * 12f;
+            float x = chao.X - (unidade.Estagio - 1) * 6f + i * 12f;
             formas.DesenharDisco(batch, new Vector2(x, topo - 8f), 4.5f, Ouro);
         }
     }
 
-    private static void DesenharProjeteis(SpriteBatch batch, Formas formas, Batalha batalha, float alfa)
+    /// <summary>
+    /// Animação sem quadros: o sprite é um só, e a vida vem de mexer nele. Andando, quica e
+    /// balança; voando, flutua; no golpe, dá um bote pra frente. Tudo derivado do estado da
+    /// simulação — nada aqui guarda tempo de animação além de pra que lado o bicho olha.
+    /// </summary>
+    private (Vector2 Ancora, float Inclinacao, bool Esquerda) Pose(Batalha batalha, Unidade unidade, Vector2 chao, float lado, float alfa)
+    {
+        float tempo = batalha.Tempo + alfa * Batalha.Passo + unidade.Id * 0.37f;
+        var passo = unidade.Posicao - unidade.PosicaoAnterior;
+        bool andando = unidade.Implantando <= 0f && passo.LengthSquared() > 1e-6f;
+
+        // Direção: pro alvo quando está batendo; senão pra onde anda, se anda de lado o bastante.
+        if (!_olhaPraEsquerda.TryGetValue(unidade.Id, out bool esquerda))
+            esquerda = unidade.Equipe == Equipe.Inimigo;
+
+        if (unidade.Atacando && unidade.Alvo is { Viva: true } alvo && MathF.Abs(alvo.Posicao.X - unidade.Posicao.X) > 0.15f)
+            esquerda = alvo.Posicao.X < unidade.Posicao.X;
+        else if (andando && MathF.Abs(passo.X) > MathF.Abs(passo.Y) * 0.35f)
+            esquerda = passo.X < 0f;
+
+        _olhaPraEsquerda[unidade.Id] = esquerda;
+        float frente = esquerda ? -1f : 1f;
+
+        var ancora = chao;
+        float inclinacao = 0f;
+
+        if (unidade.Voa)
+        {
+            ancora.Y -= 22f + MathF.Sin(tempo * 7f) * 3f;
+            inclinacao = MathF.Sin(tempo * 3.5f) * 0.05f;
+        }
+        else if (andando)
+        {
+            float fase = tempo * 11f;
+            ancora.Y -= MathF.Abs(MathF.Sin(fase)) * lado * 0.035f;
+            inclinacao = MathF.Sin(fase) * 0.05f;
+        }
+
+        // Bote: a Recarga volta pra Cadencia no instante do golpe.
+        float desdeOGolpe = unidade.Carta.Cadencia - unidade.Recarga;
+        if (unidade.Atacando && desdeOGolpe is >= 0f and < 0.25f)
+        {
+            float bote = MathF.Sin(desdeOGolpe / 0.25f * MathF.PI);
+            ancora.X += frente * bote * lado * 0.09f;
+            inclinacao += frente * bote * 0.14f;
+        }
+
+        return (ancora, inclinacao, esquerda);
+    }
+
+    /// <summary>Golpe recebido pisca vermelho; lama e veneno tingem enquanto duram.</summary>
+    private static Color TintaDeEstado(Batalha batalha, Unidade unidade)
+    {
+        if (batalha.Tempo - unidade.UltimoDano < 0.08f)
+            return new Color(1f, 0.45f, 0.45f, 1f);
+        if (unidade.Envenenada > 0f)
+            return new Color(0.7f, 1f, 0.55f, 1f);
+        if (unidade.Lenta > 0f)
+            return new Color(0.85f, 0.7f, 0.5f, 1f);
+        return Color.White;
+    }
+
+    private void DesenharProjeteis(SpriteBatch batch, Formas formas, Batalha batalha, float alfa)
     {
         foreach (var projetil in batalha.Projeteis)
         {
             var posicao = ParaMundo(Vector2.Lerp(projetil.PosicaoAnterior, projetil.Posicao, alfa));
-            var cor = projetil.Area > 0f ? Color.FromHex("#FFB86BFF") : Color.FromHex("#EDE6D6FF");
+            var carta = projetil.Fonte.Carta;
 
+            // Tiro com área que a forma base não tinha (Rei dos Espinhos) = tiro evoluído: dourado e maior.
+            bool evoluido = projetil.Area > 0f && carta.Area <= 0f;
+
+            if (_sprites.Projetil(carta) is { } arte)
+            {
+                var direcao = projetil.Posicao - projetil.PosicaoAnterior;
+                float angulo = direcao.LengthSquared() > 1e-8f ? MathF.Atan2(direcao.Y, direcao.X) : 0f;
+                float tamanho = (projetil.Area > 0f ? 34f : 26f) * (evoluido ? 1.2f : 1f);
+                batch.Draw(arte, posicao, new Vector2(tamanho), new Vector2(0.5f), angulo, evoluido ? Ouro : Color.White);
+                continue;
+            }
+
+            var cor = projetil.Area > 0f ? Color.FromHex("#FFB86BFF") : Color.FromHex("#EDE6D6FF");
             formas.DesenharDisco(batch, posicao, projetil.Area > 0f ? 7f : 4f, cor);
         }
     }
 
-    private static void DesenharFeiticos(SpriteBatch batch, Formas formas, Batalha batalha)
+    private void DesenharFeiticos(SpriteBatch batch, Formas formas, Batalha batalha)
     {
         foreach (var feitico in batalha.Feiticos)
         {
@@ -380,26 +505,43 @@ public sealed class VisaoArena
             float progresso = 1f - Math.Clamp(feitico.Restante / MathF.Max(0.01f, feitico.Carta.Atraso), 0f, 1f);
             var cor = Color.FromHex(feitico.Carta.Cor);
 
-            formas.DesenharDisco(batch, centro, raio, cor.WithAlpha(0.14f));
+            // A arte vai "se formando" enquanto o feitiço não cai: dá pra fugir se viu a tempo.
+            if (_sprites.AreaDoFeitico(feitico.Carta) is { } arte)
+                batch.Draw(arte, centro, new Vector2(raio * 2f * (0.6f + 0.4f * progresso)), new Vector2(0.5f), 0f, Color.White.WithAlpha(0.15f + 0.35f * progresso));
+            else
+                formas.DesenharDisco(batch, centro, raio, cor.WithAlpha(0.14f));
+
             formas.DesenharAnel(batch, centro, raio, cor.WithAlpha(0.4f));
             formas.DesenharAnel(batch, centro, MathF.Max(8f, raio * progresso), cor.WithAlpha(0.9f));
         }
     }
 
-    private void DesenharOndas(SpriteBatch batch, Formas formas)
+    /// <param name="arte">true = só as ondas com textura (vão no chão, debaixo das criaturas);
+    /// false = só os anéis (por cima de tudo).</param>
+    private void DesenharOndas(SpriteBatch batch, Formas formas, bool arte)
     {
         foreach (var onda in _ondas)
         {
+            if (onda.Textura is not null != arte)
+                continue;
+
             float t = onda.Idade / onda.Duracao;
             var centro = ParaMundo(onda.Centro);
-            float raio = onda.Raio * Tile * (0.4f + 0.6f * t);
 
+            if (onda.Textura is { } textura)
+            {
+                float lado = onda.Raio * Tile * 2f * (1f + 0.08f * t);
+                batch.Draw(textura, centro, new Vector2(lado), new Vector2(0.5f), 0f, Color.White.WithAlpha(MathF.Pow(1f - t, 1.5f)));
+                continue;
+            }
+
+            float raio = onda.Raio * Tile * (0.4f + 0.6f * t);
             formas.DesenharDisco(batch, centro, raio, onda.Cor.WithAlpha(onda.Cor.A * 0.3f * (1f - t)));
             formas.DesenharAnel(batch, centro, raio, onda.Cor.WithAlpha(onda.Cor.A * (1f - t)));
         }
     }
 
-    private static void DesenharPrevia(SpriteBatch batch, Formas formas, PreviaDeJogada previa)
+    private void DesenharPrevia(SpriteBatch batch, Formas formas, PreviaDeJogada previa)
     {
         var carta = previa.Carta;
         var centro = ParaMundo(previa.Tile);
@@ -407,7 +549,10 @@ public sealed class VisaoArena
 
         if (carta.Tipo == TipoDeCarta.Feitico)
         {
-            formas.DesenharDisco(batch, centro, carta.Raio * Tile, borda.WithAlpha(0.18f));
+            if (_sprites.AreaDoFeitico(carta) is { } area)
+                batch.Draw(area, centro, new Vector2(carta.Raio * Tile * 2f), new Vector2(0.5f), 0f, borda.WithAlpha(0.35f));
+            else
+                formas.DesenharDisco(batch, centro, carta.Raio * Tile, borda.WithAlpha(0.18f));
             formas.DesenharAnel(batch, centro, carta.Raio * Tile, borda.WithAlpha(0.8f));
             return;
         }
@@ -415,11 +560,27 @@ public sealed class VisaoArena
         if (carta.VelocidadeProjetil > 0f)
             formas.DesenharAnel(batch, centro, (carta.Alcance + carta.Raio) * Tile, Color.White.WithAlpha(0.25f));
 
+        var arte = _sprites.Criatura(carta, 0);
+        float raio = carta.Raio * Tile * EscalaVisual;
+
         for (int i = 0; i < carta.Quantidade; i++)
         {
             var posicao = ParaMundo(previa.Tile + Batalha.Formacao(i, carta));
-            formas.DesenharDisco(batch, posicao, carta.Raio * Tile * EscalaVisual, Color.FromHex(carta.Cor).WithAlpha(0.55f));
-            formas.DesenharAnel(batch, posicao, carta.Raio * Tile * EscalaVisual + 3f, borda.WithAlpha(0.9f));
+            var aro = new Vector2(raio * 1.9f, raio * 0.95f);
+            var pe = posicao + new Vector2(0f, raio * 0.3f);
+
+            if (arte is null)
+            {
+                formas.DesenharDisco(batch, posicao, raio, Color.FromHex(carta.Cor).WithAlpha(0.55f));
+                formas.DesenharAnel(batch, posicao, raio + 3f, borda.WithAlpha(0.9f));
+                continue;
+            }
+
+            batch.Draw(formas.Anel, pe, aro, new Vector2(0.5f), 0f, borda.WithAlpha(0.9f));
+            float lado = raio * 2f * Sprites.FatorDaCriatura(carta);
+            var ancora = posicao - new Vector2(0f, carta.Voa ? 22f : 0f);
+            batch.Draw(arte, ancora, new Vector2(lado), new Vector2(0.5f, 0.88f), 0f,
+                (previa.Valida ? Color.White : Color.FromHex("#FF8080FF")).WithAlpha(0.6f));
         }
     }
 
@@ -449,5 +610,8 @@ public sealed class VisaoArena
     /// <summary>Hash inteiro não negativo do tile — variação de chão estável entre frames.</summary>
     private static int Ruido(int x, int y) => ((x * 73856093) ^ (y * 19349663)) & 0x7FFFFFFF;
 
-    public static Color Escurecer(Color cor, float fator) => new(cor.R * fator, cor.G * fator, cor.B * fator, cor.A);
+    public static Color Clarear(Color cor, float fator)
+        => new(cor.R + (1f - cor.R) * fator, cor.G + (1f - cor.G) * fator, cor.B + (1f - cor.B) * fator, cor.A);
+
+    private static Color Tingir(Color cor, Color tinta) => new(cor.R * tinta.R, cor.G * tinta.G, cor.B * tinta.B, cor.A * tinta.A);
 }

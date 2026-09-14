@@ -168,7 +168,7 @@ public sealed class Mao
 
     // ------------------------------------------------------------------ desenho
 
-    public void Desenhar(SpriteBatch batch, Font fonte, Formas formas, Batalha batalha)
+    public void Desenhar(SpriteBatch batch, Font fonte, Formas formas, Sprites sprites, Batalha batalha)
     {
         var lado = batalha.LadoDe(Equipe.Jogador);
 
@@ -176,7 +176,7 @@ public sealed class Mao
         batch.DrawRect(new Vector2(0f, TopoDoPainel), new Vector2(720f, 3f), Color.FromHex("#3A4530FF"));
 
         Escrever(batch, fonte, "Próxima", new Vector2(64f, 1026f), Color.FromHex("#8E9780FF"), 0.6f);
-        DesenharCarta(batch, fonte, formas, lado.Proxima, RetanguloDaProxima, lado.Mana, selecionada: false, mini: true);
+        DesenharCarta(batch, fonte, formas, sprites, lado.Proxima, RetanguloDaProxima, lado.Mana, selecionada: false, mini: true);
 
         for (int i = 0; i < Lado.TamanhoDaMao; i++)
         {
@@ -186,7 +186,7 @@ public sealed class Mao
             if (selecionada)
                 retangulo = retangulo with { Y = retangulo.Y - 14f };
 
-            DesenharCarta(batch, fonte, formas, lado.Mao[i], retangulo, lado.Mana, selecionada, mini: false);
+            DesenharCarta(batch, fonte, formas, sprites, lado.Mao[i], retangulo, lado.Mana, selecionada, mini: false);
         }
 
         DesenharMana(batch, fonte, formas, lado.Mana, batalha.ManaPorSegundo(Equipe.Jogador));
@@ -199,12 +199,12 @@ public sealed class Mao
         if (_arrastando && _pressionada is int arrastada && Ponteiro.Y >= TopoDoPainel)
         {
             var r = RetanguloDaCarta(arrastada);
-            DesenharCarta(batch, fonte, formas, lado.Mao[arrastada],
+            DesenharCarta(batch, fonte, formas, sprites, lado.Mao[arrastada],
                 r with { X = Ponteiro.X - r.Width / 2f, Y = Ponteiro.Y - r.Height / 2f }, lado.Mana, true, false);
         }
     }
 
-    private static void DesenharCarta(SpriteBatch batch, Font fonte, Formas formas, CartaDef carta, RectF r,
+    private static void DesenharCarta(SpriteBatch batch, Font fonte, Formas formas, Sprites sprites, CartaDef carta, RectF r,
         float mana, bool selecionada, bool mini)
     {
         var canto = new Vector2(r.X, r.Y);
@@ -214,16 +214,23 @@ public sealed class Mao
             batch.DrawRect(canto - new Vector2(4f), tamanho + new Vector2(8f), Color.FromHex("#FFD54FFF"));
 
         batch.DrawRect(canto, tamanho, FundoDaCarta);
+        batch.DrawRect(canto, new Vector2(r.Width, r.Height * 0.72f), Color.FromHex(carta.Cor).WithAlpha(0.16f));
         batch.DrawRect(canto + new Vector2(0f, r.Height - 6f), new Vector2(r.Width, 6f),
             carta.Evolucoes.Count > 0 ? Color.FromHex("#FFD54F99") : Color.FromHex("#FFFFFF22"));
 
         var icone = canto + new Vector2(r.Width / 2f, r.Height * 0.42f);
-        float raio = r.Width * 0.3f;
-        formas.DesenharDisco(batch, icone, raio, Color.FromHex(carta.Cor));
+        if (sprites.Icone(carta) is { } arte)
+        {
+            batch.Draw(arte, icone, new Vector2(r.Width * (mini ? 0.95f : 0.9f)), new Vector2(0.5f), 0f, Color.White);
+        }
+        else
+        {
+            formas.DesenharDisco(batch, icone, r.Width * 0.3f, Color.FromHex(carta.Cor));
 
-        float escalaLetra = mini ? 0.9f : 1.3f;
-        var medida = fonte.MeasureText(carta.Letra, escalaLetra);
-        fonte.Draw(batch, carta.Letra, icone - medida / 2f, Color.FromHex("#1B1B22FF"), escalaLetra);
+            float escalaLetra = mini ? 0.9f : 1.3f;
+            var medida = fonte.MeasureText(carta.Letra, escalaLetra);
+            fonte.Draw(batch, carta.Letra, icone - medida / 2f, Color.FromHex("#1B1B22FF"), escalaLetra);
+        }
 
         if (!mini)
         {

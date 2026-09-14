@@ -57,7 +57,27 @@ workload `android`, JDK 17+ e Android SDK com a plataforma 36.
 | **Recompensa** | matar criatura evoluída dá mana ao lado que matou |
 | IA | mesmas regras do jogador; defende santuário invadido, reforça tanque, ataca em onda o santuário que vale mais |
 
-Não tem, de propósito (ver "Próximos passos"): arte, som, progressão, coleção, online.
+Não tem, de propósito (ver "Próximos passos"): som, progressão, coleção, online.
+
+## Arte
+
+Os sprites de `Assets/sprites/` são **gerados em código** (Python + Pillow + numpy), no mesmo
+estilo pras 15 formas de criatura, cenário, projéteis e feitiços:
+
+```bash
+python samples/Aurora.BeastArena/Arte/gerar_sprites.py          # todos
+python samples/Aurora.BeastArena/Arte/gerar_sprites.py lobo     # só os que começam com "lobo"
+```
+
+Sai também `Arte/folha.png`, com tudo lado a lado pra conferir sem abrir o jogo.
+
+- Convenção de nome pelo id da carta: `criaturas/<id>_<estágio>.png`, `cartas/<id>.png` (ícone de
+  feitiço), `efeitos/<id>.png` (área do feitiço), `efeitos/<id>_projetil.png`. Carta sem arte cai
+  no disco com letra do protótipo — dá pra testar carta nova antes de desenhar.
+- Criatura olha pra direita, pé em y 88 de 100; o jogo espelha, faz quicar ao andar, flutuar ao
+  voar e dar bote no golpe. O time é o aro no chão, então a arte não usa verde-água nem magenta.
+- Ovo do ninho é quase branco no PNG e ganha a cor do time no jogo.
+- `Render/Sprites.cs` liga filtro linear + mipmap nessas texturas (a engine usa Nearest).
 
 ## Arquitetura
 
@@ -137,6 +157,8 @@ fim por tempo, determinismo e uma partida IA x IA inteira.
 | Caminho, desvio, empurrão | `Sim/Batalha.Movimento.cs` |
 | Comportamento da IA | `Sim/IaOponente.cs` |
 | Visual da arena e das criaturas | `Render/VisaoArena.cs` |
+| Desenho dos sprites | `Arte/criaturas.py`, `Arte/cenario.py` |
+| Tamanho do sprite por criatura | `Render/Sprites.cs` (`FatorDaCriatura`) |
 | Mão, mana, placar, arrastar/tocar | `Render/Mao.cs` |
 | Telas | `BeastArenaGame.cs` + `Assets/scenes/*.json` |
 
@@ -145,7 +167,7 @@ fim por tempo, determinismo e uma partida IA x IA inteira.
 1. **Jogar com gente de verdade.** 5–10 pessoas, 10 partidas cada. A pergunta é uma só: pedem
    pra jogar mais uma? Anotar em que momento a evolução gerou reação e se quem estava atrás
    em santuários conseguiu virar.
-2. **Arte e som das 8 cartas**, com os 2–3 estágios visivelmente diferentes. Só `Render/` muda.
+2. **Som** e quadros de animação de verdade (hoje é um sprite por estágio mexido em código).
 3. **Mais cartas e 1–2 arenas** com modificador (pântano, fogo) e outro desenho de santuários
    — de novo só JSON + `Campo`.
 4. **Meta-game mínimo:** subir de arena, desbloquear carta, montar baralho.

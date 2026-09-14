@@ -34,6 +34,7 @@ public sealed class BeastArenaGame : Game
     private Font _fonte = null!;
     private Font _fonteGrande = null!;
     private Formas _formas = null!;
+    private Sprites _sprites = null!;
     private CatalogoCartas _catalogo = null!;
     private VisaoArena _visao = null!;
 
@@ -55,9 +56,10 @@ public sealed class BeastArenaGame : Game
         _fonte = Assets.LoadFont("fonts/DejaVuSans.ttf", 26f);
         _fonteGrande = Assets.LoadFont("fonts/DejaVuSans.ttf", 52f);
         _formas = new Formas(Gl);
+        _sprites = new Sprites(Gl, Assets);
 
         _catalogo = CatalogoCartas.Carregar(Assets.LoadText(CatalogoCartas.Caminho));
-        _visao = new VisaoArena(_catalogo);
+        _visao = new VisaoArena(_catalogo, _sprites);
 
         foreach (string tela in Telas)
             UI.Load($"scenes/{tela}.json", Assets);
@@ -205,7 +207,7 @@ public sealed class BeastArenaGame : Game
     protected override void OnRenderUI(float deltaTime)
     {
         if (_batalha is not null)
-            _mao.Desenhar(SpriteBatch, _fonte, _formas, _batalha);
+            _mao.Desenhar(SpriteBatch, _fonte, _formas, _sprites, _batalha);
 
         if (_estado == Estado.Fim)
             SpriteBatch.DrawRect(System.Numerics.Vector2.Zero, new System.Numerics.Vector2(ScreenSize.X, ScreenSize.Y), Color.FromHex("#000000B0"));
