@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <ApplicationId>com.aurora.caminhosdafe</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CaminhosDaFe.Droid</RootNamespace>
+    <!-- APK (sideload) em vez de AAB (Play Store) -->
+    <AndroidPackageFormats>apk</AndroidPackageFormats>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SilkActivity vive no asset net7.0-android do Windowing.Sdl; Input.Sdl é o
+         backend de input no Android (o meta-pacote Silk.NET.Input só traz GLFW). -->
+    <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />
+    <PackageReference Include="Silk.NET.Input.Sdl" Version="2.23.0" />
+    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Mesmo esquema do Beast Arena: compila os .cs do jogo aqui (referenciar o .csproj
+         desktop dá NETSDK1150), exceto o Program.cs. Glob recursivo pra pegar Scripts/ e
+         Game/; bin/obj do jogo saem à mão (CS0579 de AssemblyInfo duplicado). Arte/ é só
+         Python, não tem .cs. -->
+    <Compile Include="..\Aurora.CaminhosDaFe\**\*.cs"
+             Exclude="..\Aurora.CaminhosDaFe\Program.cs;..\Aurora.CaminhosDaFe\bin\**;..\Aurora.CaminhosDaFe\obj\**"
+             Link="GameSource\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AndroidAsset Include="..\Aurora.CaminhosDaFe\Assets\**"
+                  Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

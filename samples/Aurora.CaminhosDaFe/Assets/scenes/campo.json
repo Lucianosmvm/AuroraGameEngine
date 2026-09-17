@@ -2568,7 +2568,9 @@
           "Type": "TopDownController",
           "Speed": 72,
           "FlipSpriteByDirection": false,
-          "AnimatorSpeedParameter": ""
+          "AnimatorSpeedParameter": "",
+          "JoystickScreen": "Toque",
+          "JoystickName": "Joystick"
         },
         {
           "Type": "Davi"

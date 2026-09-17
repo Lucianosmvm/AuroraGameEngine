@@ -2,6 +2,7 @@ using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Scenes;
+using Aurora.Runtime.UI;
 using Silk.NET.Input;
 
 namespace CaminhosDaFe;
@@ -18,6 +19,10 @@ public sealed class Davi : Behavior
 
     /// <summary>Tecla de interação. E no teclado; A no controle.</summary>
     public string TeclaInteragir = "E";
+
+    /// <summary>Botão de interagir da tela de toque (celular).</summary>
+    public string BotaoTela = "ToqueInteragir";
+    public string BotaoNome = "BtnInteragir";
 
     /// <summary>O interagível que receberia o E agora — a HUD desenha a dica em cima dele.</summary>
     public Entity? AlvoProximo { get; private set; }
@@ -64,7 +69,8 @@ public sealed class Davi : Behavior
             return false;
 
         return (Enum.TryParse<Key>(TeclaInteragir, true, out var tecla) && input.WasKeyPressed(tecla))
-            || input.WasGamepadButtonPressed(ButtonName.A);
+            || input.WasGamepadButtonPressed(ButtonName.A)
+            || World.UI?.Find<UiButton>(BotaoTela, BotaoNome) is { Clicked: true };
     }
 
     private void Animar(TopDownController? controle, Funda? funda)

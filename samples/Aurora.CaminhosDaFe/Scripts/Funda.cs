@@ -2,6 +2,7 @@ using System.Numerics;
 using Aurora.Runtime.Ecs;
 using Aurora.Runtime.Ecs.Components;
 using Aurora.Runtime.Scenes;
+using Aurora.Runtime.UI;
 using Silk.NET.Input;
 
 namespace CaminhosDaFe;
@@ -12,7 +13,8 @@ namespace CaminhosDaFe;
 /// derrubar.
 ///
 /// <para>Mira: com o mouse, a pedra vai na direção do cursor; com J (ou gatilho direito do
-/// controle), vai pra onde o Davi está virado — ou pro analógico direito, se inclinado.</para>
+/// controle), vai pra onde o Davi está virado — ou pro analógico direito, se inclinado. No
+/// celular é o joystick da funda: arrastar a partir dele mira e carrega, soltar arremessa.</para>
 ///
 /// <para>O desenho da mira (pontilhado + anel de carga) é feito no <c>CaminhosGame.OnRender</c>,
 /// que lê <see cref="Mirando"/>, <see cref="Carga"/> e <see cref="Direcao"/>: script não tem
@@ -39,6 +41,15 @@ public sealed class Funda : Behavior
 
     /// <summary>Multiplicador da velocidade de andar enquanto gira a funda.</summary>
     public float LentidaoMirando = 0.45f;
+
+    /// <summary>Tela e nome do UiJoystick da funda (modo toque). Com essa tela visível o mouse
+    /// é ignorado: no celular todo toque também aparece como "mouse apertado", e o dedo no
+    /// joystick de andar dispararia a funda.</summary>
+    public string JoystickTela = "Toque";
+    public string JoystickNome = "Funda";
+
+    /// <summary>Arrasto mínimo (0 a 1 do raio) pra contar como mirando.</summary>
+    public float ZonaMorta = 0.25f;
 
     public bool Mirando { get; private set; }
 
@@ -74,13 +85,17 @@ public sealed class Funda : Behavior
             return;
         }
 
-        bool mouse = input.IsMouseDown(MouseButton.Left);
+        var toque = LerJoystick(out bool modoToque);
+        bool arrastando = toque.Length() > ZonaMorta;
+        bool mouse = !modoToque && input.IsMouseDown(MouseButton.Left);
         bool teclado = input.IsKeyDown(Key.J) || input.RightTrigger > 0.5f;
-        bool segurando = mouse || teclado;
+        bool segurando = arrastando || mouse || teclado;
 
         // Só mira enquanto segura: no frame de soltar o mouse já está "solto", e recalcular ali
         // trocaria o cursor pela direção do corpo — a pedra sairia pro lado errado.
-        if (segurando)
+        if (arrastando)
+            Direcao = Vector2.Normalize(toque);
+        else if (segurando)
             AtualizarDirecao(input, mouse);
 
         if (segurando && (Mirando || _recarga <= 0f))
@@ -94,6 +109,12 @@ public sealed class Funda : Behavior
             Mirando = false;
             Carga = 0f;
         }
+    }
+
+    private Vector2 LerJoystick(out bool modoToque)
+    {
+        modoToque = JoystickNome.Length > 0 && World!.UI?.IsVisible(JoystickTela) == true;
+        return modoToque ? World!.UI!.Find<UiJoystick>(JoystickTela, JoystickNome)?.Value ?? Vector2.Zero : Vector2.Zero;
     }
 
     private void AtualizarDirecao(Aurora.Runtime.Input.InputManager input, bool mouse)

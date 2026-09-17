@@ -16,13 +16,20 @@ namespace CaminhosDaFe;
 /// mundo: a mira da funda, a dica "[E] Falar" e o balido das ovelhas. A regra do jogo está
 /// espalhada onde ela acontece: roteiro em <see cref="Missao"/>, comportamento em Scripts/.</para>
 ///
+/// <para>Modo toque (<see cref="ModoToque"/>, ligado sozinho no Android): joystick de andar,
+/// joystick da funda, botão de interagir que só aparece perto de alguém, botões pras escolhas
+/// do diálogo e toque na tela pra passar a fala. No PC dá pra testar com <c>--toque</c>, usando
+/// o mouse como dedo.</para>
+///
 /// <para>Diálogo congela o mundo (<c>World.Paused</c>): o lobo não morde ninguém enquanto o
 /// Jessé fala. Por isso o avanço do diálogo pela tecla E mora aqui, no <c>OnUpdate</c>, que roda
 /// mesmo com o mundo parado.</para>
 /// </summary>
 public sealed class CaminhosGame : Game
 {
-    private static readonly string[] Telas = ["MainMenu", "Hud", "Pausa", "Fim"];
+    private static readonly string[] Telas = ["MainMenu", "Hud", "Pausa", "Fim", "Toque", "ToqueInteragir", "ToqueEscolha"];
+
+    private const int MaxOpcoesToque = 3;
 
     private const string CenaMenu = "scenes/menu.json";
     private const string CenaCampo = "scenes/campo.json";
@@ -34,6 +41,10 @@ public sealed class CaminhosGame : Game
 
     private Font _fonte = null!;
     private Estado _estado;
+    private string _dicaTeclado = "";
+
+    /// <summary>Controles na tela em vez de teclado e mouse. Defina antes do Run.</summary>
+    public bool ModoToque { get; set; } = OperatingSystem.IsAndroid();
 
     public CaminhosGame()
     {
@@ -48,6 +59,9 @@ public sealed class CaminhosGame : Game
 
         foreach (string tela in Telas)
             UI.Load($"scenes/{tela}.json", Assets);
+
+        _dicaTeclado = UI.Find<UiText>("Hud", "Dica")?.Text ?? "";
+        Texto("Hud", "Dica", ModoToque ? "" : _dicaTeclado);
 
         // Play do editor com o campo aberto cai direto no jogo.
         if (BootScene is { } boot && boot.Replace('\\', '/').EndsWith("campo.json", StringComparison.OrdinalIgnoreCase))
@@ -101,12 +115,15 @@ public sealed class CaminhosGame : Game
         bool dialogoNoInicio = Dialogue.IsActive;
         if (dialogoNoInicio && (Input.WasKeyPressed(Key.E) || Input.WasGamepadButtonPressed(ButtonName.A)))
             Dialogue.Advance();
+        else if (dialogoNoInicio && ModoToque)
+            AvancarDialogoPorToque();
 
         // "No início" também conta: o E que fechou a última fala não pode, no mesmo frame, chegar
         // ao Davi e abrir a conversa de novo.
         World.Paused = dialogoNoInicio || Dialogue.IsActive;
 
         Texto("Hud", "Objetivo", Missao.Objetivo(Quests, State));
+        AtualizarTelasDeToque();
 
         if (World.Paused)
             return;
@@ -130,11 +147,78 @@ public sealed class CaminhosGame : Game
             return;
         }
 
-        if (Input.WasKeyPressed(Key.Escape))
+        if (Input.WasKeyPressed(Key.Escape) || Clicou("Toque", "BtnPausa"))
         {
             World.Paused = true;
             _estado = Estado.Pausa;
             MostrarSomente("Hud", "Pausa");
+        }
+    }
+
+    // ---------------------------------------------------------------- toque
+
+    /// <summary>Toque em qualquer lugar passa a fala. Na escolha, não: ali só os botões das
+    /// opções valem — senão o toque que mira o botão "Por que sempre eu?" confirmaria a opção
+    /// que estava selecionada antes de o botão sequer registrar o toque.</summary>
+    private void AvancarDialogoPorToque()
+    {
+        if (Dialogue.Current is DialogueChoice escolha)
+        {
+            for (int i = 0; i < escolha.Options.Count && i < MaxOpcoesToque; i++)
+            {
+                if (!Clicou("ToqueEscolha", $"Opcao{i}"))
+                    continue;
+
+                while (Dialogue.SelectedIndex != i)
+                    Dialogue.SelectNext();
+                Dialogue.Advance();
+                return;
+            }
+        }
+        else if (Dialogue.Current is not null && Input.WasMouseClicked())
+        {
+            Dialogue.Advance();
+        }
+    }
+
+    private void AtualizarTelasDeToque()
+    {
+        if (!ModoToque)
+            return;
+
+        UI.Show("Toque");
+
+        // Interagir: só existe quando tem alguém perto, com o verbo dele ("Falar", "Chamar").
+        var alvo = World.TryFind("Player", out var davi) ? davi.Get<Davi>()?.AlvoProximo : null;
+        if (!Dialogue.IsActive && alvo?.Get<Interagivel>() is { } interagivel)
+        {
+            if (UI.Find<UiButton>("ToqueInteragir", "BtnInteragir") is { } botao)
+                botao.Text = interagivel.Verbo;
+            UI.Show("ToqueInteragir");
+        }
+        else
+        {
+            UI.Hide("ToqueInteragir");
+        }
+
+        // Escolha: um botão por opção, empilhados logo acima da caixa de diálogo. Botão sem
+        // opção fica com largura zero — invisível e sem área de toque.
+        if (Dialogue.Current is DialogueChoice escolha)
+        {
+            int total = Math.Min(escolha.Options.Count, MaxOpcoesToque);
+            for (int i = 0; i < MaxOpcoesToque; i++)
+            {
+                if (UI.Find<UiButton>("ToqueEscolha", $"Opcao{i}") is not { } opcao)
+                    continue;
+                opcao.Text = i < total ? escolha.Options[i] : "";
+                opcao.Width = i < total ? 480f : 0f;
+                opcao.Y = 170f + (total - 1 - i) * 70f;
+            }
+            UI.Show("ToqueEscolha");
+        }
+        else
+        {
+            UI.Hide("ToqueEscolha");
         }
     }
 
@@ -194,6 +278,12 @@ public sealed class CaminhosGame : Game
         if (_estado is Estado.Jogando && !Dialogue.IsActive)
             DesenharDicasDoMundo();
 
+        if (UI.IsVisible("Toque"))
+        {
+            DesenharJoystick("Joystick", new Color(1f, 1f, 1f, 0.9f));
+            DesenharJoystick("Funda", Color.FromBytes(240, 206, 120));
+        }
+
         UI.Draw(SpriteBatch, _fonte, State, Inventory, Quests, ScreenSize.X, ScreenSize.Y);
         Dialogue.Draw(SpriteBatch, _fonte, ScreenSize.X, ScreenSize.Y);
     }
@@ -209,8 +299,33 @@ public sealed class CaminhosGame : Game
         if (World.TryFind("Player", out var davi) && davi.Get<Davi>() is { AlvoProximo: { } alvo }
             && alvo.Get<Transform>() is { } ta && alvo.Get<Interagivel>() is { } interagivel)
         {
-            Balao(ta.Position + new Vector2(0f, -12f), $"[E] {interagivel.Verbo}", 0.9f);
+            // No celular o botão já diz o verbo; o balão só aponta quem vai receber o toque.
+            Balao(ta.Position + new Vector2(0f, -12f), ModoToque ? "!" : $"[E] {interagivel.Verbo}", 0.9f);
         }
+    }
+
+    /// <summary>
+    /// O UiJoystick da engine se desenha com brilho aditivo, que some na grama clara. Aqui ele
+    /// fica com cor transparente na tela JSON e ganha aro e botão de verdade — posição pela
+    /// mesma regra de âncora que o UIManager usa no toque, então desenho e área tocável batem.
+    /// </summary>
+    private void DesenharJoystick(string nome, Color cor)
+    {
+        if (UI.Find<UiJoystick>("Toque", nome) is not { } stick)
+            return;
+
+        var diametro = new Vector2(stick.Radius * 2f);
+        var centro = new Vector2(
+            UiAnchor.Resolve(stick.AnchorX, stick.X, ScreenSize.X, diametro.X),
+            UiAnchor.Resolve(stick.AnchorY, stick.Y, ScreenSize.Y, diametro.Y)) + diametro / 2f;
+
+        var anel = Assets.LoadTexture("sprites/toque_anel.png");
+        var botao = Assets.LoadTexture("sprites/toque_botao.png");
+        bool ativo = stick.Value.LengthSquared() > 0f;
+
+        SpriteBatch.Draw(anel, centro, diametro, new Vector2(0.5f), 0f, cor.WithAlpha(ativo ? 0.8f : 0.5f));
+        SpriteBatch.Draw(botao, centro + stick.Value * stick.Radius, diametro * 0.45f, new Vector2(0.5f), 0f,
+            cor.WithAlpha(ativo ? 0.95f : 0.6f));
     }
 
     /// <summary>Texto com fundo, centrado acima de um ponto do mundo.</summary>

@@ -133,7 +133,7 @@ public static class Missao
     }
 
     /// <summary>Linha de objetivo da HUD.</summary>
-    public static string Objetivo(QuestManager quests, GameState state) => quests.GetStage(Id) switch
+    public static string Objetivo(QuestManager quests, Aurora.Runtime.GameState state) => quests.GetStage(Id) switch
     {
         NaoIniciada => "Fale com Jessé, seu pai.",
         BuscandoOvelhas => $"Traga as ovelhas perdidas ao curral ({(int)state.GetVariable(VarOvelhas)}/{TotalOvelhas})",

@@ -111,7 +111,10 @@ def davi(x, y):
         {"Type": "Collider", "Shape": "Circle", "Radius": 4, "OffsetY": 5},
         {"Type": "Health", "Max": 100, "InvulnerabilityAfterHit": 0.6, "DestroyOnDeath": False},
         {"Type": "Tags", "Value": "jogador"},
-        {"Type": "TopDownController", "Speed": 72, "FlipSpriteByDirection": False, "AnimatorSpeedParameter": ""},
+        {
+            "Type": "TopDownController", "Speed": 72, "FlipSpriteByDirection": False, "AnimatorSpeedParameter": "",
+            "JoystickScreen": "Toque", "JoystickName": "Joystick",
+        },
         {"Type": "Davi"},
         {"Type": "Funda"},
         ordem_por_y(8),

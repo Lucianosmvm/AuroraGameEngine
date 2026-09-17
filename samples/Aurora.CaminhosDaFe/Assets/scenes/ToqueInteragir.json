@@ -1,0 +1,25 @@
+{
+  "Scene": "ToqueInteragir",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "BtnInteragir",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 40,
+          "Y": 262,
+          "AnchorX": "Right",
+          "AnchorY": "Bottom",
+          "Width": 180,
+          "Height": 68,
+          "Text": "Falar",
+          "Color": "#7A5634E6",
+          "HoverColor": "#7A5634E6",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    }
+  ]
+}

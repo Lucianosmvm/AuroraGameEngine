@@ -1,0 +1,63 @@
+{
+  "Scene": "ToqueEscolha",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Opcao0",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 310,
+          "AnchorX": "Center",
+          "AnchorY": "Bottom",
+          "Width": 480,
+          "Height": 58,
+          "Text": "",
+          "Color": "#7A5634F0",
+          "HoverColor": "#7A5634F0",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    },
+    {
+      "Name": "Opcao1",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 240,
+          "AnchorX": "Center",
+          "AnchorY": "Bottom",
+          "Width": 480,
+          "Height": 58,
+          "Text": "",
+          "Color": "#7A5634F0",
+          "HoverColor": "#7A5634F0",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    },
+    {
+      "Name": "Opcao2",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 170,
+          "AnchorX": "Center",
+          "AnchorY": "Bottom",
+          "Width": 480,
+          "Height": 58,
+          "Text": "",
+          "Color": "#7A5634F0",
+          "HoverColor": "#7A5634F0",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    }
+  ]
+}

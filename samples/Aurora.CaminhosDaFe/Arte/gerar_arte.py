@@ -514,6 +514,32 @@ def retrato(folha_img, quadro, largura, fundo):
     return img
 
 
+def disco(tamanho, anel):
+    """Controles de toque, brancos pra receber cor no desenho. anel=True: aro com miolo
+    translúcido (base do joystick); False: disco cheio (o botão que o dedo arrasta). Contorno
+    escuro pra aparecer tanto na grama clara quanto na água."""
+    escala = 4
+    grande = tamanho * escala
+    img = Image.new("RGBA", (grande, grande), (0, 0, 0, 0))
+    px = img.load()
+    c = (grande - 1) / 2
+    r = grande / 2 - 1
+    for y in range(grande):
+        for x in range(grande):
+            d = ((x - c) ** 2 + (y - c) ** 2) ** 0.5
+            if d > r:
+                continue
+            if d > r - 2 * escala:
+                px[x, y] = (30, 20, 12, 200)
+            elif not anel:
+                px[x, y] = (255, 255, 255, 235)
+            elif d > r - 7 * escala:
+                px[x, y] = (255, 255, 255, 200)
+            else:
+                px[x, y] = (255, 255, 255, 60)
+    return img.resize((tamanho, tamanho), Image.LANCZOS)
+
+
 def fundo_menu():
     """320x180: céu de fim de tarde, morros e o rebanho em silhueta."""
     img = Image.new("RGBA", (320, 180))
@@ -559,6 +585,8 @@ def main():
         "retrato_davi": retrato(folha_davi, (0, 0), 16, (92, 120, 150)),
         "retrato_jesse": retrato(folha_jesse, (0, 0), 16, (120, 100, 80)),
         "fundo_menu": fundo_menu(),
+        "toque_anel": disco(128, True),
+        "toque_botao": disco(64, False),
     }
 
     for nome, img in sprites.items():
@@ -569,7 +597,7 @@ def main():
     escala = 4
     x = 0
     altura = max(i.height for i in sprites.values() if i.width <= 64) * escala
-    itens = [i for n, i in sprites.items() if n != "fundo_menu"]
+    itens = [i for n, i in sprites.items() if n != "fundo_menu" and not n.startswith("toque_")]
     largura = sum(i.width * escala + 8 for i in itens)
     previa = Image.new("RGBA", (largura, altura), GRAMA + (255,))
     for img in itens:

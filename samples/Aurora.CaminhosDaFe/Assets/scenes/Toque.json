@@ -1,0 +1,71 @@
+{
+  "Scene": "Toque",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Joystick",
+      "Components": [
+        {
+          "Type": "UiJoystick",
+          "X": 56,
+          "Y": 70,
+          "AnchorX": "Left",
+          "AnchorY": "Bottom",
+          "Radius": 90,
+          "BaseColor": "#00000000",
+          "KnobColor": "#00000000"
+        }
+      ]
+    },
+    {
+      "Name": "Funda",
+      "Components": [
+        {
+          "Type": "UiJoystick",
+          "X": 56,
+          "Y": 70,
+          "AnchorX": "Right",
+          "AnchorY": "Bottom",
+          "Radius": 80,
+          "BaseColor": "#00000000",
+          "KnobColor": "#00000000"
+        }
+      ]
+    },
+    {
+      "Name": "FundaRotulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 108,
+          "Y": 34,
+          "AnchorX": "Right",
+          "AnchorY": "Bottom",
+          "Text": "FUNDA",
+          "Color": "#FFF1CCCC",
+          "Scale": 0.9,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnPausa",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 24,
+          "Y": 24,
+          "AnchorX": "Right",
+          "AnchorY": "Top",
+          "Width": 64,
+          "Height": 56,
+          "Text": "II",
+          "Color": "#140E0AAA",
+          "HoverColor": "#140E0AAA",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    }
+  ]
+}

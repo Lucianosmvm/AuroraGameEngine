@@ -16,6 +16,27 @@ Direto no campo, sem passar pelo menu:
 dotnet run --project samples/Aurora.CaminhosDaFe -- --scene scenes/campo.json
 ```
 
+Controles de celular no PC (o mouse faz o papel do dedo):
+
+```bash
+dotnet run --project samples/Aurora.CaminhosDaFe -- --toque
+```
+
+## Android (APK)
+
+```bash
+cd samples/Aurora.CaminhosDaFe.Android
+dotnet build -c Release
+```
+
+Sai `bin/Release/net10.0-android/com.aurora.caminhosdafe-Signed.apk`, assinado com a chave de
+debug: serve pra instalar e testar, não pra Play Store. Instalar com `adb install <apk>`
+(depuração USB ligada) ou copiando o arquivo pro celular e abrindo (permitir "fontes
+desconhecidas"). Precisa do workload Android (`dotnet workload install android`).
+
+O projeto Android não tem código próprio de jogo: compila os `.cs` e empacota os `Assets/` desta
+pasta. Mexeu aqui, é só gerar o APK de novo. Detalhes e pegadinhas: `docs/GUIA-ANDROID.md`.
+
 ## Controles
 
 | | |
@@ -25,6 +46,17 @@ dotnet run --project samples/Aurora.CaminhosDaFe -- --scene scenes/campo.json
 | Funda | segure o botão esquerdo do mouse pra girar, solte pra arremessar na direção do cursor. `J` ou gatilho direito arremessa pra onde o Davi olha |
 | Escolha no diálogo | `W`/`S` ou setas, confirma com Espaço |
 | Pausa | `ESC` |
+
+No celular (ou com `--toque`):
+
+| | |
+|---|---|
+| Andar | joystick no canto esquerdo |
+| Funda | joystick "FUNDA" no canto direito: arraste a partir dele pra mirar e carregar, solte pra arremessar. Dá pra andar com um dedo e mirar com o outro |
+| Interagir | botão "Falar"/"Chamar", que só aparece perto de alguém |
+| Passar a fala | toque em qualquer lugar |
+| Escolha no diálogo | toque no botão da opção |
+| Pausa | botão `II` no topo |
 
 ## O roteiro (Missão "O Rebanho")
 
@@ -41,7 +73,7 @@ dotnet run --project samples/Aurora.CaminhosDaFe -- --scene scenes/campo.json
 
 ```
 CaminhosGame.cs         telas (menu, HUD, pausa, fim), diálogo pausando o mundo, desenho da mira
-                        e das dicas "[E] Falar" / "Bééé!"
+                        e das dicas "[E] Falar" / "Bééé!", controles de toque
 Game/Missao.cs          o roteiro: falas por estágio, objetivo da HUD, virtudes  ← histórias aqui
 
 Scripts/Davi.cs         animação em 4 direções, tecla E, vida pra HUD
@@ -56,8 +88,10 @@ Scripts/OrdemPorY.cs    quem está mais embaixo é desenhado por cima
 
 Arte/gerar_arte.py      toda a pixel art, desenhada em texto → Assets/sprites/ (+ Arte/previa.png)
 Arte/gerar_mapa.py      o mapa em ASCII → Assets/scenes/campo.json
-Assets/scenes/*.json    campo, menu e as telas de UI
+Assets/scenes/*.json    campo, menu e as telas de UI (Toque*.json = controles de celular)
 Assets/prefabs/pedra.json
+
+../Aurora.CaminhosDaFe.Android   MainActivity (toque → engine) e o .csproj que gera o APK
 ```
 
 ## Mexer no mapa ou na arte
@@ -84,7 +118,9 @@ e não `Collider`: a engine monta a grade do A* só a partir do Tilemap.
    `LoboDerrotado`, `FalarCom`); a Missao decide o que isso significa na história.
 2. **Diálogo congela o mundo.** Por isso o avanço por `E` fica no `OnUpdate` do jogo, que roda
    com o mundo parado.
-3. **A fonte só tem Latin-1.** Acentos funcionam; travessão (—), aspas curvas e símbolos como ✝
+3. **No modo toque o mouse é ignorado pela funda.** No Android todo toque também chega como
+   "mouse apertado"; sem isso, o dedo no joystick de andar dispararia a funda.
+4. **A fonte só tem Latin-1.** Acentos funcionam; travessão (—), aspas curvas e símbolos como ✝
    aparecem como `?` na tela.
 
 ## Fora do protótipo (próximos passos do GDD)
