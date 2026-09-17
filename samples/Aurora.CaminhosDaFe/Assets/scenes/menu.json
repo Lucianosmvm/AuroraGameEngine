@@ -1,0 +1,19 @@
+{
+  "Scene": "menu",
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "SpriteRenderer", "Texture": "sprites/fundo_menu.png", "SizeX": 1280, "SizeY": 720 }
+      ]
+    },
+    {
+      "Name": "Camera",
+      "Components": [
+        { "Type": "Transform", "X": 0, "Y": 0 },
+        { "Type": "CameraController", "FollowSpeed": 0, "Zoom": 1 }
+      ]
+    }
+  ]
+}

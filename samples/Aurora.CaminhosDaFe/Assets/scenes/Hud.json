@@ -1,0 +1,103 @@
+{
+  "Scene": "Hud",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Fundo",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 12,
+          "Y": 12,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 420,
+          "Height": 102,
+          "Color": "#140E0AAA"
+        }
+      ]
+    },
+    {
+      "Name": "BarraVida",
+      "Components": [
+        {
+          "Type": "UiBar",
+          "X": 24,
+          "Y": 24,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Width": 220,
+          "Height": 18,
+          "Variable": "VidaPct",
+          "Max": 100,
+          "FillColor": "#C8463CFF",
+          "BackColor": "#3A2A22FF"
+        }
+      ]
+    },
+    {
+      "Name": "TextoVida",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 254,
+          "Y": 22,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "{Vida}/{VidaMax}",
+          "Color": "#FFE6D8FF",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Objetivo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 24,
+          "Y": 52,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "",
+          "Color": "#FFF1CCFF",
+          "Scale": 1.0,
+          "MaxWidth": 396
+        }
+      ]
+    },
+    {
+      "Name": "Virtudes",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 24,
+          "Y": 84,
+          "AnchorX": "Left",
+          "AnchorY": "Top",
+          "Text": "Fé {Fe}     Coragem {Coragem}",
+          "Color": "#E8C878FF",
+          "Scale": 0.9,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Dica",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 16,
+          "AnchorX": "Left",
+          "AnchorY": "Bottom",
+          "Text": "WASD andar  ·  E interagir  ·  segure o mouse (ou J): funda  ·  ESC pausa",
+          "Color": "#FFFFFFB0",
+          "Scale": 0.85,
+          "MaxWidth": 0
+        }
+      ]
+    }
+  ]
+}

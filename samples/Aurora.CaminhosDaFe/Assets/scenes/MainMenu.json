@@ -1,0 +1,107 @@
+{
+  "Scene": "MainMenu",
+  "UI": true,
+  "Objects": [
+    {
+      "Name": "Faixa",
+      "Components": [
+        {
+          "Type": "UiPanel",
+          "X": 0,
+          "Y": -150,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 1280,
+          "Height": 170,
+          "Color": "#1A120C99"
+        }
+      ]
+    },
+    {
+      "Name": "Titulo",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -185,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "CAMINHOS DA FÉ",
+          "Color": "#FFF1CCFF",
+          "Scale": 3.0,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "Sub",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 0,
+          "Y": -110,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Text": "Capítulo 1: Davi, o pastor",
+          "Color": "#E8D2A6FF",
+          "Scale": 1.2,
+          "MaxWidth": 0
+        }
+      ]
+    },
+    {
+      "Name": "BtnNovo",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 30,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 280,
+          "Height": 52,
+          "Text": "Novo jogo",
+          "Color": "#5A3E24FF",
+          "HoverColor": "#7A5634FF",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    },
+    {
+      "Name": "BtnSair",
+      "Components": [
+        {
+          "Type": "UiButton",
+          "X": 0,
+          "Y": 100,
+          "AnchorX": "Center",
+          "AnchorY": "Center",
+          "Width": 280,
+          "Height": 52,
+          "Text": "Sair",
+          "Color": "#5A3E24FF",
+          "HoverColor": "#7A5634FF",
+          "PressedColor": "#3E2A18FF",
+          "TextColor": "#FFF4DCFF"
+        }
+      ]
+    },
+    {
+      "Name": "Versao",
+      "Components": [
+        {
+          "Type": "UiText",
+          "X": 20,
+          "Y": 16,
+          "AnchorX": "Right",
+          "AnchorY": "Bottom",
+          "Text": "protótipo 0.1",
+          "Color": "#FFF1CC99",
+          "Scale": 1.0,
+          "MaxWidth": 0
+        }
+      ]
+    }
+  ]
+}

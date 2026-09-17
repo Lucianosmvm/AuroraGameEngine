@@ -1,0 +1,2747 @@
+{
+  "Scene": "campo",
+  "Objects": [
+    {
+      "Name": "Chao",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Type": "Tilemap",
+          "Texture": "sprites/tileset.png",
+          "TileWidth": 16,
+          "TileHeight": 16,
+          "Width": 48,
+          "Height": 32,
+          "Layer": -10000,
+          "SolidTiles": "4, 5, 6, 7, 8, 9",
+          "Tiles": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            0,
+            0,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5,
+            8,
+            8,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            11,
+            0,
+            5,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            5,
+            8,
+            8,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            11,
+            11,
+            1,
+            5,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            5,
+            8,
+            8,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            11,
+            11,
+            1,
+            0,
+            5,
+            0,
+            0,
+            0,
+            2,
+            9,
+            1,
+            1,
+            2,
+            5,
+            8,
+            8,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            11,
+            0,
+            0,
+            0,
+            0,
+            5,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            5,
+            8,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            2,
+            2,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            5,
+            1,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            1,
+            5,
+            8,
+            8,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            2,
+            2,
+            1,
+            0,
+            0,
+            0,
+            0,
+            5,
+            5,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            5,
+            5,
+            8,
+            8,
+            0,
+            1,
+            0,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            1,
+            0,
+            0,
+            1,
+            2,
+            8,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            9,
+            0,
+            1,
+            0,
+            0,
+            0,
+            2,
+            1,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            3,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            9,
+            2,
+            0,
+            1,
+            8,
+            8,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            3,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            8,
+            8,
+            0,
+            2,
+            8,
+            8,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            2,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            1,
+            9,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            5,
+            5,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            1,
+            1,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            2,
+            1,
+            0,
+            3,
+            1,
+            0,
+            1,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            2,
+            1,
+            0,
+            1,
+            5,
+            5,
+            5,
+            0,
+            1,
+            0,
+            0,
+            8,
+            8,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            2,
+            8,
+            8,
+            0,
+            2,
+            0,
+            1,
+            1,
+            1,
+            0,
+            2,
+            2,
+            0,
+            1,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            3,
+            0,
+            1,
+            2,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            2,
+            0,
+            0,
+            1,
+            0,
+            0,
+            2,
+            9,
+            0,
+            8,
+            8,
+            2,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            1,
+            0,
+            0,
+            0,
+            3,
+            0,
+            1,
+            1,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            3,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            9,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            8,
+            8,
+            1,
+            0,
+            1,
+            0,
+            9,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            2,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            9,
+            0,
+            0,
+            0,
+            1,
+            8,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            1,
+            2,
+            2,
+            1,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            1,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            8,
+            8,
+            0,
+            1,
+            8,
+            8,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            2,
+            1,
+            0,
+            0,
+            2,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            8,
+            8,
+            0,
+            2,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            2,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            1,
+            0,
+            1,
+            3,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            0,
+            9,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            7,
+            0,
+            9,
+            1,
+            3,
+            1,
+            9,
+            9,
+            9,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            2,
+            0,
+            0,
+            2,
+            0,
+            0,
+            1,
+            1,
+            2,
+            0,
+            9,
+            8,
+            8,
+            0,
+            2,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            7,
+            0,
+            0,
+            0,
+            3,
+            0,
+            9,
+            9,
+            9,
+            2,
+            0,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            2,
+            0,
+            8,
+            8,
+            0,
+            0,
+            1,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            0,
+            2,
+            1,
+            0,
+            0,
+            0,
+            2,
+            1,
+            1,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            3,
+            3,
+            3,
+            3,
+            3,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            9,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            8,
+            8,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            7,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            8,
+            8,
+            1,
+            0,
+            0,
+            2,
+            2,
+            0,
+            1,
+            0,
+            1,
+            7,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            7,
+            2,
+            1,
+            2,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            9,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            2,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            1,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            8,
+            8,
+            8,
+            1,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            2,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            2,
+            9,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "Name": "Curral",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 248.0,
+          "Y": 384.0
+        },
+        {
+          "Type": "Curral",
+          "Largura": 144,
+          "Altura": 96
+        }
+      ]
+    },
+    {
+      "Name": "Lobo",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 664.0,
+          "Y": 56.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/lobo.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 24,
+          "FrameHeight": 16,
+          "SheetColumns": 3,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.12,
+              "Frames": [
+                0,
+                1
+              ]
+            },
+            {
+              "Name": "bote",
+              "Duration": 0.2,
+              "Frames": [
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 6,
+          "OffsetY": 4
+        },
+        {
+          "Type": "Health",
+          "Max": 45,
+          "InvulnerabilityAfterHit": 0.15,
+          "DestroyOnDeath": false
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 60,
+          "Enabled": false
+        },
+        {
+          "Type": "Tags",
+          "Value": "inimigo"
+        },
+        {
+          "Type": "Lobo"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 7
+        }
+      ]
+    },
+    {
+      "Name": "Arvore1",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 680.0,
+          "Y": 78
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Ovelha do Rio",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 56.0,
+          "Y": 104.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": true
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": true
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Arvore2",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 104.0,
+          "Y": 110
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore3",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 360.0,
+          "Y": 110
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore4",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 120.0,
+          "Y": 126
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore5",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 136.0,
+          "Y": 158
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore6",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 696.0,
+          "Y": 158
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore7",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 248.0,
+          "Y": 190
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore8",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 536.0,
+          "Y": 190
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore9",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 120.0,
+          "Y": 222
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore10",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 504.0,
+          "Y": 222
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore11",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 728.0,
+          "Y": 238
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore12",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 40.0,
+          "Y": 254
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore13",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 568.0,
+          "Y": 254
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore14",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 600.0,
+          "Y": 270
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Ovelha do Bosque",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 664.0,
+          "Y": 264.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": true
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": true
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Arvore15",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 88.0,
+          "Y": 286
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore16",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 680.0,
+          "Y": 286
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore17",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 504.0,
+          "Y": 302
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore18",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 600.0,
+          "Y": 302
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore19",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 40.0,
+          "Y": 350
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Rebanho2",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 200.0,
+          "Y": 344.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": false
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": false
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Jesse",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 360.0,
+          "Y": 344.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/jesse.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "respirar",
+              "Duration": 0.7,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 24,
+          "Verbo": "Falar"
+        },
+        {
+          "Type": "Npc",
+          "Id": "jesse"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 8
+        }
+      ]
+    },
+    {
+      "Name": "Arvore20",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 744.0,
+          "Y": 350
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Rebanho16",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 280.0,
+          "Y": 360.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": false
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": false
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Casa",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 440.0,
+          "Y": 368
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/casa.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Rebanho31",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 232.0,
+          "Y": 392.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": false
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": false
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Arvore21",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 504.0,
+          "Y": 398
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore22",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 40.0,
+          "Y": 414
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Player",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 392.0,
+          "Y": 408.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/davi.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 4,
+          "Clips": [
+            {
+              "Name": "parado_baixo",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar_baixo",
+              "Duration": 0.12,
+              "Frames": [
+                1,
+                0,
+                2,
+                0
+              ]
+            },
+            {
+              "Name": "arremesso_baixo",
+              "Duration": 0.2,
+              "Frames": [
+                3
+              ]
+            },
+            {
+              "Name": "parado_cima",
+              "Duration": 0.2,
+              "Frames": [
+                4
+              ]
+            },
+            {
+              "Name": "andar_cima",
+              "Duration": 0.12,
+              "Frames": [
+                5,
+                4,
+                6,
+                4
+              ]
+            },
+            {
+              "Name": "arremesso_cima",
+              "Duration": 0.2,
+              "Frames": [
+                7
+              ]
+            },
+            {
+              "Name": "parado_lado",
+              "Duration": 0.2,
+              "Frames": [
+                8
+              ]
+            },
+            {
+              "Name": "andar_lado",
+              "Duration": 0.12,
+              "Frames": [
+                9,
+                8,
+                10,
+                8
+              ]
+            },
+            {
+              "Name": "arremesso_lado",
+              "Duration": 0.2,
+              "Frames": [
+                11
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 4,
+          "OffsetY": 5
+        },
+        {
+          "Type": "Health",
+          "Max": 100,
+          "InvulnerabilityAfterHit": 0.6,
+          "DestroyOnDeath": false
+        },
+        {
+          "Type": "Tags",
+          "Value": "jogador"
+        },
+        {
+          "Type": "TopDownController",
+          "Speed": 72,
+          "FlipSpriteByDirection": false,
+          "AnimatorSpeedParameter": ""
+        },
+        {
+          "Type": "Davi"
+        },
+        {
+          "Type": "Funda"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 8
+        }
+      ]
+    },
+    {
+      "Name": "Arvore23",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 568.0,
+          "Y": 430
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Ovelha dos Arbustos",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 40.0,
+          "Y": 456.0
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/ovelha.png"
+        },
+        {
+          "Type": "Animator",
+          "FrameWidth": 16,
+          "FrameHeight": 16,
+          "SheetColumns": 2,
+          "Clips": [
+            {
+              "Name": "parado",
+              "Duration": 0.2,
+              "Frames": [
+                0
+              ]
+            },
+            {
+              "Name": "andar",
+              "Duration": 0.16,
+              "Frames": [
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "Type": "Collider",
+          "Shape": "Circle",
+          "Radius": 5,
+          "OffsetY": 3
+        },
+        {
+          "Type": "NavAgent",
+          "Speed": 64,
+          "Enabled": false
+        },
+        {
+          "Type": "Interagivel",
+          "Raio": 20,
+          "Verbo": "Chamar",
+          "Ativo": true
+        },
+        {
+          "Type": "Ovelha",
+          "Perdida": true
+        },
+        {
+          "Type": "Tags",
+          "Value": "ovelha"
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 6
+        }
+      ]
+    },
+    {
+      "Name": "Arvore24",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 152.0,
+          "Y": 462
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore25",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 488.0,
+          "Y": 478
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Arvore26",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 264.0,
+          "Y": 494
+        },
+        {
+          "Type": "SpriteRenderer",
+          "Texture": "sprites/arvore.png",
+          "OriginY": 1.0
+        },
+        {
+          "Type": "OrdemPorY",
+          "OffsetY": 0
+        }
+      ]
+    },
+    {
+      "Name": "Camera",
+      "Components": [
+        {
+          "Type": "Transform",
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "Type": "CameraController",
+          "Follow": "Player",
+          "FollowSpeed": 8,
+          "Zoom": 3,
+          "ClampBounds": true,
+          "BoundsWidth": 0,
+          "BoundsHeight": 0
+        }
+      ]
+    }
+  ]
+}

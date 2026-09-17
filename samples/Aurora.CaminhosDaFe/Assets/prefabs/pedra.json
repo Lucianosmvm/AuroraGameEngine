@@ -1,0 +1,10 @@
+{
+  "Name": "Pedra",
+  "Components": [
+    { "Type": "Transform", "X": 0, "Y": 0 },
+    { "Type": "SpriteRenderer", "Texture": "sprites/pedra.png" },
+    { "Type": "Collider", "Shape": "Circle", "Radius": 2, "IsSolid": false },
+    { "Type": "Pedra" },
+    { "Type": "OrdemPorY", "OffsetY": 10 }
+  ]
+}

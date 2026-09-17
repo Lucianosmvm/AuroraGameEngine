@@ -1,0 +1,9 @@
+{
+  "gameProject": "samples/Aurora.CaminhosDaFe/Aurora.CaminhosDaFe.csproj",
+  "lastScene": "Assets/scenes/campo.json",
+  "androidOrientation": null,
+  "designWidth": 1280,
+  "designHeight": 720,
+  "uiFont": "fonts/DejaVuSans.ttf",
+  "uiFontSize": 20
+}

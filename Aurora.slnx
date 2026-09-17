@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Aurora.Survivors/Aurora.Survivors.csproj" />
+    <Project Path="samples/Aurora.CaminhosDaFe/Aurora.CaminhosDaFe.csproj" />
     <Project Path="samples/Aurora.FruitNinja/Aurora.FruitNinja.csproj" />
     <Project Path="samples/Aurora.BeastArena/Aurora.BeastArena.csproj" />
   </Folder>
