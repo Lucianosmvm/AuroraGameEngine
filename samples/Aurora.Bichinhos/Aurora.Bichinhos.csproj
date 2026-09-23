@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Bichinhos</RootNamespace>
+    <AssemblyName>AuroraBichinhos</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Aurora.Runtime\Aurora.Runtime.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Arte/ é fonte dos sprites (Python), não vai pro jogo. -->
+    <None Remove="Arte\**" />
+  </ItemGroup>
+
+</Project>

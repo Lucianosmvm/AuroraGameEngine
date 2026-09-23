@@ -1,0 +1,129 @@
+{
+  "_comentario": "Espécies e golpes dos Bichinhos. Base = atributos do estágio 0; cada evolução multiplica pelo MultiplicadorEstagio. Golpes: o bicho usa os 4 últimos que aprendeu. Olhos = [x, y, separação, raio] na tela 0..100 do sprite (onde a pálpebra fecha quando ele dorme) e Pele = a cor da pálpebra.",
+  "NivelEvolucao": [6, 14],
+  "MultiplicadorEstagio": [1.0, 1.25, 1.55],
+  "NivelMaximo": 30,
+  "Especies": [
+    {
+      "Id": "brasinha",
+      "Tipo": "Fogo",
+      "Inicial": true,
+      "Descricao": "Esquentadinho e corajoso. Adora comer e bate forte.",
+      "Base": { "Vida": 44, "Ataque": 56, "Defesa": 40, "Velocidade": 55 },
+      "Estagios": [
+        { "Nome": "Brasinha", "Olhos": [50, 60, 9, 5], "Pele": "#FF8A3D" },
+        { "Nome": "Brasador", "Olhos": [50, 40, 9, 4.8], "Pele": "#F4702A" },
+        { "Nome": "Vulcanossauro", "Olhos": [50, 38, 8.5, 4.4], "Pele": "#D9482B" }
+      ],
+      "Golpes": [
+        { "Golpe": "arranhao", "Nivel": 1 },
+        { "Golpe": "brasa", "Nivel": 3 },
+        { "Golpe": "rosnado", "Nivel": 5 },
+        { "Golpe": "labareda", "Nivel": 9 },
+        { "Golpe": "mordida", "Nivel": 12 },
+        { "Golpe": "inferno", "Nivel": 17 }
+      ]
+    },
+    {
+      "Id": "gotinha",
+      "Tipo": "Agua",
+      "Inicial": true,
+      "Descricao": "Calmo e resistente. Aguenta muita pancada.",
+      "Base": { "Vida": 52, "Ataque": 46, "Defesa": 54, "Velocidade": 44 },
+      "Estagios": [
+        { "Nome": "Gotinha", "Olhos": [50, 66, 9, 5], "Pele": "#5EC8F2" },
+        { "Nome": "Marolinha", "Olhos": [50, 45, 12, 4.6], "Pele": "#4AA8E8" },
+        { "Nome": "Tsunamor", "Olhos": [50, 39, 12, 4.4], "Pele": "#3574D4" }
+      ],
+      "Golpes": [
+        { "Golpe": "investida", "Nivel": 1 },
+        { "Golpe": "bolhas", "Nivel": 3 },
+        { "Golpe": "casca", "Nivel": 5 },
+        { "Golpe": "jato", "Nivel": 9 },
+        { "Golpe": "descanso", "Nivel": 12 },
+        { "Golpe": "tsunami", "Nivel": 17 }
+      ]
+    },
+    {
+      "Id": "brotinho",
+      "Tipo": "Planta",
+      "Inicial": true,
+      "Descricao": "Alegre e ligeiro. Sabe se curar com a luz do sol.",
+      "Base": { "Vida": 48, "Ataque": 48, "Defesa": 46, "Velocidade": 58 },
+      "Estagios": [
+        { "Nome": "Brotinho", "Olhos": [50, 62, 9, 5], "Pele": "#8ED66B" },
+        { "Nome": "Folhudo", "Olhos": [50, 45, 8, 4.6], "Pele": "#6CC45A" },
+        { "Nome": "Floresco", "Olhos": [50, 38, 7, 4], "Pele": "#4E9E4A" }
+      ],
+      "Golpes": [
+        { "Golpe": "investida", "Nivel": 1 },
+        { "Golpe": "folhada", "Nivel": 3 },
+        { "Golpe": "fotossintese", "Nivel": 5 },
+        { "Golpe": "chicote", "Nivel": 9 },
+        { "Golpe": "canto", "Nivel": 12 },
+        { "Golpe": "petalas", "Nivel": 17 }
+      ]
+    },
+    {
+      "Id": "pelucinho",
+      "Tipo": "Normal",
+      "Inicial": false,
+      "Descricao": "Uma bola de pelo que vive no mato.",
+      "Base": { "Vida": 56, "Ataque": 50, "Defesa": 44, "Velocidade": 40 },
+      "Estagios": [
+        { "Nome": "Pelucinho", "Olhos": [50, 62, 9, 4.6], "Pele": "#E8C49A" },
+        { "Nome": "Peludo", "Olhos": [50, 46, 8, 4.4], "Pele": "#D6A774" },
+        { "Nome": "Pelucão", "Olhos": [50, 33, 8, 3.8], "Pele": "#A87850" }
+      ],
+      "Golpes": [
+        { "Golpe": "investida", "Nivel": 1 },
+        { "Golpe": "rosnado", "Nivel": 3 },
+        { "Golpe": "mordida", "Nivel": 7 },
+        { "Golpe": "abraco", "Nivel": 13 },
+        { "Golpe": "descanso", "Nivel": 16 }
+      ]
+    },
+    {
+      "Id": "pipio",
+      "Tipo": "Normal",
+      "Inicial": false,
+      "Descricao": "Passarinho briguento que vive nos campos.",
+      "Base": { "Vida": 40, "Ataque": 50, "Defesa": 38, "Velocidade": 66 },
+      "Estagios": [
+        { "Nome": "Pipio", "Olhos": [50, 61, 8, 4.4], "Pele": "#FFE066" },
+        { "Nome": "Piador", "Olhos": [50, 38, 7, 4], "Pele": "#FFC93C" },
+        { "Nome": "Gaviânico", "Olhos": [50, 33, 6.5, 3.6], "Pele": "#E8A33A" }
+      ],
+      "Golpes": [
+        { "Golpe": "bicada", "Nivel": 1 },
+        { "Golpe": "canto", "Nivel": 4 },
+        { "Golpe": "rasante", "Nivel": 8 },
+        { "Golpe": "casca", "Nivel": 12 },
+        { "Golpe": "furacao", "Nivel": 18 }
+      ]
+    }
+  ],
+  "Golpes": [
+    { "Id": "investida", "Nome": "Investida", "Tipo": "Normal", "Poder": 40, "Precisao": 100 },
+    { "Id": "arranhao", "Nome": "Arranhão", "Tipo": "Normal", "Poder": 40, "Precisao": 100 },
+    { "Id": "bicada", "Nome": "Bicada", "Tipo": "Normal", "Poder": 40, "Precisao": 100 },
+    { "Id": "mordida", "Nome": "Mordida", "Tipo": "Normal", "Poder": 60, "Precisao": 95 },
+    { "Id": "rasante", "Nome": "Rasante", "Tipo": "Normal", "Poder": 70, "Precisao": 90 },
+    { "Id": "abraco", "Nome": "Abraço de Urso", "Tipo": "Normal", "Poder": 80, "Precisao": 85 },
+    { "Id": "furacao", "Nome": "Furacão", "Tipo": "Normal", "Poder": 90, "Precisao": 80 },
+    { "Id": "rosnado", "Nome": "Rosnado", "Tipo": "Normal", "Poder": 0, "Precisao": 100, "Efeito": "SubirAtaque" },
+    { "Id": "casca", "Nome": "Casca Dura", "Tipo": "Normal", "Poder": 0, "Precisao": 100, "Efeito": "SubirDefesa" },
+    { "Id": "canto", "Nome": "Canto Fofo", "Tipo": "Normal", "Poder": 0, "Precisao": 100, "Efeito": "BaixarAtaque" },
+    { "Id": "descanso", "Nome": "Cochilo", "Tipo": "Normal", "Poder": 0, "Precisao": 100, "Efeito": "Curar" },
+    { "Id": "brasa", "Nome": "Brasa", "Tipo": "Fogo", "Poder": 40, "Precisao": 100 },
+    { "Id": "labareda", "Nome": "Labareda", "Tipo": "Fogo", "Poder": 65, "Precisao": 95 },
+    { "Id": "inferno", "Nome": "Inferno", "Tipo": "Fogo", "Poder": 90, "Precisao": 80 },
+    { "Id": "bolhas", "Nome": "Bolhas", "Tipo": "Agua", "Poder": 40, "Precisao": 100 },
+    { "Id": "jato", "Nome": "Jato d'Água", "Tipo": "Agua", "Poder": 65, "Precisao": 95 },
+    { "Id": "tsunami", "Nome": "Tsunami", "Tipo": "Agua", "Poder": 90, "Precisao": 80 },
+    { "Id": "folhada", "Nome": "Folhada", "Tipo": "Planta", "Poder": 40, "Precisao": 100 },
+    { "Id": "chicote", "Nome": "Chicote de Cipó", "Tipo": "Planta", "Poder": 65, "Precisao": 95 },
+    { "Id": "petalas", "Nome": "Chuva de Pétalas", "Tipo": "Planta", "Poder": 90, "Precisao": 80 },
+    { "Id": "fotossintese", "Nome": "Fotossíntese", "Tipo": "Planta", "Poder": 0, "Precisao": 100, "Efeito": "Curar" }
+  ]
+}

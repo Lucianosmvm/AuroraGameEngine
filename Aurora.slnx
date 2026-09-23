@@ -5,12 +5,14 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Aurora.Survivors/Aurora.Survivors.csproj" />
+    <Project Path="samples/Aurora.Bichinhos/Aurora.Bichinhos.csproj" />
     <Project Path="samples/Aurora.CaminhosDaFe/Aurora.CaminhosDaFe.csproj" />
     <Project Path="samples/Aurora.FruitNinja/Aurora.FruitNinja.csproj" />
     <Project Path="samples/Aurora.BeastArena/Aurora.BeastArena.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Aurora.BeastArena.Tests/Aurora.BeastArena.Tests.csproj" />
+    <Project Path="tests/Aurora.Bichinhos.Tests/Aurora.Bichinhos.Tests.csproj" />
     <Project Path="tests/Aurora.Editor.Tests/Aurora.Editor.Tests.csproj" />
     <Project Path="tests/Aurora.Runtime.Tests/Aurora.Runtime.Tests.csproj" />
   </Folder>
