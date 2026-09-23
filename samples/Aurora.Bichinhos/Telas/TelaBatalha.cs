@@ -10,14 +10,20 @@ namespace Bichinhos;
 /// <para>A regra é toda da <see cref="Batalha"/>: aqui só se escolhe o golpe e se TOCA a lista de
 /// eventos do turno, um por vez — texto na caixa, investida, piscar de dano, barra de vida
 /// descendo. Tocar na tela adianta o texto.</para>
+///
+/// <para>No duelo contra amigo (<see cref="Duelo"/>) a batalha é a mesma nos dois celulares e esta
+/// tela só troca a perspectiva: <c>_eu</c> diz qual lado é o "meu", que sempre aparece embaixo.
+/// Os turnos chegam da rede em vez de sair direto do toque.</para>
 /// </summary>
 public sealed class TelaBatalha : Tela
 {
-    private enum Fase { Entrada, Escolha, Tocando, Fim }
+    private enum Fase { Entrada, Escolha, Esperando, Tocando, Fim }
 
     private const int PrecoPocao = 10;
 
     private readonly Batalha _batalha;
+    private readonly Duelo? _duelo;
+    private readonly Lado _eu;
     private readonly BichoVisual _visualJogador = new();
     private readonly BichoVisual _visualInimigo = new();
     private readonly Particulas _particulas = new();
@@ -46,20 +52,47 @@ public sealed class TelaBatalha : Tela
 
     private static Caixa BotaoGolpe(int i) => new(20f + (i % 2) * 345f, 1025f + (i / 2) * 102f, 335f, 90f);
 
-    public TelaBatalha(BichinhosGame jogo, Batalha batalha) : base(jogo)
+    public TelaBatalha(BichinhosGame jogo, Batalha batalha) : this(jogo, batalha, null) { }
+
+    /// <summary>Duelo em rede: a batalha já vem montada pelo <see cref="Duelo"/>.</summary>
+    public TelaBatalha(BichinhosGame jogo, Duelo duelo) : this(jogo, duelo.Batalha!, duelo) { }
+
+    private TelaBatalha(BichinhosGame jogo, Batalha batalha, Duelo? duelo) : base(jogo)
     {
         _batalha = batalha;
-        _vidaMostradaJogador = _vidaAlvoJogador = batalha.Jogador.Vida;
-        _vidaMostradaInimigo = _vidaAlvoInimigo = batalha.Inimigo.Vida;
+        _duelo = duelo;
+        _eu = duelo?.MeuLado ?? Lado.Jogador;
+        _vidaMostradaJogador = _vidaAlvoJogador = Eu.Vida;
+        _vidaMostradaInimigo = _vidaAlvoInimigo = Rival.Vida;
         _visualJogador.Espelhar = true;   // olha pro adversário (à direita)
     }
 
     private Bicho B => Jogo.Bicho!;
 
+    /// <summary>O bicho deste celular e o do outro lado, seja qual for o lado na batalha comum.</summary>
+    private Lutador Eu => _eu == Lado.Jogador ? _batalha.Jogador : _batalha.Inimigo;
+    private Lutador Rival => _eu == Lado.Jogador ? _batalha.Inimigo : _batalha.Jogador;
+    private bool Venci => _batalha.VenceuLado(_eu);
+
     public override void Entrar()
     {
-        _texto = $"Um {_batalha.Inimigo.Nome} selvagem apareceu!";
+        _texto = _duelo is null ? $"Um {Rival.Nome} selvagem apareceu!" : $"{Rival.Nome} do seu amigo quer lutar!";
         _visualInimigo.Pular(70f);
+    }
+
+    public override void Sair() => _duelo?.Dispose();
+
+    /// <summary>Troca os marcadores {J}/{I} do duelo pelos nomes vistos DESTE celular.</summary>
+    private string Nomear(string texto)
+    {
+        if (_duelo is null)
+            return texto;
+
+        string meu = Eu.Nome;
+        string dele = $"{Rival.Nome} rival";
+        return texto
+            .Replace("{J}", _eu == Lado.Jogador ? meu : dele)
+            .Replace("{I}", _eu == Lado.Inimigo ? meu : dele);
     }
 
     // ================================================================= atualizar
@@ -73,8 +106,19 @@ public sealed class TelaBatalha : Tela
         _particulas.Atualizar(dt);
 
         // Barras de vida deslizam até o valor novo em vez de pular.
-        _vidaMostradaJogador = Aproximar(_vidaMostradaJogador, _vidaAlvoJogador, _batalha.Jogador.VidaMax * 1.2f * dt);
-        _vidaMostradaInimigo = Aproximar(_vidaMostradaInimigo, _vidaAlvoInimigo, _batalha.Inimigo.VidaMax * 1.2f * dt);
+        _vidaMostradaJogador = Aproximar(_vidaMostradaJogador, _vidaAlvoJogador, Eu.VidaMax * 1.2f * dt);
+        _vidaMostradaInimigo = Aproximar(_vidaMostradaInimigo, _vidaAlvoInimigo, Rival.VidaMax * 1.2f * dt);
+
+        // Amigo saiu, caiu o Wi-Fi: encerra sem prêmio pra ninguém.
+        if (_duelo?.Erro is { } erro && _fase != Fase.Fim)
+        {
+            _texto = erro;
+            _fase = Fase.Fim;
+            _recompensaDada = true;
+            _fila.Clear();
+            _atual = null;
+            return;
+        }
 
         switch (_fase)
         {
@@ -84,7 +128,15 @@ public sealed class TelaBatalha : Tela
                 break;
 
             case Fase.Escolha:
-                AtualizarEscolha();
+                if (Jogo.Robo && _t > 0.3f)
+                    EscolherPeloRobo();
+                else
+                    AtualizarEscolha();
+                break;
+
+            case Fase.Esperando:
+                if (_duelo!.TryProximoTurno(out var turno))
+                    Tocar(turno);
                 break;
 
             case Fase.Tocando:
@@ -92,6 +144,11 @@ public sealed class TelaBatalha : Tela
                 break;
 
             case Fase.Fim:
+                if (Jogo.Robo && _t > 1f)
+                {
+                    Console.WriteLine($"[Batalha] fim: {_texto.Replace('\n', ' ')} | vida {Eu.Nome} {Eu.Vida}, {Rival.Nome} {Rival.Vida}");
+                    Jogo.Exit();
+                }
                 if (Toque.Tocou(BotaoContinuar))
                     VoltarPraCasa();
                 break;
@@ -104,12 +161,49 @@ public sealed class TelaBatalha : Tela
     private void IrParaEscolha()
     {
         _fase = Fase.Escolha;
-        _texto = $"O que {_batalha.Jogador.Nome} vai fazer?";
+        _texto = $"O que {Eu.Nome} vai fazer?";
+    }
+
+    private void EscolherPeloRobo()
+    {
+        int i = Jogo.Rng.Next(Eu.Golpes.Count);
+        Console.WriteLine($"[Batalha] {Eu.Nome} escolhe {Eu.Golpes[i].Nome} | vida {Eu.Vida}/{Eu.VidaMax} x {Rival.Vida}/{Rival.VidaMax}");
+        if (_duelo is not null)
+        {
+            _duelo.Escolher(i);
+            _fase = Fase.Esperando;
+            _texto = "Esperando seu amigo escolher...";
+        }
+        else
+        {
+            Tocar(_batalha.Turno(Eu.Golpes[i]));
+        }
     }
 
     private void AtualizarEscolha()
     {
-        var golpes = _batalha.Jogador.Golpes;
+        var golpes = Eu.Golpes;
+
+        if (_duelo is not null)
+        {
+            int? acao = null;
+            for (int i = 0; i < golpes.Count; i++)
+            {
+                if (Toque.Tocou(BotaoGolpe(i)))
+                    acao = i;
+            }
+            if (Toque.Tocou(BotaoFugir))
+                acao = AcaoDuelo.Desistir;
+
+            if (acao is { } escolhida)
+            {
+                _duelo.Escolher(escolhida);
+                _fase = Fase.Esperando;
+                _texto = "Esperando seu amigo escolher...";
+            }
+            return;
+        }
+
         for (int i = 0; i < golpes.Count; i++)
         {
             if (Toque.Tocou(BotaoGolpe(i)))
@@ -165,7 +259,11 @@ public sealed class TelaBatalha : Tela
         switch (_atual)
         {
             case Mensagem m:
-                _texto = m.Texto;
+                _texto = Nomear(m.Texto);
+                break;
+            case Dano { Valor: 0 } correcao:
+                // Correção do duelo (a conta daqui divergiu do host): só acerta a barra.
+                DefinirVida(correcao.Alvo, correcao.VidaDepois);
                 break;
             case Dano d:
                 Visual(d.Alvo).Flash();
@@ -229,9 +327,16 @@ public sealed class TelaBatalha : Tela
     private void Terminar()
     {
         _fase = Fase.Fim;
+        _t = 0f;
         if (_recompensaDada)
             return;
         _recompensaDada = true;
+
+        if (_duelo is not null)
+        {
+            TerminarDuelo();
+            return;
+        }
 
         if (_batalha.Fugiu)
         {
@@ -251,7 +356,7 @@ public sealed class TelaBatalha : Tela
 
             var linhas = new List<string> { $"Vitória! +{xp} XP e +{moedas} moedas." };
             if (niveis.Count > 0)
-                linhas.Add($"{_batalha.Jogador.Nome} subiu pro nível {B.Nivel}!");
+                linhas.Add($"{Eu.Nome} subiu pro nível {B.Nivel}!");
             foreach (var g in golpes)
                 linhas.Add($"Aprendeu {g.Nome}!");
             _texto = string.Join("\n", linhas);
@@ -261,7 +366,35 @@ public sealed class TelaBatalha : Tela
         }
         else
         {
-            _texto = $"{_batalha.Jogador.Nome} perdeu... Leve pra casa pra descansar.";
+            _texto = $"{Eu.Nome} perdeu... Leve pra casa pra descansar.";
+        }
+
+        Jogo.Salvar();
+    }
+
+    /// <summary>Duelo é amistoso: os dois ganham XP (quem vence ganha mais e leva moedas).</summary>
+    private void TerminarDuelo()
+    {
+        bool venci = Venci;
+        B.Lutou(venci);
+        var (xp, moedas) = Batalha.RecompensaDuelo(Rival.Nivel, venci);
+        Jogo.Progresso.Moedas += moedas;
+        var (niveis, golpes) = B.GanharXp(xp);
+
+        var linhas = new List<string>
+        {
+            venci ? $"Você venceu o duelo! +{xp} XP e +{moedas} moedas." : $"Seu amigo venceu. +{xp} XP pela experiência.",
+        };
+        if (niveis.Count > 0)
+            linhas.Add($"{Eu.Nome} subiu pro nível {B.Nivel}!");
+        foreach (var g in golpes)
+            linhas.Add($"Aprendeu {g.Nome}!");
+        _texto = string.Join("\n", linhas);
+
+        if (venci)
+        {
+            _visualJogador.Pular(80f);
+            _particulas.Explosao("estrela", PeJogador - new Vector2(0f, 200f), 14, 46f);
         }
 
         Jogo.Salvar();
@@ -269,18 +402,22 @@ public sealed class TelaBatalha : Tela
 
     private void VoltarPraCasa()
     {
-        string fala = _batalha.Fugiu ? "Ufa!" : _batalha.Venceu ? "Ganhei!" : "Snif...";
+        string fala = !_batalha.Acabou ? "Cadê meu amigo?"
+            : _batalha.Fugiu ? "Ufa!"
+            : Venci ? "Ganhei!"
+            : "Snif...";
         Jogo.IrPara(new TelaCasa(Jogo, 0, fala));
     }
 
-    private BichoVisual Visual(Lado lado) => lado == Lado.Jogador ? _visualJogador : _visualInimigo;
-    private static Vector2 Pe(Lado lado) => lado == Lado.Jogador ? PeJogador : PeInimigo;
-    private static float Tamanho(Lado lado) => lado == Lado.Jogador ? LadoJogador : LadoInimigo;
+    // O lado "meu" sempre fica embaixo à esquerda, o do outro no alto à direita.
+    private BichoVisual Visual(Lado lado) => lado == _eu ? _visualJogador : _visualInimigo;
+    private Vector2 Pe(Lado lado) => lado == _eu ? PeJogador : PeInimigo;
+    private float Tamanho(Lado lado) => lado == _eu ? LadoJogador : LadoInimigo;
     private static Lado Outro(Lado lado) => lado == Lado.Jogador ? Lado.Inimigo : Lado.Jogador;
 
     private void DefinirVida(Lado lado, int vida)
     {
-        if (lado == Lado.Jogador) _vidaAlvoJogador = vida;
+        if (lado == _eu) _vidaAlvoJogador = vida;
         else _vidaAlvoInimigo = vida;
     }
 
@@ -290,8 +427,8 @@ public sealed class TelaBatalha : Tela
     {
         Fundo("batalha");
 
-        var inimigo = _batalha.Inimigo;
-        var jogador = _batalha.Jogador;
+        var inimigo = Rival;
+        var jogador = Eu;
 
         // Entrada: os dois deslizam de fora da tela pra plataforma.
         float entrada = _fase == Fase.Entrada ? MathF.Min(1f, _t / 0.6f) : 1f;
@@ -344,8 +481,10 @@ public sealed class TelaBatalha : Tela
             Tinta.Texto(dica, new Vector2(c.Centro.X, c.Y + 50f + afunda), Color.White.WithAlpha(0.9f), escala: 0.75f, alinhar: Tinta.Alinhar.Centro);
         }
 
-        Tinta.Botao(BotaoPocao, $"Poção {PrecoPocao}", Color.FromHex("#E0607EFF"), ativo && Toque.SegurandoEm(BotaoPocao), null, ativo, null);
-        Tinta.Botao(BotaoFugir, "Fugir", Color.FromHex("#8C8098FF"), ativo && Toque.SegurandoEm(BotaoFugir), null, ativo);
+        // Duelo: sem poção (seria vantagem pra quem tem mais moedas) e "fugir" vira desistir.
+        if (_duelo is null)
+            Tinta.Botao(BotaoPocao, $"Poção {PrecoPocao}", Color.FromHex("#E0607EFF"), ativo && Toque.SegurandoEm(BotaoPocao), null, ativo, null);
+        Tinta.Botao(BotaoFugir, _duelo is null ? "Fugir" : "Desistir", Color.FromHex("#8C8098FF"), ativo && Toque.SegurandoEm(BotaoFugir), null, ativo);
     }
 
     /// <summary>Um risco colorido do tipo do golpe cortando do atacante até o alvo.</summary>

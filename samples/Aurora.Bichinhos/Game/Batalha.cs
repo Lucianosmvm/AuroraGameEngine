@@ -65,6 +65,12 @@ public sealed record MudouAtributo(Lado Alvo, bool Subiu) : EventoBatalha;
 public sealed record Errou(Lado Quem) : EventoBatalha;
 public sealed record Desmaio(Lado Quem) : EventoBatalha;
 
+/// <summary>Ação de um lado no duelo em rede: índice do golpe (0..3) ou <see cref="Batalha.Desistir"/>.</summary>
+public static class AcaoDuelo
+{
+    public const int Desistir = -1;
+}
+
 public enum Dificuldade { Facil, Normal, Dificil }
 
 /// <summary>
@@ -73,14 +79,27 @@ public enum Dificuldade { Facil, Normal, Dificil }
 /// </summary>
 public sealed class Batalha
 {
-    private readonly Random _rng;
+    private Random _rng;
 
     public Lutador Jogador { get; }
     public Lutador Inimigo { get; }
     public Dificuldade Dificuldade { get; }
-    public bool Acabou => Jogador.Desmaiado || Inimigo.Desmaiado || Fugiu;
-    public bool Venceu => Inimigo.Desmaiado && !Jogador.Desmaiado;
+    public bool Acabou => Jogador.Desmaiado || Inimigo.Desmaiado || Fugiu || Desistente is not null;
+    public bool Venceu => (Inimigo.Desmaiado && !Jogador.Desmaiado) || Desistente == Lado.Inimigo;
     public bool Fugiu { get; private set; }
+
+    /// <summary>Vitória vista de um lado — no duelo cada celular é um lado.</summary>
+    public bool VenceuLado(Lado lado) => lado == Lado.Jogador
+        ? Venceu
+        : (Jogador.Desmaiado && !Inimigo.Desmaiado) || Desistente == Lado.Jogador;
+
+    /// <summary>Duelo contra amigo: os dois lados escolhem golpe e nenhum é "selvagem". As
+    /// mensagens saem com <c>{J}</c>/<c>{I}</c> no lugar dos nomes, porque cada celular chama o
+    /// próprio bicho e o do outro de jeitos diferentes (ver <c>TelaBatalha.Nomear</c>).</summary>
+    public bool Duelo { get; init; }
+
+    /// <summary>Quem desistiu do duelo, se alguém desistiu.</summary>
+    public Lado? Desistente { get; private set; }
 
     public Batalha(Lutador jogador, Lutador inimigo, Dificuldade dificuldade, Random rng)
     {
@@ -107,13 +126,14 @@ public sealed class Batalha
         return Lutador.Selvagem(especie, Math.Clamp(nivel, 1, Catalogo.Atual.NivelMaximo));
     }
 
-    public List<EventoBatalha> Turno(Golpe golpeJogador)
+    /// <param name="golpeInimigo">Null = a IA escolhe (bicho selvagem).</param>
+    public List<EventoBatalha> Turno(Golpe golpeJogador, Golpe? golpeInimigo = null)
     {
         var eventos = new List<EventoBatalha>();
         if (Acabou)
             return eventos;
 
-        var golpeInimigo = EscolherGolpeInimigo();
+        golpeInimigo ??= EscolherGolpeInimigo();
 
         // Empate de velocidade vira cara ou coroa, senão o mesmo lado ganharia sempre.
         bool jogadorPrimeiro = Jogador.Atributos.Velocidade != Inimigo.Atributos.Velocidade
@@ -132,6 +152,40 @@ public sealed class Batalha
         }
 
         return eventos;
+    }
+
+    /// <summary>
+    /// Um turno do duelo em rede. Os dois celulares chamam isto com as MESMAS ações e a MESMA
+    /// semente e chegam no mesmo resultado — é assim que a luta anda sem mandar texto nem vida
+    /// pela rede, só três números (lockstep). Quem sorteia a semente é o host.
+    /// </summary>
+    public List<EventoBatalha> TurnoDuelo(int acaoJogador, int acaoInimigo, int semente)
+    {
+        _rng = new Random(semente);
+
+        if (acaoJogador == AcaoDuelo.Desistir)
+            return Desistir(Lado.Jogador);
+        if (acaoInimigo == AcaoDuelo.Desistir)
+            return Desistir(Lado.Inimigo);
+
+        var golpeJogador = Jogador.Golpes[Math.Clamp(acaoJogador, 0, Jogador.Golpes.Count - 1)];
+        var golpeInimigo = Inimigo.Golpes[Math.Clamp(acaoInimigo, 0, Inimigo.Golpes.Count - 1)];
+        return Turno(golpeJogador, golpeInimigo);
+    }
+
+    public List<EventoBatalha> Desistir(Lado quem)
+    {
+        Desistente = quem;
+        return [new Mensagem($"{Nome(quem)} desistiu!")];
+    }
+
+    /// <summary>Como as mensagens chamam cada lado. Contra selvagem, o do jogador pelo nome e o
+    /// outro com "selvagem"; no duelo, marcadores que cada tela troca pelo nome certo.</summary>
+    private string Nome(Lado lado)
+    {
+        if (Duelo)
+            return lado == Lado.Jogador ? "{J}" : "{I}";
+        return lado == Lado.Jogador ? Jogador.Nome : $"{Inimigo.Nome} selvagem";
     }
 
     /// <summary>Poção: cura metade da vida e gasta o turno (o inimigo ataca).</summary>
@@ -167,9 +221,7 @@ public sealed class Batalha
         var atacante = lado == Lado.Jogador ? Jogador : Inimigo;
         var alvo = lado == Lado.Jogador ? Inimigo : Jogador;
         var ladoAlvo = lado == Lado.Jogador ? Lado.Inimigo : Lado.Jogador;
-        string quem = lado == Lado.Jogador ? atacante.Nome : $"{atacante.Nome} selvagem";
-
-        eventos.Add(new Mensagem($"{quem} usou {golpe.Nome}!"));
+        eventos.Add(new Mensagem($"{Nome(lado)} usou {golpe.Nome}!"));
 
         if (_rng.Next(100) >= golpe.Precisao)
         {
@@ -186,17 +238,17 @@ public sealed class Batalha
                 int cura = Math.Min(atacante.VidaMax - atacante.Vida, Math.Max(1, atacante.VidaMax * 45 / 100));
                 atacante.Vida += cura;
                 eventos.Add(new Cura(lado, cura, atacante.Vida));
-                eventos.Add(new Mensagem(cura > 0 ? $"{atacante.Nome} recuperou {cura} de vida." : "Mas já estava com a vida cheia."));
+                eventos.Add(new Mensagem(cura > 0 ? $"{Nome(lado)} recuperou {cura} de vida." : "Mas já estava com a vida cheia."));
                 return;
             }
             case EfeitoGolpe.SubirAtaque:
-                MudarMod(atacante, lado, ataque: true, +1, eventos);
+                MudarMod(atacante, lado, Nome(lado), ataque: true, +1, eventos);
                 return;
             case EfeitoGolpe.SubirDefesa:
-                MudarMod(atacante, lado, ataque: false, +1, eventos);
+                MudarMod(atacante, lado, Nome(lado), ataque: false, +1, eventos);
                 return;
             case EfeitoGolpe.BaixarAtaque:
-                MudarMod(alvo, ladoAlvo, ataque: true, -1, eventos);
+                MudarMod(alvo, ladoAlvo, Nome(ladoAlvo), ataque: true, -1, eventos);
                 return;
         }
 
@@ -215,11 +267,11 @@ public sealed class Batalha
         if (alvo.Desmaiado)
         {
             eventos.Add(new Desmaio(ladoAlvo));
-            eventos.Add(new Mensagem(ladoAlvo == Lado.Jogador ? $"{alvo.Nome} desmaiou!" : $"{alvo.Nome} selvagem desmaiou!"));
+            eventos.Add(new Mensagem($"{Nome(ladoAlvo)} desmaiou!"));
         }
     }
 
-    private static void MudarMod(Lutador alvo, Lado lado, bool ataque, int delta, List<EventoBatalha> eventos)
+    private static void MudarMod(Lutador alvo, Lado lado, string nome, bool ataque, int delta, List<EventoBatalha> eventos)
     {
         int atual = ataque ? alvo.ModAtaque : alvo.ModDefesa;
         int novo = Math.Clamp(atual + delta, -2, 2);
@@ -227,7 +279,7 @@ public sealed class Batalha
 
         if (novo == atual)
         {
-            eventos.Add(new Mensagem($"{atributo} de {alvo.Nome} não muda mais."));
+            eventos.Add(new Mensagem($"{atributo} de {nome} não muda mais."));
             return;
         }
 
@@ -235,7 +287,7 @@ public sealed class Batalha
         else alvo.ModDefesa = novo;
 
         eventos.Add(new MudouAtributo(lado, delta > 0));
-        eventos.Add(new Mensagem($"{atributo} de {alvo.Nome} {(delta > 0 ? "subiu" : "caiu")}!"));
+        eventos.Add(new Mensagem($"{atributo} de {nome} {(delta > 0 ? "subiu" : "caiu")}!"));
     }
 
     public static int CalcularDano(Lutador atacante, Lutador alvo, Golpe golpe, float efetividade, float sorteio)
@@ -273,5 +325,13 @@ public sealed class Batalha
         int xp = (int)((12 + Inimigo.Nivel * 6) * bonus);
         int moedas = (int)((4 + Inimigo.Nivel * 2) * bonus);
         return (xp, moedas);
+    }
+
+    /// <summary>Prêmio do duelo: quem vence leva como numa luta normal contra o nível do outro;
+    /// quem perde ainda aprende alguma coisa (um terço do XP, sem moedas).</summary>
+    public static (int Xp, int Moedas) RecompensaDuelo(int nivelRival, bool venceu)
+    {
+        int xp = 12 + nivelRival * 6;
+        return venceu ? (xp, 4 + nivelRival * 2) : (xp / 3, 0);
     }
 }

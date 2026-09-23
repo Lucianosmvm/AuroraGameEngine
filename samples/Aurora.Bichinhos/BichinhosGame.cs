@@ -45,6 +45,11 @@ public sealed class BichinhosGame : Game
     private string? _pastaSave;
     private string? _demo;
     private string? _foto;
+    private string? _duelo;
+
+    /// <summary><c>--robo</c>: a batalha escolhe golpe sozinha e o jogo fecha no fim. Serve pra
+    /// testar o duelo com duas janelas sem ninguém clicando.</summary>
+    public bool Robo { get; private set; }
     private float _fotoT;
 
     private string PastaSave => _pastaSave ?? Save.SaveDirectory;
@@ -68,6 +73,8 @@ public sealed class BichinhosGame : Game
                 case "--save" when valor is not null: _pastaSave = valor; break;
                 case "--demo" when valor is not null: _demo = valor; break;
                 case "--foto" when valor is not null: _foto = valor; break;
+                case "--duelo" when valor is not null: _duelo = valor; break;
+                case "--robo": Robo = true; break;
             }
         }
     }
@@ -83,6 +90,16 @@ public sealed class BichinhosGame : Game
         if (_demo is not null)
         {
             AbrirDemo(_demo);
+            if (_duelo is null)
+                return;
+        }
+
+        if (_duelo is not null && Bicho is not null)
+        {
+            // --duelo host | --duelo <ip>: pula direto pra sala (teste de rede sem clicar).
+            var sala = new TelaSala(this);
+            IrPara(sala);
+            sala.Comecar(_duelo);
             return;
         }
 

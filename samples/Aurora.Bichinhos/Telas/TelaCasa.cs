@@ -363,7 +363,12 @@ public sealed class TelaCasa : Tela
                         return;
                     }
                 }
-                if (Toque.Tocou(BotaoMenu(3))) _menu = Menu.Nenhum;
+                if (pode && Toque.Tocou(BotaoMenu(3)))
+                {
+                    Jogo.IrPara(new TelaSala(Jogo));
+                    return;
+                }
+                if (Toque.Tocou(BotaoMenu(4))) _menu = Menu.Nenhum;
                 break;
             }
 
@@ -384,7 +389,7 @@ public sealed class TelaCasa : Tela
 
         // Toque fora da janela fecha (menos na confirmação, que precisa de resposta).
         bool fechaPorFora = _menu is Menu.Comida or Menu.Batalha or Menu.Ficha;
-        var janela = _menu == Menu.Ficha ? Ficha : CaixaJanelinha(4);
+        var janela = _menu == Menu.Ficha ? Ficha : CaixaJanelinha(_menu == Menu.Batalha ? 5 : 4);
         if (fechaPorFora && Toque.Apertou && !janela.Contem(Toque.Posicao) && Toque.TocouQualquer())
             _menu = Menu.Nenhum;
     }
@@ -562,7 +567,7 @@ public sealed class TelaCasa : Tela
 
             case Menu.Batalha:
             {
-                Janelinha("Batalhar", 4);
+                Janelinha("Batalhar", 5);
                 bool pode = B.PodeBatalhar(out string motivo);
                 string[] nomes = ["Mato (fácil)", "Campo (normal)", "Arena (difícil)"];
                 string[] cores = ["#4FA83FFF", "#E0A030FF", "#D6453DFF"];
@@ -572,7 +577,8 @@ public sealed class TelaCasa : Tela
                     Tinta.Paragrafo(motivo, new Vector2(Janela.Centro.X, Janela.Y + 88f), Janela.L - 80f, Color.FromHex("#C0392BFF"), escala: 0.85f, alinhar: Tinta.Alinhar.Centro);
                 else
                     Tinta.Texto("Quanto mais difícil, mais XP e moedas.", new Vector2(Janela.Centro.X, Janela.Y + 92f), Color.FromHex("#6B5A6EFF"), escala: 0.85f, alinhar: Tinta.Alinhar.Centro);
-                Tinta.Botao(BotaoMenu(3), "Voltar", Color.FromHex("#8C8098FF"), Toque.SegurandoEm(BotaoMenu(3)));
+                Tinta.Botao(BotaoMenu(3), "Amigo (Wi-Fi)", Color.FromHex("#7B61C9FF"), pode && Toque.SegurandoEm(BotaoMenu(3)), "coracao", pode);
+                Tinta.Botao(BotaoMenu(4), "Voltar", Color.FromHex("#8C8098FF"), Toque.SegurandoEm(BotaoMenu(4)));
                 break;
             }
 

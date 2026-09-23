@@ -267,4 +267,60 @@ public class BichinhosTests
             Directory.Delete(pasta, recursive: true);
         }
     }
+
+    // ------------------------------------------------------------------ duelo (lockstep)
+
+    private static Batalha DueloNovo() => new(Selvagem("brasinha", 9), Selvagem("brotinho", 9), Dificuldade.Normal, new Random(0)) { Duelo = true };
+
+    [Fact]
+    public void Duelo_MesmasAcoesEMesmaSemente_DaoOMesmoResultadoNosDoisCelulares()
+    {
+        var host = DueloNovo();
+        var cliente = DueloNovo();
+        var sorteio = new Random(42);
+
+        for (int turno = 0; turno < 50 && !host.Acabou; turno++)
+        {
+            int a = sorteio.Next(host.Jogador.Golpes.Count), b = sorteio.Next(host.Inimigo.Golpes.Count), semente = sorteio.Next();
+            var eventosHost = host.TurnoDuelo(a, b, semente);
+            var eventosCliente = cliente.TurnoDuelo(a, b, semente);
+
+            Assert.Equal(eventosHost, eventosCliente);
+            Assert.Equal(host.Jogador.Vida, cliente.Jogador.Vida);
+            Assert.Equal(host.Inimigo.Vida, cliente.Inimigo.Vida);
+        }
+
+        Assert.True(host.Acabou);
+        Assert.Equal(host.VenceuLado(Lado.Jogador), cliente.VenceuLado(Lado.Jogador));
+        Assert.NotEqual(host.VenceuLado(Lado.Jogador), host.VenceuLado(Lado.Inimigo));
+    }
+
+    [Fact]
+    public void Duelo_MensagensUsamMarcadoresEmVezDeSelvagem()
+    {
+        var duelo = DueloNovo();
+        var textos = duelo.TurnoDuelo(0, 0, 7).OfType<Mensagem>().Select(m => m.Texto).ToList();
+        Assert.Contains(textos, t => t.StartsWith("{J}") || t.StartsWith("{I}"));
+        Assert.DoesNotContain(textos, t => t.Contains("selvagem"));
+    }
+
+    [Fact]
+    public void Duelo_DesistirDaAVitoriaProOutroLado()
+    {
+        var duelo = DueloNovo();
+        duelo.TurnoDuelo(0, AcaoDuelo.Desistir, 1);
+        Assert.True(duelo.Acabou);
+        Assert.True(duelo.VenceuLado(Lado.Jogador));
+        Assert.False(duelo.VenceuLado(Lado.Inimigo));
+    }
+
+    [Fact]
+    public void RecompensaDuelo_PerdedorGanhaUmTercoSemMoedas()
+    {
+        var (xpV, moedasV) = Batalha.RecompensaDuelo(10, venceu: true);
+        var (xpP, moedasP) = Batalha.RecompensaDuelo(10, venceu: false);
+        Assert.Equal(xpV / 3, xpP);
+        Assert.True(moedasV > 0);
+        Assert.Equal(0, moedasP);
+    }
 }

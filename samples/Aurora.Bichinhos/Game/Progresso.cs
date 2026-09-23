@@ -15,6 +15,9 @@ public sealed class Progresso
     public int Moedas { get; set; } = 20;
     public DateTime UltimaVezUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Último IP digitado no duelo — quem joga sempre com o mesmo amigo não redigita.</summary>
+    public string UltimoIp { get; set; } = "192.168.";
+
     /// <summary>Teto do tempo fora que conta: voltar depois de um mês não pode achar o bicho
     /// morto de fome sem chance de reagir. Um dia inteiro já deixa ele bem mal.</summary>
     public const double MaxHorasFora = 24.0;

@@ -35,6 +35,25 @@ não luta. Poção (10 moedas) cura metade da vida e gasta o turno.
 
 Perder não mata: o bicho volta triste e machucado. Aqui ninguém morre.
 
+### Duelo com amigo (Wi-Fi)
+
+**Batalhar → Amigo (Wi-Fi)**. Os dois celulares precisam estar na mesma rede:
+
+1. Um toca **Criar sala**.
+2. O outro toca **Procurar sala** e escolhe a sala do amigo na lista.
+3. Não apareceu? Toque **Digitar IP** e digite o número que aparece na tela de quem criou.
+
+**Sem Wi-Fi por perto:** um dos dois liga o **roteador do celular** (hotspot / ponto de acesso) e o
+outro conecta nele. Funciona igual, sem internet e sem gastar dados.
+
+Cada um escolhe o golpe no próprio celular; o turno só anda quando os dois escolheram. Não tem
+poção (seria vantagem de quem tem mais moedas) e "Fugir" vira **Desistir**. Os dois ganham XP:
+quem vence leva o XP cheio e moedas, quem perde leva um terço do XP.
+
+Se a sala não aparecer na busca mas digitar o IP funciona, o roteador está com **isolamento de
+clientes** ("AP isolation") ligado — comum em Wi-Fi de empresa, escola e rede de visitantes. Use o
+hotspot de um dos celulares. Bluetooth e partida pela internet não são suportados.
+
 ## Android (APK)
 
 ```bash
@@ -56,6 +75,15 @@ O projeto Android não tem código de jogo: compila os `.cs` e empacota os `Asse
 | `--save <pasta>` | Save em outra pasta, pra não mexer no seu bicho |
 | `--demo <tela>` | Abre direto em `casa`, `noite`, `comer`, `lutar`, `ficha`, `batalha`, `brincar`, `evolucao` ou `escolha` com um bicho de exemplo. `casa:gotinha` troca a espécie |
 | `--foto <arquivo.png>` | Grava a tela depois de ~1,5 s e fecha |
+| `--duelo host` / `--duelo <ip>` | Cria a sala / entra na sala direto, sem passar pelos menus |
+| `--robo` | Na batalha escolhe golpe sozinho e fecha no fim (testar duelo com duas janelas) |
+
+Duelo com duas janelas no mesmo PC:
+
+```bash
+dotnet run --project samples/Aurora.Bichinhos -- --save /tmp/a --demo casa --duelo host --robo
+dotnet run --project samples/Aurora.Bichinhos -- --save /tmp/b --demo casa:gotinha --duelo 127.0.0.1 --robo
+```
 
 ```bash
 dotnet run --project samples/Aurora.Bichinhos -- --save /tmp/bichos --demo batalha
@@ -69,8 +97,9 @@ no Windows). Regras em `tests/Aurora.Bichinhos.Tests`.
 ```
 Assets/database/especies.json  espécies, estágios, atributos, quem aprende qual golpe, golpes
 Game/                          regra pura: Bicho (necessidades, XP, evolução), Batalha, Catalogo, Progresso (save)
+Rede/Duelo.cs                  duelo em rede (lockstep: host sorteia a semente, os dois simulam o mesmo turno)
 Render/                        Tinta (painel, barra, botão, texto), BichoVisual (respira, pisca, dorme), Particulas
-Telas/                         Escolha, Casa, Brincar, Batalha, Evolucao
+Telas/                         Escolha, Casa, Brincar, Batalha, Evolucao, Sala (criar/procurar/IP do duelo)
 BichinhosGame.cs               boot, relógio, save automático, troca de tela
 Arte/                          gerador dos sprites (Python + Pillow): python Arte/gerar_sprites.py
 ```
@@ -82,3 +111,5 @@ Arte/                          gerador dos sprites (Python + Pillow): python Art
   ele dorme ou pisca, em coordenadas 0..100 do sprite, e `Pele` a cor dela.
 - **Texto**: a fonte cobre ASCII + Latin-1. Acento e "ç" funcionam; travessão e reticências de um
   caractere só viram "?".
+- **Mexeu na regra da batalha** (dano, golpes, `especies.json`)? Suba `Duelo.Versao`: celulares com
+  versões diferentes simulariam turnos diferentes, e assim eles avisam em vez de dessincronizar.

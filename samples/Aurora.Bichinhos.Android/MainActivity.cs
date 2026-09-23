@@ -1,9 +1,19 @@
 using System.Numerics;
 using Android.App;
 using Android.Content.PM;
+using Android.Net.Wifi;
+using Android.OS;
 using Android.Views;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Sdl.Android;
+
+// Duelo com amigo: sockets UDP na rede local.
+[assembly: UsesPermission(Android.Manifest.Permission.Internet)]
+
+// Necessárias pro MulticastLock abaixo — sem ele o celular ignora a pergunta de broadcast da
+// busca de salas e a sala de quem hospeda nunca aparece pro amigo.
+[assembly: UsesPermission(Android.Manifest.Permission.AccessWifiState)]
+[assembly: UsesPermission(Android.Manifest.Permission.ChangeWifiMulticastState)]
 
 namespace Bichinhos.Droid;
 
@@ -20,6 +30,31 @@ namespace Bichinhos.Droid;
 public class MainActivity : SilkActivity
 {
     private volatile Bichinhos.BichinhosGame? _game;
+    private WifiManager.MulticastLock? _multicastLock;
+
+    protected override void OnCreate(Bundle? savedInstanceState)
+    {
+        base.OnCreate(savedInstanceState);
+
+        // O Wi-Fi do Android descarta broadcast que não seja endereçado ao aparelho, pra poupar
+        // bateria. A busca de salas do duelo é justamente um broadcast: sem o lock, "Procurar
+        // sala" nunca acha ninguém, enquanto digitar o IP continua funcionando.
+        if (Application.Context.GetSystemService(WifiService) is WifiManager wifi)
+        {
+            _multicastLock = wifi.CreateMulticastLock("bichinhos-duelo");
+            _multicastLock?.Acquire();
+        }
+    }
+
+    protected override void OnDestroy()
+    {
+        if (_multicastLock is { IsHeld: true })
+            _multicastLock.Release();
+        _multicastLock?.Dispose();
+        _multicastLock = null;
+
+        base.OnDestroy();
+    }
 
     protected override void OnRun()
     {
