@@ -74,6 +74,32 @@ public sealed class Bicho
 
     public List<Golpe> Golpes => Catalogo.Atual.GolpesNoNivel(Especie, Nivel);
 
+    /// <summary>Horas até a Fome cair a <paramref name="limite"/> ou menos (0 se já está). Conta o
+    /// sono em curso, que gasta fome mais devagar. Serve para agendar o aviso "ele está com fome"
+    /// enquanto o jogo está fechado.</summary>
+    public double HorasAteFome(float limite)
+    {
+        if (Fome <= limite)
+            return 0.0;
+
+        double fome = Fome;
+        double horas = 0.0;
+
+        if (Dormindo)
+        {
+            double horasDeSono = (100f - Energia) / EnergiaDormindoPorHora;
+            double taxaDormindo = FomePorHora * 0.35f;
+            double queda = taxaDormindo * horasDeSono;
+            if (fome - queda <= limite)
+                return (fome - limite) / taxaDormindo;
+
+            fome -= queda;
+            horas += horasDeSono;
+        }
+
+        return horas + (fome - limite) / FomePorHora;
+    }
+
     /// <summary>A necessidade mais urgente agora, ou null se está tudo bem. Vira o balãozinho
     /// sobre a cabeça do bicho.</summary>
     public Necessidade? Urgente

@@ -33,6 +33,9 @@ public sealed class BichinhosGame : Game
     public Tinta Tinta { get; private set; } = null!;
     public Toque Toque { get; private set; } = null!;
     public Progresso Progresso { get; private set; } = new();
+
+    /// <summary>O que só o sistema operacional sabe fazer (notificações). Nulo no PC.</summary>
+    public IPlataforma? Plataforma { get; set; }
     public Random Rng { get; } = new();
 
     /// <summary>Quanto o relógio do bicho anda por segundo real. 1 = tempo de verdade;
@@ -115,12 +118,43 @@ public sealed class BichinhosGame : Game
             double horas = Progresso.HorasDesdeUltimaVez(DateTime.UtcNow);
             bicho.Avancar(horas, Rng);
             IrPara(new TelaCasa(this, horas));
+            PedirNotificacoesUmaVez();
         }
         else
         {
             IrPara(new TelaEscolha(this));
         }
     }
+
+    // ------------------------------------------------------------------ avisos com o jogo fechado
+
+    /// <summary>Pede a permissão de notificação na primeira vez que há um bichinho para avisar.</summary>
+    public void PedirNotificacoesUmaVez()
+    {
+        if (Plataforma is null || Progresso.PediuNotificacoes)
+            return;
+
+        Progresso.PediuNotificacoes = true;
+        Salvar();
+        Plataforma.PedirPermissaoDeNotificacao();
+    }
+
+    /// <summary>O app saiu da tela: agenda o aviso de fome. Roda na thread da interface do
+    /// Android, não na do jogo: só lê o bicho, não mexe em nada.</summary>
+    public void AoIrParaSegundoPlano()
+    {
+        if (Plataforma is null || Bicho is not { } bicho)
+            return;
+
+        if (Lembretes.QuandoAvisarFome(bicho, DateTime.Now) is { } quando)
+        {
+            var (titulo, texto) = Lembretes.TextoFome(bicho);
+            Plataforma.AgendarLembrete(quando, titulo, texto);
+        }
+    }
+
+    /// <summary>O jogador voltou: o aviso agendado não faz mais sentido.</summary>
+    public void AoVoltarDoSegundoPlano() => Plataforma?.CancelarLembretes();
 
     // ------------------------------------------------------------------ som
 

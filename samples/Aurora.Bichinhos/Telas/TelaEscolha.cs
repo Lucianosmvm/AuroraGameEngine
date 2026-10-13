@@ -82,6 +82,7 @@ public sealed class TelaEscolha : Tela
                 {
                     Jogo.Salvar();
                     Jogo.IrPara(new TelaCasa(Jogo, 0, "Oi! Eu sou " + Jogo.Bicho!.Apelido + "!"));
+                    Jogo.PedirNotificacoesUmaVez();
                 }
                 break;
         }

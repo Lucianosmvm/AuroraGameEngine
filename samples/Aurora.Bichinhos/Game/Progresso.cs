@@ -26,6 +26,10 @@ public sealed class Progresso
 
     public int RecordePegar { get; set; }
 
+    /// <summary>Já mostramos o pedido de permissão de notificação. Pedir de novo a cada abertura
+    /// irrita, e depois de negado o Android nem mostra mais a janela.</summary>
+    public bool PediuNotificacoes { get; set; }
+
     /// <summary>Último IP digitado no duelo — quem joga sempre com o mesmo amigo não redigita.</summary>
     public string UltimoIp { get; set; } = "192.168.";
 
@@ -44,6 +48,7 @@ public sealed class Progresso
         UltimoPresente = UltimoPresente,
         SequenciaDias = SequenciaDias,
         RecordePegar = RecordePegar,
+        PediuNotificacoes = PediuNotificacoes,
         UltimoIp = UltimoIp,
     };
 

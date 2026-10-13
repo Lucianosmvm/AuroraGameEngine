@@ -7,6 +7,9 @@ using Android.Views;
 using Silk.NET.Windowing;
 using Silk.NET.Windowing.Sdl.Android;
 
+// Aviso "ele está com fome" com o jogo fechado (Android 13+ pede permissão em tempo de execução).
+[assembly: UsesPermission(Android.Manifest.Permission.PostNotifications)]
+
 // Duelo com amigo: sockets UDP na rede local.
 [assembly: UsesPermission(Android.Manifest.Permission.Internet)]
 
@@ -31,10 +34,13 @@ public class MainActivity : SilkActivity
 {
     private volatile Bichinhos.BichinhosGame? _game;
     private WifiManager.MulticastLock? _multicastLock;
+    private PlataformaAndroid? _plataforma;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+
+        _plataforma = new PlataformaAndroid(this);
 
         // O Wi-Fi do Android descarta broadcast que não seja endereçado ao aparelho, pra poupar
         // bateria. A busca de salas do duelo é justamente um broadcast: sem o lock, "Procurar
@@ -44,6 +50,20 @@ public class MainActivity : SilkActivity
             _multicastLock = wifi.CreateMulticastLock("bichinhos-duelo");
             _multicastLock?.Acquire();
         }
+    }
+
+    // Saiu da tela (home, outro app, tela apagada): agenda o aviso de fome. Voltou: cancela, pois
+    // quem está jogando não precisa de aviso.
+    protected override void OnPause()
+    {
+        _game?.AoIrParaSegundoPlano();
+        base.OnPause();
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+        _game?.AoVoltarDoSegundoPlano();
     }
 
     protected override void OnDestroy()
@@ -68,6 +88,7 @@ public class MainActivity : SilkActivity
         using var game = new Bichinhos.BichinhosGame();
         _game = game;
         game.AssetSource = new AndroidAssetSource();
+        game.Plataforma = _plataforma;
         game.Run(view);
         _game = null;
     }
