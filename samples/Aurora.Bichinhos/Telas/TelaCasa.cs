@@ -10,7 +10,7 @@ namespace Bichinhos;
 /// </summary>
 public sealed class TelaCasa : Tela
 {
-    private enum Menu { Nenhum, Comida, Batalha, Ficha, Recomecar }
+    private enum Menu { Nenhum, Comida, Batalha, Ficha, Recomecar, Brincar, Presente }
 
     private enum Botao { Comer, Brincar, Limpar, Remedio, Luz, Batalhar }
 
@@ -45,6 +45,9 @@ public sealed class TelaCasa : Tela
     private float _tempo;
     private float _cocosSumindo;  // animação de limpeza: cocôs antigos desbotando
     private int _cocosAntes;
+    private PresenteDoDia? _presente;
+
+    private static DateOnly Hoje => DateOnly.FromDateTime(DateTime.Now);
 
     private const float PeY = 865f;
     private const float LadoBicho = 360f;
@@ -61,6 +64,17 @@ public sealed class TelaCasa : Tela
 
     public override void Entrar()
     {
+        Jogo.Musica(B.Dormindo ? null : "musica_casa");
+
+        // Presente do dia: aparece na primeira vez que a casa abre no dia (ao abrir o jogo ou logo
+        // depois de chocar o ovo). Depois de pego não volta, então voltar de uma brincadeira ou
+        // batalha não mostra de novo.
+        if (Presente.Pendente(Jogo.Progresso, Hoje) is { } pendente)
+        {
+            _presente = pendente;
+            _menu = Menu.Presente;
+        }
+
         if (_falaInicial is not null)
             Falar(_falaInicial, 3f);
         else if (_horasFora >= 1.0)
@@ -77,6 +91,7 @@ public sealed class TelaCasa : Tela
         "comer" => Menu.Comida,
         "lutar" => Menu.Batalha,
         "ficha" => Menu.Ficha,
+        "jogos" => Menu.Brincar,
         _ => Menu.Nenhum,
     };
 
@@ -96,6 +111,9 @@ public sealed class TelaCasa : Tela
 
     private static readonly Caixa Topo = new(20f, 24f, 680f, 300f);
     private static readonly Caixa BotaoFicha = new(386f, 262f, 290f, 50f);
+    private static readonly Caixa BotaoSom = new(616f, 540f, 80f, 80f);
+    private static readonly Caixa CartaoPresente = new(50f, 280f, 620f, 640f);
+    private static readonly Caixa BotaoPegar = new(160f, 810f, 400f, 90f);
     private static readonly Caixa Janela = new(60f, 330f, 600f, 560f);
     private static readonly Caixa Ficha = new(40f, 150f, 640f, 800f);
     private static readonly Caixa FichaRecomecar = new(Ficha.X + 40f, Ficha.Y + Ficha.A - 110f, 250f, 80f);
@@ -111,6 +129,7 @@ public sealed class TelaCasa : Tela
     public override void Atualizar(float dt)
     {
         _tempo += dt;
+        Jogo.Musica(B.Dormindo ? null : "musica_casa");
         _visual.Atualizar(dt);
         _particulas.Atualizar(dt);
         _falaT -= dt;
@@ -164,7 +183,10 @@ public sealed class TelaCasa : Tela
         if (Toque.Tocou(BotaoFicha))
             _menu = Menu.Ficha;
 
-        if (Toque.Tocou(CorpoBicho))
+        if (Toque.Tocou(BotaoSom))
+            Jogo.AlternarSom();
+
+        if (Toque.Tocou(CorpoBicho, silencioso: true))
             Carinho();
 
         // Esc fecha no PC. No Android quem fecha é o sistema (voltar/home), e o save já está em dia.
@@ -220,7 +242,7 @@ public sealed class TelaCasa : Tela
                 else if (B.Doente)
                     Falar("Não tô bem pra brincar...");
                 else
-                    Jogo.IrPara(new TelaBrincar(Jogo));
+                    _menu = Menu.Brincar;
                 break;
 
             case Botao.Limpar:
@@ -233,6 +255,7 @@ public sealed class TelaCasa : Tela
                 _cocosSumindo = 0.8f;
                 bool sujo = B.Cocos > 0 || B.Higiene < 60f;
                 B.Limpar();
+                Som("pegar_doce");
                 _acao = 1f;
                 _particulas.Explosao("bolhas", Pe - new Vector2(0f, 150f), 12, 50f);
                 foreach (var p in PosicoesCoco.Take(_cocosAntes))
@@ -246,6 +269,7 @@ public sealed class TelaCasa : Tela
                 if (B.TomarRemedio(out string falaRemedio))
                 {
                     _comida = "pilula";
+                    Som("eca", 0.8f);
                     _acao = 1.2f;
                     _visual.Tremer(0.8f);
                     DarXp(2);
@@ -279,6 +303,7 @@ public sealed class TelaCasa : Tela
         }
 
         B.Carinho();
+        Som("carinho", 0.8f, 0.9f + (float)Jogo.Rng.NextDouble() * 0.3f);
         _visual.Pular(40f);
         _particulas.Icone("coracao", Pe - new Vector2(0f, LadoBicho * 0.8f), 54f);
         if (Jogo.Rng.Next(3) == 0)
@@ -309,8 +334,11 @@ public sealed class TelaCasa : Tela
         if (!comeu)
         {
             _visual.Tremer();
+            Som("erro", 0.6f);
             return;
         }
+
+        Som("comer");
 
         _comida = doce ? "doce" : "maca";
         _acao = 1.4f;
@@ -330,9 +358,26 @@ public sealed class TelaCasa : Tela
         if (niveis.Count == 0)
             return;
 
+        Som("nivel");
         _particulas.Explosao("estrela", Pe - new Vector2(0f, 200f), 10, 44f);
         _particulas.Texto($"Nível {B.Nivel}!", Pe - new Vector2(0f, 420f), Color.FromHex("#FFE27AFF"), grande: true, duracao: 2f);
         Falar(golpes.Count > 0 ? $"Aprendi {golpes[^1].Nome}!" : $"Subi pro nível {B.Nivel}!");
+        Jogo.Salvar();
+    }
+
+    private void PegarPresente()
+    {
+        if (Presente.Receber(Jogo.Progresso, Hoje) is not { } p)
+        {
+            _menu = Menu.Nenhum;
+            return;
+        }
+
+        Som("presente");
+        _menu = Menu.Nenhum;
+        _visual.Pular(70f);
+        _particulas.Explosao("moeda", Pe - new Vector2(0f, 220f), 12, 46f);
+        Falar(p.Dia == Presente.MoedasPorDia.Length ? "Presente grandão! Obrigado!" : "Obrigado!!", 3f);
         Jogo.Salvar();
     }
 
@@ -372,6 +417,26 @@ public sealed class TelaCasa : Tela
                 break;
             }
 
+            case Menu.Brincar:
+                if (Toque.Tocou(BotaoMenu(0)))
+                {
+                    Jogo.IrPara(new TelaBrincar(Jogo));
+                    return;
+                }
+                if (Toque.Tocou(BotaoMenu(1)))
+                {
+                    Jogo.IrPara(new TelaPegar(Jogo));
+                    return;
+                }
+                if (Toque.Tocou(BotaoMenu(2)))
+                    _menu = Menu.Nenhum;
+                break;
+
+            case Menu.Presente:
+                if (Toque.Tocou(BotaoPegar))
+                    PegarPresente();
+                break;
+
             case Menu.Ficha:
                 if (Toque.Tocou(FichaRecomecar))
                     _menu = Menu.Recomecar;
@@ -388,8 +453,8 @@ public sealed class TelaCasa : Tela
         }
 
         // Toque fora da janela fecha (menos na confirmação, que precisa de resposta).
-        bool fechaPorFora = _menu is Menu.Comida or Menu.Batalha or Menu.Ficha;
-        var janela = _menu == Menu.Ficha ? Ficha : CaixaJanelinha(_menu == Menu.Batalha ? 5 : 4);
+        bool fechaPorFora = _menu is Menu.Comida or Menu.Batalha or Menu.Ficha or Menu.Brincar;
+        var janela = _menu == Menu.Ficha ? Ficha : CaixaJanelinha(_menu == Menu.Batalha ? 5 : _menu == Menu.Brincar ? 3 : 4);
         if (fechaPorFora && Toque.Apertou && !janela.Contem(Toque.Posicao) && Toque.TocouQualquer())
             _menu = Menu.Nenhum;
     }
@@ -421,6 +486,7 @@ public sealed class TelaCasa : Tela
         _particulas.Desenhar(Tinta);
         DesenharBalao();
         DesenharTopo();
+        DesenharBotaoSom();
 
         for (int i = 0; i < Botoes.Length; i++)
             DesenharBotao(i);
@@ -531,6 +597,52 @@ public sealed class TelaCasa : Tela
         Tinta.Botao(BotaoFicha, "Ficha", Color.FromHex("#9A7BD6FF"), apertado, "estrela", _menu == Menu.Nenhum);
     }
 
+    private void DesenharBotaoSom()
+    {
+        bool ligado = Jogo.Progresso.SomLigado;
+        var centro = BotaoSom.Centro;
+        Tinta.Circulo(centro, 40f, Tinta.Tinteiro);
+        Tinta.Circulo(centro, 36f, Tinta.Papel.WithAlpha(0.95f));
+        Tinta.Icone("nota", centro, 46f, ligado ? Color.White : Color.White.WithAlpha(0.3f));
+        if (!ligado)
+            Tinta.Texto("x", centro + new Vector2(0f, -17f), Color.FromHex("#D6453DFF"), Tinta.FonteMedia, alinhar: Tinta.Alinhar.Centro);
+    }
+
+    private void DesenharPresente()
+    {
+        if (_presente is not { } p)
+            return;
+
+        var c = CartaoPresente;
+        Tinta.Cartao(c, Tinta.Papel, Tinta.Tinteiro, 5f, 30f);
+        Tinta.Texto("Presente do dia!", new Vector2(c.Centro.X, c.Y + 30f), Tinta.Tinteiro, Tinta.FonteMedia, alinhar: Tinta.Alinhar.Centro);
+        Tinta.Texto(p.Sequencia == 1 ? "Volte amanhã para ganhar mais!" : $"{p.Sequencia} dias seguidos!",
+            new Vector2(c.Centro.X, c.Y + 92f), Color.FromHex("#6B5A6EFF"), escala: 0.9f, alinhar: Tinta.Alinhar.Centro);
+
+        // Os 7 dias: os que já passaram em verde, o de hoje pulsando em dourado, os de amanhã em cinza.
+        for (int i = 0; i < Presente.MoedasPorDia.Length; i++)
+        {
+            int dia = i + 1;
+            var centro = new Vector2(c.X + 70f + i * 80f, c.Y + 190f);
+            bool hoje = dia == p.Dia, passou = dia < p.Dia;
+            float pulso = hoje ? 1f + MathF.Sin(_tempo * 6f) * 0.08f : 1f;
+
+            Tinta.Circulo(centro, 36f * pulso, Tinta.Tinteiro);
+            Tinta.Circulo(centro, 32f * pulso, hoje ? Color.FromHex("#FFC93CFF") : passou ? Color.FromHex("#4FC3A1FF") : Color.FromHex("#DDD3CAFF"));
+            Tinta.Texto(Presente.MoedasPorDia[i].ToString(), new Vector2(centro.X, centro.Y - 14f),
+                hoje || passou ? Tinta.Tinteiro : Color.FromHex("#8C8098FF"), escala: 0.85f, alinhar: Tinta.Alinhar.Centro);
+            Tinta.Texto($"dia {dia}", new Vector2(centro.X, centro.Y + 42f), Color.FromHex("#6B5A6EFF"), escala: 0.55f, alinhar: Tinta.Alinhar.Centro);
+        }
+
+        string premio = $"+{p.Moedas} moedas";
+        float larguraPremio = Tinta.Medir(premio, Tinta.FonteMedia).X;
+        Tinta.Icone("moeda", new Vector2(c.Centro.X - larguraPremio / 2f - 34f, c.Y + 322f), 56f);
+        Tinta.Texto(premio, new Vector2(c.Centro.X + 20f, c.Y + 296f), Tinta.Tinteiro, Tinta.FonteMedia, alinhar: Tinta.Alinhar.Centro);
+
+        _visual.Desenhar(Tinta, B.Especie, B.Estagio, new Vector2(c.Centro.X, c.Y + 480f), 170f);
+        Tinta.Botao(BotaoPegar, "Pegar!", Color.FromHex("#4FA83FFF"), Toque.SegurandoEm(BotaoPegar), "estrela", true, Tinta.FonteMedia);
+    }
+
     private void DesenharBotao(int i)
     {
         var (id, icone, cor) = Botoes[i];
@@ -582,6 +694,19 @@ public sealed class TelaCasa : Tela
                 break;
             }
 
+            case Menu.Brincar:
+                Janelinha("Brincar de quê?", 3);
+                Tinta.Botao(BotaoMenu(0), "Pra que lado?", Color.FromHex("#3F95E0FF"), Toque.SegurandoEm(BotaoMenu(0)), "bola");
+                Tinta.Botao(BotaoMenu(1), "Pegar frutas", Color.FromHex("#F08A3CFF"), Toque.SegurandoEm(BotaoMenu(1)), "maca");
+                Tinta.Botao(BotaoMenu(2), "Voltar", Color.FromHex("#8C8098FF"), Toque.SegurandoEm(BotaoMenu(2)));
+                Tinta.Texto(Jogo.Progresso.RecordePegar > 0 ? $"Seu recorde nas frutas: {Jogo.Progresso.RecordePegar}" : "Pegar frutas rende mais moedas.",
+                    new Vector2(Janela.Centro.X, Janela.Y + 92f), Color.FromHex("#6B5A6EFF"), escala: 0.85f, alinhar: Tinta.Alinhar.Centro);
+                break;
+
+            case Menu.Presente:
+                DesenharPresente();
+                break;
+
             case Menu.Ficha:
                 DesenharFicha();
                 break;
@@ -610,7 +735,8 @@ public sealed class TelaCasa : Tela
 
         var tipo = Color.FromHex(Tipos.Cor(B.Especie.Tipo));
         Tinta.Texto(B.Nome, new Vector2(c.X + 40f, c.Y + 30f), Tinta.Tinteiro, Tinta.FonteMedia);
-        Tinta.Texto($"Nível {B.Nivel}  ·  {Tipos.Nome(B.Especie.Tipo)}", new Vector2(c.X + 40f, c.Y + 84f), tipo);
+        string forma = B.Apelido.Length > 0 ? $"{B.NomeDaForma}  ·  " : "";
+        Tinta.Texto($"{forma}Nível {B.Nivel}  ·  {Tipos.Nome(B.Especie.Tipo)}", new Vector2(c.X + 40f, c.Y + 84f), tipo);
         int dias = (int)(B.HorasDeVida / 24.0);
         Tinta.Texto($"{dias} {(dias == 1 ? "dia" : "dias")} de vida  ·  {B.Vitorias} vitórias, {B.Derrotas} derrotas",
             new Vector2(c.X + 40f, c.Y + 122f), Color.FromHex("#6B5A6EFF"), escala: 0.85f);

@@ -78,6 +78,7 @@ public sealed class TelaBatalha : Tela
     {
         _texto = _duelo is null ? $"Um {Rival.Nome} selvagem apareceu!" : $"{Rival.Nome} do seu amigo quer lutar!";
         _visualInimigo.Pular(70f);
+        Jogo.Musica("musica_batalha");
     }
 
     public override void Sair() => _duelo?.Dispose();
@@ -265,7 +266,11 @@ public sealed class TelaBatalha : Tela
                 // Correção do duelo (a conta daqui divergiu do host): só acerta a barra.
                 DefinirVida(correcao.Alvo, correcao.VidaDepois);
                 break;
+            case Investida:
+                Som("toque", 0.7f, 0.6f);
+                break;
             case Dano d:
+                Som(d.Efetividade > 1f ? "super" : d.Efetividade < 1f ? "fraco" : "golpe");
                 Visual(d.Alvo).Flash();
                 Visual(d.Alvo).Tremer(0.3f);
                 DefinirVida(d.Alvo, d.VidaDepois);
@@ -273,16 +278,19 @@ public sealed class TelaBatalha : Tela
                 _particulas.Texto($"-{d.Valor}", Pe(d.Alvo) - new Vector2(0f, Tamanho(d.Alvo) * 0.85f), cor, grande: d.Efetividade > 1f);
                 break;
             case Cura c:
+                Som("carinho");
                 DefinirVida(c.Alvo, c.VidaDepois);
                 _particulas.Explosao("coracao", Pe(c.Alvo) - new Vector2(0f, Tamanho(c.Alvo) * 0.4f), 6, 36f);
                 if (c.Valor > 0)
                     _particulas.Texto($"+{c.Valor}", Pe(c.Alvo) - new Vector2(0f, Tamanho(c.Alvo) * 0.85f), Color.FromHex("#7CFFB0FF"));
                 break;
             case MudouAtributo a:
+                Som(a.Subiu ? "pegar_doce" : "fraco");
                 Visual(a.Alvo).Pular(a.Subiu ? 50f : 15f);
                 _particulas.Explosao(a.Subiu ? "estrela" : "gota", Pe(a.Alvo) - new Vector2(0f, Tamanho(a.Alvo) * 0.4f), 6, 34f);
                 break;
             case Errou e:
+                Som("erro", 0.6f);
                 _particulas.Texto("errou", Pe(Outro(e.Quem)) - new Vector2(0f, Tamanho(Outro(e.Quem)) * 0.85f), Color.FromHex("#CCCCCCFF"));
                 break;
         }
@@ -363,10 +371,12 @@ public sealed class TelaBatalha : Tela
 
             _visualJogador.Pular(80f);
             _particulas.Explosao("estrela", PeJogador - new Vector2(0f, 200f), 14, 46f);
+            Som("vitoria");
         }
         else
         {
             _texto = $"{Eu.Nome} perdeu... Leve pra casa pra descansar.";
+            Som("derrota");
         }
 
         Jogo.Salvar();
@@ -391,6 +401,7 @@ public sealed class TelaBatalha : Tela
             linhas.Add($"Aprendeu {g.Nome}!");
         _texto = string.Join("\n", linhas);
 
+        Som(venci ? "vitoria" : "derrota");
         if (venci)
         {
             _visualJogador.Pular(80f);

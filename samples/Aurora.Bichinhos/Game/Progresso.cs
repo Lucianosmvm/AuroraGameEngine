@@ -15,6 +15,17 @@ public sealed class Progresso
     public int Moedas { get; set; } = 20;
     public DateTime UltimaVezUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Som e música ligados. Fica no save: quem silencia no ônibus não quer ligar de novo.</summary>
+    public bool SomLigado { get; set; } = true;
+
+    /// <summary>Dia (yyyy-MM-dd, calendário local) do último presente diário pego.</summary>
+    public string UltimoPresente { get; set; } = "";
+
+    /// <summary>Dias seguidos pegando o presente.</summary>
+    public int SequenciaDias { get; set; }
+
+    public int RecordePegar { get; set; }
+
     /// <summary>Último IP digitado no duelo — quem joga sempre com o mesmo amigo não redigita.</summary>
     public string UltimoIp { get; set; } = "192.168.";
 
@@ -23,6 +34,18 @@ public sealed class Progresso
     public const double MaxHorasFora = 24.0;
 
     public const string Arquivo = "bichinho.json";
+
+    /// <summary>Progresso novo (outro bicho, moedas iniciais) que mantém o que não é do bicho:
+    /// som, sequência do presente, recorde. Recomeçar não deve zerar a sequência de dias.</summary>
+    public Progresso ParaNovoBicho(Bicho? bicho) => new()
+    {
+        Bicho = bicho,
+        SomLigado = SomLigado,
+        UltimoPresente = UltimoPresente,
+        SequenciaDias = SequenciaDias,
+        RecordePegar = RecordePegar,
+        UltimoIp = UltimoIp,
+    };
 
     private static readonly JsonSerializerOptions Opcoes = new() { WriteIndented = true };
 

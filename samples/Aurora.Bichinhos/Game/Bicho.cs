@@ -9,6 +9,9 @@ namespace Bichinhos;
 public sealed class Bicho
 {
     public string EspecieId { get; set; } = "";
+
+    /// <summary>O nome que o jogador deu. Vazio em saves antigos: aí vale o nome da forma.</summary>
+    public string Apelido { get; set; } = "";
     public int Nivel { get; set; } = 1;
     public int Xp { get; set; }
     public int Estagio { get; set; }
@@ -51,7 +54,11 @@ public sealed class Bicho
     // ------------------------------------------------------------------ derivados
 
     public Especie Especie => Catalogo.Atual.Especie(EspecieId);
-    public string Nome => Especie.Estagios[Estagio].Nome;
+    /// <summary>Nome da espécie nesta forma (Brasador, Vulcanossauro...).</summary>
+    public string NomeDaForma => Especie.Estagios[Estagio].Nome;
+
+    /// <summary>Como o jogo chama o bicho: o apelido, ou a forma se ainda não tem.</summary>
+    public string Nome => Apelido.Length > 0 ? Apelido : NomeDaForma;
 
     public int XpParaProximo => XpNecessario(Nivel);
 

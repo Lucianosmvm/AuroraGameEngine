@@ -84,6 +84,12 @@ public sealed class BichinhosGame : Game
         Catalogo.Atual = Catalogo.Carregar(Assets.LoadText(Catalogo.Caminho));
         Tinta = new Tinta(Assets);
         Toque = new Toque(Input);
+        Toque.AoTocar = () => Som("toque", 0.55f);
+
+        // O AudioManager falha em silêncio quando não acha placa de som; sem este aviso o jogo
+        // "funciona" mudo e ninguém sabe por quê.
+        if (!Audio.IsAvailable)
+            Console.Error.WriteLine("[Bichinhos] Áudio indisponível: o jogo vai rodar sem som.");
 
         Progresso = Progresso.Carregar(PastaSave);
 
@@ -116,6 +122,42 @@ public sealed class BichinhosGame : Game
         }
     }
 
+    // ------------------------------------------------------------------ som
+
+    private string? _musica;
+
+    /// <summary>Toca um efeito de Assets/sounds. Sem som ligado (ou sem placa de áudio) não faz nada.</summary>
+    public void Som(string nome, float volume = 1f, float pitch = 1f)
+    {
+        if (Progresso.SomLigado)
+            Audio.Play($"sounds/{nome}.wav", volume, pitch);
+    }
+
+    /// <summary>Troca a trilha de fundo (null para). Pedir a que já toca não reinicia.</summary>
+    public void Musica(string? nome)
+    {
+        if (nome == _musica)
+            return;
+
+        _musica = nome;
+        AplicarMusica();
+    }
+
+    public void AlternarSom()
+    {
+        Progresso.SomLigado = !Progresso.SomLigado;
+        AplicarMusica();
+        Salvar();
+    }
+
+    private void AplicarMusica()
+    {
+        if (_musica is null || !Progresso.SomLigado)
+            Audio.StopMusic();
+        else
+            Audio.PlayMusic($"sounds/{_musica}.wav", loop: true, volume: 0.45f);
+    }
+
     public void IrPara(Tela tela)
     {
         _tela?.Sair();
@@ -138,13 +180,13 @@ public sealed class BichinhosGame : Game
 
     public void NovoBicho(string especieId)
     {
-        Progresso = new Progresso { Bicho = new Bicho { EspecieId = especieId }, Moedas = 20 };
+        Progresso = Progresso.ParaNovoBicho(new Bicho { EspecieId = especieId, Apelido = Nomes.Sortear(Rng) });
         Salvar();
     }
 
     public void Recomecar()
     {
-        Progresso = new Progresso();
+        Progresso = Progresso.ParaNovoBicho(null);
         Salvar();
         IrPara(new TelaEscolha(this));
     }
@@ -192,14 +234,34 @@ public sealed class BichinhosGame : Game
         string especie = tela.Contains(':') ? tela[(tela.IndexOf(':') + 1)..] : "brasinha";
         tela = tela.Split(':')[0];
 
-        var bicho = new Bicho { EspecieId = especie, Nivel = 8, Estagio = 1, Xp = 40, Fome = 62, Alegria = 85, Energia = 70, Higiene = 45, Cocos = 2 };
+        var bicho = new Bicho { EspecieId = especie, Apelido = "Fumaça", Nivel = 8, Estagio = 1, Xp = 40, Fome = 62, Alegria = 85, Energia = 70, Higiene = 45, Cocos = 2 };
         Progresso = new Progresso { Bicho = bicho, Moedas = 37 };
+
+        // Os demos não podem abrir com o presente do dia na frente. Só o "presente" mostra ele,
+        // com a sequência no terceiro dia.
+        var hoje = DateOnly.FromDateTime(DateTime.Now);
+        Progresso.UltimoPresente = (tela == "presente" ? hoje.AddDays(-1) : hoje).ToString("yyyy-MM-dd");
+        Progresso.SequenciaDias = 2;
 
         switch (tela)
         {
             case "escolha":
                 Progresso = new Progresso();
                 IrPara(new TelaEscolha(this));
+                break;
+            case "nasceu":
+                Progresso = new Progresso();
+                var escolha = new TelaEscolha(this);
+                IrPara(escolha);
+                escolha.ParaDemoNasceu(especie);
+                break;
+            case "pegar":
+                var pegar = new TelaPegar(this);
+                IrPara(pegar);
+                pegar.ParaDemo(9f);
+                break;
+            case "presente":
+                IrPara(new TelaCasa(this, 0));
                 break;
             case "batalha":
                 var inimigo = Lutador.Selvagem(Catalogo.Atual.Especie("gotinha"), 9);
@@ -216,7 +278,7 @@ public sealed class BichinhosGame : Game
                 bicho.Dormindo = true;
                 IrPara(new TelaCasa(this, 0));
                 break;
-            case "comer" or "lutar" or "ficha":
+            case "comer" or "lutar" or "ficha" or "jogos":
                 var casa = new TelaCasa(this, 0);
                 IrPara(casa);
                 casa.AbrirMenu(tela);
@@ -254,6 +316,8 @@ public abstract class Tela
     protected BichinhosGame Jogo { get; }
     protected Tinta Tinta => Jogo.Tinta;
     protected Toque Toque => Jogo.Toque;
+
+    protected void Som(string nome, float volume = 1f, float pitch = 1f) => Jogo.Som(nome, volume, pitch);
 
     public virtual void Entrar() { }
     public virtual void Sair() { }

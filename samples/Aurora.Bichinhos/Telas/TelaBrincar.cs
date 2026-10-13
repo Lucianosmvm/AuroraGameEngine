@@ -35,6 +35,8 @@ public sealed class TelaBrincar : Tela
 
     private Bicho B => Jogo.Bicho!;
 
+    public override void Entrar() => Jogo.Musica("musica_casa");
+
     public override void Atualizar(float dt)
     {
         _t += dt;
@@ -90,9 +92,15 @@ public sealed class TelaBrincar : Tela
 
         var cabeca = Pe + new Vector2(_lado * 150f, -330f);
         if (_acertou)
+        {
             _particulas.Icone("coracao", cabeca, 70f);
+            Som("carinho");
+        }
         else
+        {
             _particulas.Texto("Errou!", cabeca, Color.FromHex("#FF8A8AFF"), grande: true);
+            Som("erro", 0.7f);
+        }
     }
 
     private void Terminar()
@@ -107,6 +115,7 @@ public sealed class TelaBrincar : Tela
             Jogo.Progresso.Moedas += MoedasVitoria;
             _particulas.Explosao("estrela", Pe - new Vector2(0f, 200f), 14, 44f);
             _visual.Pular(90f);
+            Som("vitoria");
         }
 
         _resultado = ganhou ? $"Você ganhou! +{MoedasVitoria} moedas" : "Quase! Mas ele se divertiu.";

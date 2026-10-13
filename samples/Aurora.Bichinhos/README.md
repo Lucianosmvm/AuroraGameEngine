@@ -9,13 +9,14 @@ dotnet run --project samples/Aurora.Bichinhos
 
 ## Como joga
 
-1. **Escolha um ovo**: Brasinha (Fogo), Gotinha (Água) ou Brotinho (Planta). O ovo choca na hora.
+1. **Escolha um ovo**: Brasinha (Fogo), Gotinha (Água) ou Brotinho (Planta). O ovo choca na hora,
+   e você **dá um nome** ao bichinho (toque em "Outro nome" até gostar de um; não precisa de teclado).
 2. **Cuide**: as barras do alto caem com o tempo, **inclusive com o jogo fechado** (até 24 h contam).
 
    | Botão | O que faz |
    |---|---|
    | Comer | Refeição (grátis) mata a fome; Doce (3 moedas) dá alegria. Cheio, ele recusa |
-   | Brincar | "Pra que lado ele vai?": 5 rodadas, acertar 3 dá alegria, XP e moedas |
+   | Brincar | Escolha entre **Pra que lado?** (5 rodadas, acertar 3 ganha) e **Pegar frutas** (20 s, veja abaixo) |
    | Limpar | Tira os cocôs e dá banho. Cocô no chão derruba a higiene rápido |
    | Remédio | Cura a doença. Bicho maltratado (fome, sujeira, cocô) perde saúde e adoece |
    | Dormir | Apaga a luz; ele recupera energia e acorda sozinho quando descansou |
@@ -24,6 +25,24 @@ dotnet run --project samples/Aurora.Bichinhos
    Tocar no bicho é carinho. O balão sobre a cabeça mostra o que ele mais precisa agora.
 3. **Suba de nível**: cuidar dá um pouco de XP, batalha dá bem mais. Nível novo pode ensinar golpe.
 4. **Evolua**: nível 6 vira a segunda forma e nível 14 a forma final (ver **Ficha**).
+
+### Pegar frutas
+
+Brincadeira de habilidade: frutas, doces e estrelas caem e o bichinho segue o seu dedo. Maçã vale 1,
+doce 3, estrela 5; **cocô tira 2**. Dura 20 segundos e vai acelerando; 10 pontos já contam como
+vitória. Rende até 10 moedas e XP, e o recorde fica salvo. A regra está em `Game/PegaFrutas.cs`.
+
+### Presente diário
+
+Ao abrir o jogo no dia, aparece o **presente do dia**: 5, 7, 9, 11, 13, 15 e **30** moedas do dia 1
+ao 7, e depois o ciclo recomeça. Abrir em dias seguidos mantém a sequência; faltar um dia zera (sem
+outra punição). O dia é o do calendário do aparelho. Regra em `Game/Presente.cs`.
+
+### Som
+
+Efeitos em todo lugar (comer, carinho, golpe, "super eficaz", vitória, evolução...) e duas músicas:
+calma em casa e agitada na batalha e em "Pegar frutas". O botão de nota na casa liga e desliga, e a
+escolha fica no save. Os sons são sintetizados em `Arte/gerar_sons.py` (sem arquivo de terceiros).
 
 ### Batalha
 
@@ -67,13 +86,18 @@ USB ligada) ou copiando o arquivo pro celular e abrindo (permitir "fontes descon
 
 O projeto Android não tem código de jogo: compila os `.cs` e empacota os `Assets/` desta pasta.
 
+**Som no Android:** o áudio da engine é OpenAL e o Android não traz `libopenal.so`, então o projeto
+referencia o pacote `MonoGame.Library.OpenAL` (e o exportador da engine faz o mesmo). Sem ele o jogo
+roda mudo, sem erro nenhum. Se o jogo abrir sem som, procure no logcat a linha
+`[Bichinhos] Áudio indisponível`. Esta parte ainda não foi testada num aparelho.
+
 ## Testar sem esperar
 
 | Argumento | |
 |---|---|
 | `--rapido` | Relógio do bicho 60x mais rápido (1 s = 1 min): fome, cocô e sono sem esperar |
 | `--save <pasta>` | Save em outra pasta, pra não mexer no seu bicho |
-| `--demo <tela>` | Abre direto em `casa`, `noite`, `comer`, `lutar`, `ficha`, `batalha`, `brincar`, `evolucao` ou `escolha` com um bicho de exemplo. `casa:gotinha` troca a espécie |
+| `--demo <tela>` | Abre direto em `casa`, `noite`, `comer`, `lutar`, `ficha`, `jogos`, `batalha`, `brincar`, `pegar`, `presente`, `evolucao`, `escolha` ou `nasceu` com um bicho de exemplo. `casa:gotinha` troca a espécie |
 | `--foto <arquivo.png>` | Grava a tela depois de ~1,5 s e fecha |
 | `--duelo host` / `--duelo <ip>` | Cria a sala / entra na sala direto, sem passar pelos menus |
 | `--robo` | Na batalha escolhe golpe sozinho e fecha no fim (testar duelo com duas janelas) |
@@ -102,6 +126,8 @@ Render/                        Tinta (painel, barra, botão, texto), BichoVisual
 Telas/                         Escolha, Casa, Brincar, Batalha, Evolucao, Sala (criar/procurar/IP do duelo)
 BichinhosGame.cs               boot, relógio, save automático, troca de tela
 Arte/                          gerador dos sprites (Python + Pillow): python Arte/gerar_sprites.py
+                               gerador dos sons (Python + numpy): python Arte/gerar_sons.py -> Assets/sounds/
+Assets/sounds/                 efeitos e músicas (WAV mono 16 bits); o teste confere que todo som citado no código existe
 ```
 
 - **Balancear** é mexer no JSON: `NivelEvolucao`, `MultiplicadorEstagio`, `Base` de cada espécie.

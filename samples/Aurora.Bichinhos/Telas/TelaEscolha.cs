@@ -21,6 +21,20 @@ public sealed class TelaEscolha : Tela
     public TelaEscolha(BichinhosGame jogo) : base(jogo)
         => _opcoes = Catalogo.Atual.Iniciais.Take(3).ToList();
 
+    private static readonly Caixa BotaoSortear = new(60f, 1060f, 290f, 96f);
+    private static readonly Caixa BotaoComecar = new(370f, 1060f, 290f, 96f);
+
+    public override void Entrar() => Jogo.Musica("musica_casa");
+
+    /// <summary>Só pro <c>--demo nasceu</c>: pula direto pro filhote recém-nascido.</summary>
+    internal void ParaDemoNasceu(string especieId)
+    {
+        _escolhida = Catalogo.Atual.Especie(especieId);
+        Jogo.NovoBicho(especieId);
+        _fase = Fase.Nasceu;
+        _t = 1f;
+    }
+
     private static Caixa Cartao(int i) => new(40f, 290f + i * 270f, 640f, 240f);
 
     public override void Atualizar(float dt)
@@ -39,6 +53,7 @@ public sealed class TelaEscolha : Tela
                         _escolhida = _opcoes[i];
                         _fase = Fase.Chocando;
                         _t = 0f;
+                        Som("choca");
                     }
                 }
                 break;
@@ -48,6 +63,7 @@ public sealed class TelaEscolha : Tela
                 {
                     _fase = Fase.Nasceu;
                     _t = 0f;
+                    Som("nivel");
                     _visual.Pular(90f);
                     _particulas.Explosao("estrela", new Vector2(360f, 620f), 14, 46f);
                     Jogo.NovoBicho(_escolhida!.Id);
@@ -55,8 +71,18 @@ public sealed class TelaEscolha : Tela
                 break;
 
             case Fase.Nasceu:
-                if (_t > 0.8f && Toque.TocouQualquer())
-                    Jogo.IrPara(new TelaCasa(Jogo, 0));
+                if (_t > 0.8f && Toque.Tocou(BotaoSortear))
+                {
+                    var bicho = Jogo.Bicho!;
+                    bicho.Apelido = Nomes.Sortear(Jogo.Rng, bicho.Apelido);
+                    _visual.Pular(40f);
+                    Som("carinho");
+                }
+                else if (_t > 0.8f && Toque.Tocou(BotaoComecar))
+                {
+                    Jogo.Salvar();
+                    Jogo.IrPara(new TelaCasa(Jogo, 0, "Oi! Eu sou " + Jogo.Bicho!.Apelido + "!"));
+                }
                 break;
         }
     }
@@ -128,11 +154,16 @@ public sealed class TelaEscolha : Tela
         if (brilho > 0f)
             Tinta.Retangulo(new Caixa(0, 0, BichinhosGame.Largura, BichinhosGame.Altura), Color.White.WithAlpha(brilho));
 
-        Tinta.TextoContornado($"Nasceu {e.Estagios[0].Nome}!", new Vector2(360f, 860f), Color.FromHex("#FFE27AFF"), Tinta.FonteGrande, 0.9f);
-        Tinta.Paragrafo("Dê comida, carinho, banho e hora de dormir. Bicho bem cuidado fica forte, sobe de nível e evolui!",
-            new Vector2(360f, 960f), 600f, Color.FromHex("#E8DDFBFF"), escala: 0.95f, alinhar: Tinta.Alinhar.Centro);
+        Tinta.TextoContornado($"Nasceu {e.Estagios[0].Nome}!", new Vector2(360f, 850f), Color.FromHex("#FFE27AFF"), Tinta.FonteGrande, 0.9f);
+        Tinta.Texto("Qual vai ser o nome dele?", new Vector2(360f, 940f), Color.FromHex("#E8DDFBFF"), Tinta.Fonte, 0.95f, Tinta.Alinhar.Centro);
 
-        if (_t > 0.8f && (int)(_t * 2f) % 2 == 0)
-            Tinta.Texto("toque para continuar", new Vector2(360f, 1150f), Color.FromHex("#CFC2EAFF"), alinhar: Tinta.Alinhar.Centro);
+        var cartaoNome = new Caixa(110f, 980f, 500f, 82f);
+        Tinta.Cartao(cartaoNome, Tinta.Papel, Tinta.Tinteiro, 4f, 26f);
+        Tinta.Texto(Jogo.Bicho?.Apelido ?? "", new Vector2(360f, 996f), Tinta.Tinteiro, Tinta.FonteMedia, alinhar: Tinta.Alinhar.Centro);
+
+        Tinta.Botao(BotaoSortear, "Outro nome", Color.FromHex("#7B61C9FF"), Toque.SegurandoEm(BotaoSortear), null, _t > 0.8f);
+        Tinta.Botao(BotaoComecar, "Começar!", Color.FromHex("#4FA83FFF"), Toque.SegurandoEm(BotaoComecar), null, _t > 0.8f);
+        Tinta.Texto("Cuide dele todo dia: comida, banho, carinho e soneca.", new Vector2(360f, 1190f),
+            Color.FromHex("#CFC2EAFF"), Tinta.Fonte, 0.8f, Tinta.Alinhar.Centro);
     }
 }

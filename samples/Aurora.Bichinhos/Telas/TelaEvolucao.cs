@@ -31,6 +31,12 @@ public sealed class TelaEvolucao : Tela
 
     private Bicho B => Jogo.Bicho!;
 
+    public override void Entrar()
+    {
+        Jogo.Musica(null);
+        Som("evolucao");
+    }
+
     public override void Atualizar(float dt)
     {
         _t += dt;
@@ -51,6 +57,7 @@ public sealed class TelaEvolucao : Tela
             if (_t >= DuracaoTroca)
             {
                 B.Evoluir();
+                Som("nivel");
                 Jogo.Salvar();
                 _evoluiu = true;
                 _t = 0f;
@@ -108,7 +115,7 @@ public sealed class TelaEvolucao : Tela
         _particulas.Desenhar(Tinta);
 
         Tinta.TextoContornado("Parabéns!", new Vector2(360f, 120f), Color.FromHex("#FFE27AFF"), Tinta.FonteGrande);
-        Tinta.Paragrafo($"{_nomeAntes} evoluiu para {B.Nome}!", new Vector2(360f, 940f), 620f, Color.White, Tinta.FonteMedia, 1f, Tinta.Alinhar.Centro);
+        Tinta.Paragrafo(B.Apelido.Length > 0 ? $"{B.Apelido} virou {B.NomeDaForma}!" : $"{_nomeAntes} evoluiu para {B.NomeDaForma}!", new Vector2(360f, 940f), 620f, Color.White, Tinta.FonteMedia, 1f, Tinta.Alinhar.Centro);
         Tinta.Texto("Ficou bem mais forte.", new Vector2(360f, 1060f), Color.FromHex("#CFC2EAFF"), alinhar: Tinta.Alinhar.Centro);
 
         if (_t > 1.2f && (int)(_t * 2f) % 2 == 0)

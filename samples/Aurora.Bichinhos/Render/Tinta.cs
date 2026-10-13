@@ -37,12 +37,19 @@ public sealed class Toque
 
     public void NovoFrame() => Consumido = false;
 
-    public bool Tocou(Caixa caixa)
+    /// <summary>Chamado quando um toque é aceito: o jogo põe aqui o "tic" de botão. Ficou aqui,
+    /// e não em cada tela, pra TODO botão ter retorno sonoro sem ninguém lembrar de pedir.</summary>
+    public Action? AoTocar { get; set; }
+
+    /// <param name="silencioso">Para toques que têm som próprio (o carinho no bicho).</param>
+    public bool Tocou(Caixa caixa, bool silencioso = false)
     {
         if (Consumido || !Apertou || !caixa.Contem(Posicao))
             return false;
 
         Consumido = true;
+        if (!silencioso)
+            AoTocar?.Invoke();
         return true;
     }
 
@@ -52,6 +59,7 @@ public sealed class Toque
             return false;
 
         Consumido = true;
+        AoTocar?.Invoke();
         return true;
     }
 

@@ -152,6 +152,9 @@ public static class AndroidExporter
                  backend de input no Android (o meta-pacote Silk.NET.Input só traz GLFW). -->
             <PackageReference Include="Silk.NET.Windowing.Sdl" Version="2.23.0" />
             <PackageReference Include="Silk.NET.Input.Sdl" Version="2.23.0" />
+            <!-- O áudio da engine é OpenAL, e o Android não traz libopenal.so. Sem este pacote o
+                 AudioManager não acha a biblioteca e o jogo roda MUDO, sem nenhum erro. -->
+            <PackageReference Include="MonoGame.Library.OpenAL" Version="1.24.3.4" />
             <ProjectReference Include="{relativeRuntimePath}" />
           </ItemGroup>
 
