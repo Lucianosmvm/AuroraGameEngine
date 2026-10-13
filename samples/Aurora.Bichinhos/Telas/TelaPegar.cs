@@ -30,7 +30,11 @@ public sealed class TelaPegar : Tela
 
     private Bicho B => Jogo.Bicho!;
 
-    public override void Entrar() => Jogo.Musica("musica_batalha");
+    public override void Entrar()
+    {
+        Jogo.Musica("musica_batalha");
+        _visual.Roupa = Jogo.Progresso.Roupa;
+    }
 
     /// <summary>Só pro <c>--demo pegar</c>: já com frutas caindo, pra tirar foto.</summary>
     internal void ParaDemo(float segundos)

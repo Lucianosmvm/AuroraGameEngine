@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 
 import bichos
 import cenario
+import itens
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.join(AQUI, "..", "Assets", "sprites")
@@ -56,6 +57,13 @@ SPRITES.update({
     "icones/estrela": cenario.estrela,
     "icones/gota": cenario.gota_suor,
     "icones/nota": cenario.nota,
+    "itens/chapeu": itens.chapeu,
+    "itens/coroa": itens.coroa,
+    "itens/laco": itens.laco,
+    "itens/lenco": itens.lenco,
+    "itens/oculos": itens.oculos,
+    "itens/oculos_sol": itens.oculos_sol,
+    "icones/roupa": itens.chapeu,
     "ui/painel": cenario.painel,
     "ui/circulo": cenario.circulo_branco,
 })

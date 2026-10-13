@@ -1,0 +1,223 @@
+{
+ "_comentario": "Gerado por Arte/gerar_ancoras.py. Pontos de encaixe dos itens vestíveis, em % do sprite.",
+ "Formas": {
+  "brasinha_0": {
+   "Cabeca": [
+    50.0,
+    41.0,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    72.5,
+    47.7
+   ]
+  },
+  "brasinha_1": {
+   "Cabeca": [
+    50.0,
+    23.0,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    51.2,
+    38.3
+   ]
+  },
+  "brasinha_2": {
+   "Cabeca": [
+    50.0,
+    22.3,
+    42.0
+   ],
+   "Pescoco": [
+    52.0,
+    48.5,
+    52.5
+   ]
+  },
+  "gotinha_0": {
+   "Cabeca": [
+    50.0,
+    36.7,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    84.9,
+    31.2
+   ]
+  },
+  "gotinha_1": {
+   "Cabeca": [
+    50.0,
+    27.7,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    56.4,
+    49.2
+   ]
+  },
+  "gotinha_2": {
+   "Cabeca": [
+    50.4,
+    21.9,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    50.3,
+    50.0
+   ]
+  },
+  "brotinho_0": {
+   "Cabeca": [
+    50.0,
+    43.0,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    74.5,
+    49.2
+   ]
+  },
+  "brotinho_1": {
+   "Cabeca": [
+    50.0,
+    29.7,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    55.2,
+    37.5
+   ]
+  },
+  "brotinho_2": {
+   "Cabeca": [
+    50.0,
+    26.6,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    45.8,
+    32.8
+   ]
+  },
+  "pelucinho_0": {
+   "Cabeca": [
+    50.0,
+    41.8,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    75.3,
+    51.6
+   ]
+  },
+  "pelucinho_1": {
+   "Cabeca": [
+    50.0,
+    28.9,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    57.3,
+    44.5
+   ]
+  },
+  "pelucinho_2": {
+   "Cabeca": [
+    50.0,
+    18.8,
+    41.4
+   ],
+   "Pescoco": [
+    50.0,
+    42.6,
+    50.8
+   ]
+  },
+  "pipio_0": {
+   "Cabeca": [
+    50.0,
+    46.5,
+    42.0
+   ],
+   "Pescoco": [
+    50.0,
+    70.7,
+    52.5
+   ]
+  },
+  "pipio_1": {
+   "Cabeca": [
+    50.0,
+    23.4,
+    32.8
+   ],
+   "Pescoco": [
+    50.0,
+    47.8,
+    28.9
+   ]
+  },
+  "pipio_2": {
+   "Cabeca": [
+    50.0,
+    18.0,
+    31.2
+   ],
+   "Pescoco": [
+    50.0,
+    43.0,
+    25.0
+   ]
+  }
+ },
+ "Itens": {
+  "chapeu": {
+   "slot": "Cabeca",
+   "escala": 0.62,
+   "dx": 0.0,
+   "rot": 0.0
+  },
+  "coroa": {
+   "slot": "Cabeca",
+   "escala": 0.66,
+   "dx": 0.0,
+   "rot": 0.0
+  },
+  "laco": {
+   "slot": "Cabeca",
+   "escala": 0.46,
+   "dx": 0.34,
+   "rot": 0.35
+  },
+  "lenco": {
+   "slot": "Pescoco",
+   "escala": 0.85,
+   "dx": 0.0,
+   "rot": 0.0
+  },
+  "oculos": {
+   "slot": "Rosto",
+   "escala": 1.0,
+   "dx": 0.0,
+   "rot": 0.0
+  },
+  "oculos_sol": {
+   "slot": "Rosto",
+   "escala": 1.0,
+   "dx": 0.0,
+   "rot": 0.0
+  }
+ }
+}

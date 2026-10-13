@@ -30,6 +30,12 @@ public sealed class Progresso
     /// irrita, e depois de negado o Android nem mostra mais a janela.</summary>
     public bool PediuNotificacoes { get; set; }
 
+    /// <summary>Ids dos itens vestíveis que o jogador tem (comprados ou ganhos).</summary>
+    public List<string> Guardados { get; set; } = [];
+
+    /// <summary>O que o bichinho está vestindo. É do jogador: sobrevive a recomeçar com outro ovo.</summary>
+    public Roupa Roupa { get; set; } = new();
+
     /// <summary>Último IP digitado no duelo — quem joga sempre com o mesmo amigo não redigita.</summary>
     public string UltimoIp { get; set; } = "192.168.";
 
@@ -49,6 +55,8 @@ public sealed class Progresso
         SequenciaDias = SequenciaDias,
         RecordePegar = RecordePegar,
         PediuNotificacoes = PediuNotificacoes,
+        Guardados = [.. Guardados],
+        Roupa = Roupa.Copia(),
         UltimoIp = UltimoIp,
     };
 

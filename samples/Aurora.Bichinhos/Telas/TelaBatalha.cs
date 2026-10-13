@@ -65,6 +65,7 @@ public sealed class TelaBatalha : Tela
         _vidaMostradaJogador = _vidaAlvoJogador = Eu.Vida;
         _vidaMostradaInimigo = _vidaAlvoInimigo = Rival.Vida;
         _visualJogador.Espelhar = true;   // olha pro adversário (à direita)
+        _visualJogador.Roupa = jogo.Progresso.Roupa;
     }
 
     private Bicho B => Jogo.Bicho!;

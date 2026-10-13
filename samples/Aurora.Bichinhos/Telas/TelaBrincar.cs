@@ -35,7 +35,11 @@ public sealed class TelaBrincar : Tela
 
     private Bicho B => Jogo.Bicho!;
 
-    public override void Entrar() => Jogo.Musica("musica_casa");
+    public override void Entrar()
+    {
+        Jogo.Musica("musica_casa");
+        _visual.Roupa = Jogo.Progresso.Roupa;
+    }
 
     public override void Atualizar(float dt)
     {

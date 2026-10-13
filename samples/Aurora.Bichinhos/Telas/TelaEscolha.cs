@@ -31,6 +31,7 @@ public sealed class TelaEscolha : Tela
     {
         _escolhida = Catalogo.Atual.Especie(especieId);
         Jogo.NovoBicho(especieId);
+        _visual.Roupa = Jogo.Progresso.Roupa;
         _fase = Fase.Nasceu;
         _t = 1f;
     }
@@ -67,6 +68,7 @@ public sealed class TelaEscolha : Tela
                     _visual.Pular(90f);
                     _particulas.Explosao("estrela", new Vector2(360f, 620f), 14, 46f);
                     Jogo.NovoBicho(_escolhida!.Id);
+                    _visual.Roupa = Jogo.Progresso.Roupa;
                 }
                 break;
 

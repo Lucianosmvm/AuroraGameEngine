@@ -27,6 +27,9 @@ public sealed class BichoVisual
     public Vector2 Deslocamento { get; set; }
     public bool Espelhar { get; set; }
 
+    /// <summary>Itens vestidos (null = sem roupa: bicho selvagem, o rival do duelo).</summary>
+    public Roupa? Roupa { get; set; }
+
     /// <summary>0..1: some na tela de desmaio / aparece na evolução.</summary>
     public float Opacidade { get; set; } = 1f;
 
@@ -122,6 +125,31 @@ public sealed class BichoVisual
 
         if (triste && !dormindo)
             Lagrima(tinta, especie.Estagios[estagio], pos, tamanho);
+
+        if (Roupa is not null)
+            DesenharRoupa(tinta, especie, estagio, pos, tamanho, cor);
+    }
+
+    private static readonly Color CorDaPonte = Color.FromHex("#3C2E4AFF");
+
+    /// <summary>Os itens por cima de tudo, inclusive da pálpebra: óculos não somem quando ele pisca.
+    /// Usam o mesmo tom do bicho, então escurecem junto à noite e ficam esverdeados doente.</summary>
+    private void DesenharRoupa(Tinta tinta, Especie especie, int estagio, Vector2 pos, Vector2 tamanho, Color cor)
+    {
+        if (Ancoras.Atual.Forma(especie.Id, estagio) is not { } forma)
+            return;
+
+        var olhos = especie.Estagios[estagio].Olhos;
+        foreach (var item in Roupa!.Vestidos())
+        {
+            var pecas = RoupaLayout.Montar(item, Ancoras.Atual.Config(item.Id), forma, olhos, pos, tamanho, Espelhar, out var ponte);
+
+            if (ponte is { } p)
+                tinta.Retangulo(new Caixa(p.Pos.X, p.Pos.Y, p.Tamanho.X, p.Tamanho.Y), CorDaPonte.WithAlpha(cor.A));
+
+            foreach (var peca in pecas)
+                tinta.Sprite(tinta.Textura(peca.Sprite), peca.Pos, peca.Tamanho, peca.Pivo, cor, peca.Rotacao, Espelhar);
+        }
     }
 
     private void FecharOlhos(Tinta tinta, Estagio estagio, Vector2 pos, Vector2 tamanho)

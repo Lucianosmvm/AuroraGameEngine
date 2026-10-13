@@ -65,6 +65,7 @@ public sealed class TelaCasa : Tela
     public override void Entrar()
     {
         Jogo.Musica(B.Dormindo ? null : "musica_casa");
+        _visual.Roupa = Jogo.Progresso.Roupa;
 
         // Presente do dia: aparece na primeira vez que a casa abre no dia (ao abrir o jogo ou logo
         // depois de chocar o ovo). Depois de pego não volta, então voltar de uma brincadeira ou
@@ -112,6 +113,7 @@ public sealed class TelaCasa : Tela
     private static readonly Caixa Topo = new(20f, 24f, 680f, 300f);
     private static readonly Caixa BotaoFicha = new(386f, 262f, 290f, 50f);
     private static readonly Caixa BotaoSom = new(616f, 540f, 80f, 80f);
+    private static readonly Caixa BotaoRoupa = new(616f, 630f, 80f, 80f);
     private static readonly Caixa CartaoPresente = new(50f, 280f, 620f, 640f);
     private static readonly Caixa BotaoPegar = new(160f, 810f, 400f, 90f);
     private static readonly Caixa Janela = new(60f, 330f, 600f, 560f);
@@ -185,6 +187,12 @@ public sealed class TelaCasa : Tela
 
         if (Toque.Tocou(BotaoSom))
             Jogo.AlternarSom();
+
+        if (Toque.Tocou(BotaoRoupa))
+        {
+            Jogo.IrPara(new TelaGuardaRoupa(Jogo));
+            return;
+        }
 
         if (Toque.Tocou(CorpoBicho, silencioso: true))
             Carinho();
@@ -377,7 +385,15 @@ public sealed class TelaCasa : Tela
         _menu = Menu.Nenhum;
         _visual.Pular(70f);
         _particulas.Explosao("moeda", Pe - new Vector2(0f, 220f), 12, 46f);
-        Falar(p.Dia == Presente.MoedasPorDia.Length ? "Presente grandão! Obrigado!" : "Obrigado!!", 3f);
+        string fala = p.Dia == Presente.MoedasPorDia.Length ? "Presente grandão! Obrigado!" : "Obrigado!!";
+        if (Itens.Achar(p.Item) is { } item)
+        {
+            // Já vai com ela: o primeiro "uau" é ver o bichinho de coroa.
+            if (Jogo.Progresso.Roupa.Get(item.Slot) is null)
+                Loja.Equipar(Jogo.Progresso, item);
+            fala = $"Ganhei: {item.Nome}!";
+        }
+        Falar(fala, 3f);
         Jogo.Salvar();
     }
 
@@ -487,6 +503,7 @@ public sealed class TelaCasa : Tela
         DesenharBalao();
         DesenharTopo();
         DesenharBotaoSom();
+        DesenharBotaoRoupa();
 
         for (int i = 0; i < Botoes.Length; i++)
             DesenharBotao(i);
@@ -597,6 +614,14 @@ public sealed class TelaCasa : Tela
         Tinta.Botao(BotaoFicha, "Ficha", Color.FromHex("#9A7BD6FF"), apertado, "estrela", _menu == Menu.Nenhum);
     }
 
+    private void DesenharBotaoRoupa()
+    {
+        var centro = BotaoRoupa.Centro;
+        Tinta.Circulo(centro, 40f, Tinta.Tinteiro);
+        Tinta.Circulo(centro, 36f, Tinta.Papel.WithAlpha(0.95f));
+        Tinta.Icone("roupa", centro + new Vector2(0f, -2f), 54f);
+    }
+
     private void DesenharBotaoSom()
     {
         bool ligado = Jogo.Progresso.SomLigado;
@@ -632,6 +657,14 @@ public sealed class TelaCasa : Tela
             Tinta.Texto(Presente.MoedasPorDia[i].ToString(), new Vector2(centro.X, centro.Y - 14f),
                 hoje || passou ? Tinta.Tinteiro : Color.FromHex("#8C8098FF"), escala: 0.85f, alinhar: Tinta.Alinhar.Centro);
             Tinta.Texto($"dia {dia}", new Vector2(centro.X, centro.Y + 42f), Color.FromHex("#6B5A6EFF"), escala: 0.55f, alinhar: Tinta.Alinhar.Centro);
+        }
+
+        if (Itens.Achar(p.Item) is { } extra)
+        {
+            Tinta.Sprite(Tinta.Textura(extra.Sprite), new Vector2(c.Centro.X - 150f, c.Y + 396f), new Vector2(60f),
+                new Vector2(0.5f, 0.5f), Color.White);
+            Tinta.Texto($"e {extra.Nome.ToLowerInvariant()}!", new Vector2(c.Centro.X - 100f, c.Y + 376f),
+                Tinta.Tinteiro, escala: 0.9f);
         }
 
         string premio = $"+{p.Moedas} moedas";

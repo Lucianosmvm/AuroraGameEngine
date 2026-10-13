@@ -85,6 +85,7 @@ public sealed class BichinhosGame : Game
     protected override void OnLoad()
     {
         Catalogo.Atual = Catalogo.Carregar(Assets.LoadText(Catalogo.Caminho));
+        Ancoras.Atual = Ancoras.Carregar(Assets.LoadText(Ancoras.Caminho));
         Tinta = new Tinta(Assets);
         Toque = new Toque(Input);
         Toque.AoTocar = () => Som("toque", 0.55f);
@@ -296,6 +297,14 @@ public sealed class BichinhosGame : Game
                 break;
             case "presente":
                 IrPara(new TelaCasa(this, 0));
+                break;
+            case "roupas":
+                foreach (var item in Itens.Todos)
+                    Loja.Dar(Progresso, item);
+                Loja.Equipar(Progresso, Itens.Chapeu);
+                Loja.Equipar(Progresso, Itens.Oculos);
+                Loja.Equipar(Progresso, Itens.Lenco);
+                IrPara(new TelaGuardaRoupa(this));
                 break;
             case "batalha":
                 var inimigo = Lutador.Selvagem(Catalogo.Atual.Especie("gotinha"), 9);

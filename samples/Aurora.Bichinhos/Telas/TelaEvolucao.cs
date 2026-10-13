@@ -35,6 +35,7 @@ public sealed class TelaEvolucao : Tela
     {
         Jogo.Musica(null);
         Som("evolucao");
+        _visual.Roupa = Jogo.Progresso.Roupa;
     }
 
     public override void Atualizar(float dt)

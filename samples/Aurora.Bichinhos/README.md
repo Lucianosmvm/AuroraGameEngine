@@ -38,6 +38,32 @@ Ao abrir o jogo no dia, aparece o **presente do dia**: 5, 7, 9, 11, 13, 15 e **3
 ao 7, e depois o ciclo recomeça. Abrir em dias seguidos mantém a sequência; faltar um dia zera (sem
 outra punição). O dia é o do calendário do aparelho. Regra em `Game/Presente.cs`.
 
+### Guarda-roupa
+
+O botão de chapéu na casa abre o guarda-roupa. São 6 itens só visuais (não mudam atributo nenhum):
+
+| Item | Lugar | Preço |
+|---|---|---|
+| Chapéu de festa, Laço rosa | cabeça | 15 |
+| Óculos redondos | rosto | 20 |
+| Lenço listrado | pescoço | 25 |
+| Óculos de sol | rosto | 30 |
+| **Coroa dourada** | cabeça | só no **7º dia seguido** do presente |
+
+Um item por lugar (chapéu, laço e coroa disputam a cabeça); lugares diferentes convivem. Tocar num
+item que você não tem compra e já veste; tocar num que tem veste ou tira. O guarda-roupa é do
+**jogador**: recomeçar com outro ovo não perde os itens nem o que está vestido. O item aparece em
+todas as telas onde o seu bichinho aparece (casa, brincadeiras, batalha, evolução).
+
+Como o encaixe funciona: cada forma de cada espécie tem pontos de encaixe (topo da cabeça, pescoço)
+em `Assets/database/ancoras.json`, **gerados** por `Arte/gerar_ancoras.py` a partir da silhueta do
+sprite; os óculos usam os olhos que o `especies.json` já traz. O item acompanha a respiração, o pulo
+e o espelhamento do bichinho. Veja `Arte/folha_itens.png` (cada forma usando cada item) sem abrir o jogo.
+
+**Item novo:** desenhe em `Arte/itens.py`, registre em `gerar_sprites.py` e em `ITENS` de
+`gerar_ancoras.py`, rode os dois scripts e acrescente o `Item` em `Game/Itens.cs`.
+**Sprite de bicho novo ou alterado:** rode `python Arte/gerar_ancoras.py` de novo.
+
 ### Som
 
 Efeitos em todo lugar (comer, carinho, golpe, "super eficaz", vitória, evolução...) e duas músicas:
@@ -97,7 +123,7 @@ roda mudo, sem erro nenhum. Se o jogo abrir sem som, procure no logcat a linha
 |---|---|
 | `--rapido` | Relógio do bicho 60x mais rápido (1 s = 1 min): fome, cocô e sono sem esperar |
 | `--save <pasta>` | Save em outra pasta, pra não mexer no seu bicho |
-| `--demo <tela>` | Abre direto em `casa`, `noite`, `comer`, `lutar`, `ficha`, `jogos`, `batalha`, `brincar`, `pegar`, `presente`, `evolucao`, `escolha` ou `nasceu` com um bicho de exemplo. `casa:gotinha` troca a espécie |
+| `--demo <tela>` | Abre direto em `casa`, `noite`, `comer`, `lutar`, `ficha`, `jogos`, `roupas`, `batalha`, `brincar`, `pegar`, `presente`, `evolucao`, `escolha` ou `nasceu` com um bicho de exemplo. `casa:gotinha` troca a espécie |
 | `--foto <arquivo.png>` | Grava a tela depois de ~1,5 s e fecha |
 | `--duelo host` / `--duelo <ip>` | Cria a sala / entra na sala direto, sem passar pelos menus |
 | `--robo` | Na batalha escolhe golpe sozinho e fecha no fim (testar duelo com duas janelas) |
@@ -127,6 +153,7 @@ Telas/                         Escolha, Casa, Brincar, Batalha, Evolucao, Sala (
 BichinhosGame.cs               boot, relógio, save automático, troca de tela
 Arte/                          gerador dos sprites (Python + Pillow): python Arte/gerar_sprites.py
                                gerador dos sons (Python + numpy): python Arte/gerar_sons.py -> Assets/sounds/
+                               itens vestíveis: Arte/itens.py (desenho) e Arte/gerar_ancoras.py (encaixe)
 Assets/sounds/                 efeitos e músicas (WAV mono 16 bits); o teste confere que todo som citado no código existe
 ```
 
